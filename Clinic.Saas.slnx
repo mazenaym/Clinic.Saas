@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Clinic.Saas.Domain/Clinic.Saas.Domain.csproj" />
+  <Project Path="Clinic.Saas.Infrastructure/Clinic.Saas.Infrastructure.csproj" />
+  <Project Path="Clinic.Saas.Service/Clinic.Saas.Service.csproj" />
+  <Project Path="Clinic.Saas/Clinic.Saas.api.csproj" />
+</Solution>
