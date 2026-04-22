@@ -1,0 +1,30 @@
+﻿using Clinic.Saas.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Xml.Linq;
+
+namespace Clinic.Saas.Domain.Entities
+{
+    public class PatientDocument
+    {
+        public Guid Id { get; set; }
+        public Guid TenantId { get; set; }
+        public Guid PatientId { get; set; }
+        public Guid? VisitId { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string FileUrl { get; set; } = string.Empty;
+        public int? FileSizeKb { get; set; }
+        public string FileType { get; set; } = string.Empty;
+        public DocumentType DocumentType { get; set; }
+        public string? Description { get; set; }
+        public Guid? UploadedBy { get; set; }
+        public DateTime UploadedAt { get; set; }
+
+        // Navigation Properties
+        public Tenant Tenant { get; set; } = null!;
+        public Patient Patient { get; set; } = null!;
+        public Visit? Visit { get; set; }
+        public User? UploadedByUser { get; set; }
+    }
+}

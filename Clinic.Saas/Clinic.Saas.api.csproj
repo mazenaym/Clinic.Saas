@@ -10,4 +10,9 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Clinic.Saas.Infrastructure\Clinic.Saas.Infrastructure.csproj" />
+    <ProjectReference Include="..\Clinic.Saas.Service\Clinic.Saas.Service.csproj" />
+  </ItemGroup>
+
 </Project>

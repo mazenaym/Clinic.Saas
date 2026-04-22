@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="Clinic.Saas.Domain/Clinic.Saas.Domain.csproj" />
   <Project Path="Clinic.Saas.Infrastructure/Clinic.Saas.Infrastructure.csproj" />
   <Project Path="Clinic.Saas.Service/Clinic.Saas.Service.csproj" />

@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Clinic.Saas.Domain\Clinic.Saas.Domain.csproj" />
+    <ProjectReference Include="..\Clinic.Saas.Service\Clinic.Saas.Service.csproj" />
+  </ItemGroup>
+
 </Project>
