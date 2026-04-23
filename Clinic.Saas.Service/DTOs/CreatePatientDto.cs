@@ -9,6 +9,7 @@ namespace Clinic.Saas.Service.DTOs
     {
         public string FullName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
+        public string PatientCode { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public Gender Gender { get; set; }
         public string? BloodType { get; set; }

@@ -20,4 +20,8 @@
     <ProjectReference Include="..\Clinic.Saas.Service\Clinic.Saas.Service.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\" />
+  </ItemGroup>
+
 </Project>
