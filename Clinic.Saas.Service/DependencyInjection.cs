@@ -1,4 +1,5 @@
-﻿using Clinic.Saas.Service.UseCases.Patients.Commands;
+using Clinic.Saas.Service.UseCases.Patients.Commands;
+using Clinic.Saas.Service.UseCases.Patients.Queries;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,13 +11,15 @@ public static class DependencyInjection
         this IServiceCollection services)
     {
         // AutoMapper
-        services.AddAutoMapper(typeof(DependencyInjection).Assembly);
+        services.AddAutoMapper(cfg => { }, typeof(DependencyInjection).Assembly);
 
         // FluentValidation
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
-        //Use Cases
+
+        // Use Cases
         services.AddScoped<CreatePatientCommand.Handler>();
-        services.AddScoped<UseCases.Patients.Queries.GetPatientByIdQuery.Handler>();
+        services.AddScoped<GetPatientByIdQuery.Handler>();
+
         return services;
     }
 }
