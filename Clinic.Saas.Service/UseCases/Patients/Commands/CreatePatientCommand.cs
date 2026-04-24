@@ -64,6 +64,7 @@ public class CreatePatientCommand
             // 3. Map and Add
             var patient = _mapper.Map<Patient>(command.Patient);
             patient.TenantId = command.TenantId;
+            patient.PatientCode = await _repository.GenerateNextPatientCodeAsync(command.TenantId);
 
             var created = await _repository.AddAsync(patient);
 

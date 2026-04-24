@@ -21,8 +21,33 @@ namespace Clinic.Saas.Service.Mappings
                 .ForMember(dest => dest.Gender,
                     opt => opt.MapFrom(src => src.Gender.ToString()));
 
-            CreateMap<CreatePatientDto, Patient>();
-            CreateMap<UpdatePatientDto, Patient>();
+            CreateMap<CreatePatientDto, Patient>()
+                .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+                .ForMember(dest => dest.PatientCode, opt => opt.Ignore())
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+                .ForMember(dest => dest.Tenant, opt => opt.Ignore())
+                .ForMember(dest => dest.Appointments, opt => opt.Ignore())
+                .ForMember(dest => dest.Visits, opt => opt.Ignore())
+                .ForMember(dest => dest.Prescriptions, opt => opt.Ignore())
+                .ForMember(dest => dest.Payments, opt => opt.Ignore())
+                .ForMember(dest => dest.Documents, opt => opt.Ignore());
+
+            CreateMap<UpdatePatientDto, Patient>()
+                .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+                .ForMember(dest => dest.PatientCode, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Tenant, opt => opt.Ignore())
+                .ForMember(dest => dest.Appointments, opt => opt.Ignore())
+                .ForMember(dest => dest.Visits, opt => opt.Ignore())
+                .ForMember(dest => dest.Prescriptions, opt => opt.Ignore())
+                .ForMember(dest => dest.Payments, opt => opt.Ignore())
+                .ForMember(dest => dest.Documents, opt => opt.Ignore());
 
             // Appointment Mappings
             CreateMap<Appointment, AppointmentDto>()

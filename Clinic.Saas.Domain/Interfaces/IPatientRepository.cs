@@ -10,5 +10,6 @@ namespace Clinic.Saas.Domain.Interfaces
         Task<Patient?> GetByPhoneAsync(Guid tenantId, string phone);
         Task<IEnumerable<Patient>> SearchAsync(Guid tenantId, string searchTerm);
         Task<bool> ExistsAsync(Guid tenantId, string phone);
+        Task<string> GenerateNextPatientCodeAsync(Guid tenantId);
     }
 }

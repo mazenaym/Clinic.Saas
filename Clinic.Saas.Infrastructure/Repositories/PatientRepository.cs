@@ -152,4 +152,18 @@ namespace Clinic.Saas.Infrastructure.Repositories;
             );
             return count > 0;
         }
+
+        public async Task<string> GenerateNextPatientCodeAsync(Guid tenantId)
+        {
+            var sql = @"
+            SELECT ISNULL(MAX(TRY_CAST(SUBSTRING(PatientCode, 5, LEN(PatientCode) - 4) AS INT)), 0) + 1
+            FROM dbo.Patients
+            WHERE TenantId = @TenantId
+              AND PatientCode LIKE 'CLN-%';";
+
+            using var connection = _context.CreateConnection();
+            var nextNumber = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId });
+
+            return $"CLN-{nextNumber:D5}";
+        }
     }

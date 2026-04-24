@@ -23,11 +23,13 @@ namespace Clinic.Saas.api.Controllers
         public async Task<IActionResult> Create([FromBody] CreatePatientDto dto)
         {
             // TODO: Get TenantId from JWT later
-            //var tenantId = Guid.Parse("fb-118f2973375a");
+            var tenantId = Guid.TryParse(dto.TenantId, out var parsedTenantId)
+                ? parsedTenantId
+                : Guid.Parse("71CC36D9-A2E8-4441-90FB-118F2973375A");
 
             var command = new CreatePatientCommand.Command
             {
-                //TenantId = tenantId,
+                TenantId = tenantId,
                 Patient = dto
             };
 
