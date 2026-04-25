@@ -1,11 +1,14 @@
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.UseCases.Auth.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
+using Clinic.Saas.Service.UseCases.Users.Commands;
+using Clinic.Saas.Service.UseCases.Users.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
 using Clinic.Saas.Service.UseCases.Visits.Queries;
 using FluentValidation;
@@ -40,6 +43,14 @@ public static class DependencyInjection
 
         services.AddScoped<CreatePaymentCommand.Handler>();
         services.AddScoped<GetDailyRevenueReportQuery.Handler>();
+
+        services.AddScoped<LoginCommand.Handler>();
+        services.AddScoped<RefreshTokenCommand.Handler>();
+        services.AddScoped<LogoutCommand.Handler>();
+
+        services.AddScoped<CreateUserCommand.Handler>();
+        services.AddScoped<GetTenantUsersQuery.Handler>();
+        services.AddScoped<GetCurrentUserQuery.Handler>();
 
         return services;
     }

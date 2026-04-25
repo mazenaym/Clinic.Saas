@@ -74,5 +74,11 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.RemainingAmount, opt => opt.MapFrom(src => (src.TotalAmount + src.TaxAmount) - src.DiscountAmount - src.PaidAmount))
             .ForMember(dest => dest.PatientName, opt => opt.MapFrom(_ => string.Empty));
+
+        CreateMap<User, UserDto>()
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()));
+
+        CreateMap<Tenant, TenantDto>()
+            .ForMember(dest => dest.Plan, opt => opt.MapFrom(src => src.Plan.ToString()));
     }
 }
