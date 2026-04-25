@@ -1,0 +1,167 @@
+using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Interfaces;
+using Clinic.Saas.Infrastructure.Data;
+using Dapper;
+
+namespace Clinic.Saas.Infrastructure.Repositories;
+
+public class PrescriptionRepository : IPrescriptionRepository
+{
+    private readonly DapperContext _context;
+
+    public PrescriptionRepository(DapperContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<Prescription> AddAsync(Prescription entity)
+    {
+        if (entity.Id == Guid.Empty)
+        {
+            entity.Id = Guid.NewGuid();
+        }
+
+        using var connection = _context.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            const string prescriptionSql = @"
+INSERT INTO dbo.Prescriptions
+(
+    Id, TenantId, VisitId, PatientId, DoctorId, Notes, QrCode, PdfUrl,
+    SentViaWhatsapp, SentViaSms, IsActive, CreatedAt
+)
+VALUES
+(
+    @Id, @TenantId, @VisitId, @PatientId, @DoctorId, @Notes, @QrCode, @PdfUrl,
+    @SentViaWhatsapp, @SentViaSms, @IsActive, @CreatedAt
+);";
+
+            await connection.ExecuteAsync(prescriptionSql, entity, transaction);
+
+            if (entity.Items.Any())
+            {
+                const string itemSql = @"
+INSERT INTO dbo.PrescriptionItems
+(
+    Id, PrescriptionId, DrugId, DrugName, Dosage, Frequency, Duration, Route, Instructions, SortOrder
+)
+VALUES
+(
+    @Id, @PrescriptionId, @DrugId, @DrugName, @Dosage, @Frequency, @Duration, @Route, @Instructions, @SortOrder
+);";
+
+                foreach (var item in entity.Items)
+                {
+                    if (item.Id == Guid.Empty)
+                    {
+                        item.Id = Guid.NewGuid();
+                    }
+
+                    item.PrescriptionId = entity.Id;
+                    await connection.ExecuteAsync(itemSql, item, transaction);
+                }
+            }
+
+            transaction.Commit();
+            return await GetByIdInternalAsync(connection, entity.Id);
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public async Task<Prescription?> GetByIdAsync(Guid id)
+    {
+        using var connection = _context.CreateConnection();
+        return await GetByIdInternalOrDefaultAsync(connection, id);
+    }
+
+    public async Task<IEnumerable<Prescription>> GetAllAsync()
+    {
+        const string sql = @"
+SELECT * FROM dbo.Prescriptions
+WHERE IsActive = 1
+ORDER BY CreatedAt DESC;";
+
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<Prescription>(sql);
+    }
+
+    public async Task UpdateAsync(Prescription entity)
+    {
+        const string sql = @"
+UPDATE dbo.Prescriptions
+SET Notes = @Notes,
+    QrCode = @QrCode,
+    PdfUrl = @PdfUrl,
+    SentViaWhatsapp = @SentViaWhatsapp,
+    SentViaSms = @SentViaSms,
+    IsActive = @IsActive
+WHERE Id = @Id;";
+
+        using var connection = _context.CreateConnection();
+        await connection.ExecuteAsync(sql, entity);
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        const string sql = @"
+UPDATE dbo.Prescriptions
+SET IsActive = 0
+WHERE Id = @Id;";
+
+        using var connection = _context.CreateConnection();
+        await connection.ExecuteAsync(sql, new { Id = id });
+    }
+
+    public async Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid patientId)
+    {
+        const string sql = @"
+SELECT * FROM dbo.Prescriptions
+WHERE PatientId = @PatientId
+  AND IsActive = 1
+ORDER BY CreatedAt DESC;";
+
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<Prescription>(sql, new { PatientId = patientId });
+    }
+
+    private static async Task<Prescription> GetByIdInternalAsync(System.Data.IDbConnection connection, Guid id)
+    {
+        var prescription = await GetByIdInternalOrDefaultAsync(connection, id);
+        if (prescription is null)
+        {
+            throw new InvalidOperationException("Prescription was not found after creation.");
+        }
+
+        return prescription;
+    }
+
+    private static async Task<Prescription?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id)
+    {
+        const string prescriptionSql = @"
+SELECT * FROM dbo.Prescriptions
+WHERE Id = @Id AND IsActive = 1;";
+
+        const string itemsSql = @"
+SELECT * FROM dbo.PrescriptionItems
+WHERE PrescriptionId = @Id
+ORDER BY SortOrder, DrugName;";
+
+        var prescription = await connection.QueryFirstOrDefaultAsync<Prescription>(prescriptionSql, new { Id = id });
+        if (prescription is null)
+        {
+            return null;
+        }
+
+        var items = await connection.QueryAsync<PrescriptionItem>(itemsSql, new { Id = id });
+        prescription.Items = items.ToList();
+
+        return prescription;
+    }
+}

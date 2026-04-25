@@ -1,0 +1,242 @@
+using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Interfaces;
+using Clinic.Saas.Infrastructure.Data;
+using Dapper;
+
+namespace Clinic.Saas.Infrastructure.Repositories;
+
+public class PaymentRepository : IPaymentRepository
+{
+    private readonly DapperContext _context;
+
+    public PaymentRepository(DapperContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<Payment> AddAsync(Payment entity)
+    {
+        if (entity.Id == Guid.Empty)
+        {
+            entity.Id = Guid.NewGuid();
+        }
+
+        using var connection = _context.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            const string paymentSql = @"
+INSERT INTO dbo.Payments
+(
+    Id, TenantId, VisitId, PatientId, InvoiceNumber, TotalAmount, DiscountAmount,
+    DiscountPct, TaxAmount, PaidAmount, RemainingAmount, PaymentMethod, Status,
+    InsuranceCompany, InsuranceNumber, ReceiptUrl, Notes, CreatedAt, UpdatedAt, CreatedBy
+)
+VALUES
+(
+    @Id, @TenantId, @VisitId, @PatientId, @InvoiceNumber, @TotalAmount, @DiscountAmount,
+    @DiscountPct, @TaxAmount, @PaidAmount, @RemainingAmount, @PaymentMethod, @Status,
+    @InsuranceCompany, @InsuranceNumber, @ReceiptUrl, @Notes, @CreatedAt, @UpdatedAt, @CreatedBy
+);";
+
+            await connection.ExecuteAsync(paymentSql, new
+            {
+                entity.Id,
+                entity.TenantId,
+                entity.VisitId,
+                entity.PatientId,
+                entity.InvoiceNumber,
+                entity.TotalAmount,
+                entity.DiscountAmount,
+                entity.DiscountPct,
+                entity.TaxAmount,
+                entity.PaidAmount,
+                RemainingAmount = entity.TotalAmount + entity.TaxAmount - entity.DiscountAmount - entity.PaidAmount,
+                entity.PaymentMethod,
+                entity.Status,
+                entity.InsuranceCompany,
+                entity.InsuranceNumber,
+                entity.ReceiptUrl,
+                entity.Notes,
+                entity.CreatedAt,
+                entity.UpdatedAt,
+                entity.CreatedBy
+            }, transaction);
+
+            if (entity.Items.Any())
+            {
+                const string itemSql = @"
+INSERT INTO dbo.PaymentItems
+(
+    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice
+)
+VALUES
+(
+    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice
+);";
+
+                foreach (var item in entity.Items)
+                {
+                    if (item.Id == Guid.Empty)
+                    {
+                        item.Id = Guid.NewGuid();
+                    }
+
+                    item.PaymentId = entity.Id;
+                    await connection.ExecuteAsync(itemSql, new
+                    {
+                        item.Id,
+                        item.PaymentId,
+                        item.ServiceName,
+                        item.ServiceType,
+                        item.Quantity,
+                        item.UnitPrice,
+                        item.DiscountPct,
+                        TotalPrice = (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m))
+                    }, transaction);
+                }
+            }
+
+            transaction.Commit();
+            return await GetByIdInternalAsync(connection, entity.Id);
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public async Task<Payment?> GetByIdAsync(Guid id)
+    {
+        using var connection = _context.CreateConnection();
+        return await GetByIdInternalOrDefaultAsync(connection, id);
+    }
+
+    public async Task<IEnumerable<Payment>> GetAllAsync()
+    {
+        const string sql = @"
+SELECT * FROM dbo.Payments
+ORDER BY CreatedAt DESC;";
+
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<Payment>(sql);
+    }
+
+    public async Task UpdateAsync(Payment entity)
+    {
+        const string sql = @"
+UPDATE dbo.Payments
+SET InvoiceNumber = @InvoiceNumber,
+    TotalAmount = @TotalAmount,
+    DiscountAmount = @DiscountAmount,
+    DiscountPct = @DiscountPct,
+    TaxAmount = @TaxAmount,
+    PaidAmount = @PaidAmount,
+    RemainingAmount = @RemainingAmount,
+    PaymentMethod = @PaymentMethod,
+    Status = @Status,
+    InsuranceCompany = @InsuranceCompany,
+    InsuranceNumber = @InsuranceNumber,
+    ReceiptUrl = @ReceiptUrl,
+    Notes = @Notes,
+    UpdatedAt = @UpdatedAt
+WHERE Id = @Id;";
+
+        using var connection = _context.CreateConnection();
+        await connection.ExecuteAsync(sql, new
+        {
+            entity.Id,
+            entity.InvoiceNumber,
+            entity.TotalAmount,
+            entity.DiscountAmount,
+            entity.DiscountPct,
+            entity.TaxAmount,
+            entity.PaidAmount,
+            RemainingAmount = entity.TotalAmount + entity.TaxAmount - entity.DiscountAmount - entity.PaidAmount,
+            entity.PaymentMethod,
+            entity.Status,
+            entity.InsuranceCompany,
+            entity.InsuranceNumber,
+            entity.ReceiptUrl,
+            entity.Notes,
+            entity.UpdatedAt
+        });
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        const string sql = @"
+DELETE FROM dbo.PaymentItems WHERE PaymentId = @Id;
+DELETE FROM dbo.Payments WHERE Id = @Id;";
+
+        using var connection = _context.CreateConnection();
+        await connection.ExecuteAsync(sql, new { Id = id });
+    }
+
+    public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
+    {
+        const string sql = @"
+SELECT ISNULL(MAX(TRY_CAST(RIGHT(InvoiceNumber, 5) AS INT)), 0) + 1
+FROM dbo.Payments
+WHERE TenantId = @TenantId
+  AND InvoiceNumber LIKE @Prefix + '%';";
+
+        var prefix = $"INV-{createdAt:yyyyMMdd}-";
+
+        using var connection = _context.CreateConnection();
+        var nextNumber = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Prefix = prefix });
+        return $"{prefix}{nextNumber:D5}";
+    }
+
+    public async Task<IEnumerable<Payment>> GetByDateAsync(Guid tenantId, DateTime date)
+    {
+        const string sql = @"
+SELECT * FROM dbo.Payments
+WHERE TenantId = @TenantId
+  AND CAST(CreatedAt AS date) = @PaymentDate
+ORDER BY CreatedAt DESC;";
+
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<Payment>(sql, new
+        {
+            TenantId = tenantId,
+            PaymentDate = date.Date
+        });
+    }
+
+    private static async Task<Payment> GetByIdInternalAsync(System.Data.IDbConnection connection, Guid id)
+    {
+        var payment = await GetByIdInternalOrDefaultAsync(connection, id);
+        if (payment is null)
+        {
+            throw new InvalidOperationException("Payment was not found after creation.");
+        }
+
+        return payment;
+    }
+
+    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id)
+    {
+        const string paymentSql = @"
+SELECT * FROM dbo.Payments
+WHERE Id = @Id;";
+
+        const string itemsSql = @"
+SELECT * FROM dbo.PaymentItems
+WHERE PaymentId = @Id
+ORDER BY ServiceName;";
+
+        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, new { Id = id });
+        if (payment is null)
+        {
+            return null;
+        }
+
+        var items = await connection.QueryAsync<PaymentItem>(itemsSql, new { Id = id });
+        payment.Items = items.ToList();
+        return payment;
+    }
+}
