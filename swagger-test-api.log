@@ -1,0 +1,55 @@
+Using launch settings from Clinic.Saas\Properties\launchSettings.json...
+Building...
+D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Infrastructure\Clinic.Saas.Infrastructure.csproj : warning NU1903: Package 'System.Security.Cryptography.Xml' 8.0.2 has a known high severity vulnerability, https://github.com/advisories/GHSA-37gx-xxp4-5rgx [D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas\Clinic.Saas.api.csproj]
+D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Infrastructure\Clinic.Saas.Infrastructure.csproj : warning NU1903: Package 'System.Security.Cryptography.Xml' 8.0.2 has a known high severity vulnerability, https://github.com/advisories/GHSA-w3x6-4m5h-cxqf [D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas\Clinic.Saas.api.csproj]
+D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Infrastructure\Clinic.Saas.Infrastructure.csproj : warning NU1903: Package 'System.Security.Cryptography.Xml' 8.0.2 has a known high severity vulnerability, https://github.com/advisories/GHSA-37gx-xxp4-5rgx
+D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Infrastructure\Clinic.Saas.Infrastructure.csproj : warning NU1903: Package 'System.Security.Cryptography.Xml' 8.0.2 has a known high severity vulnerability, https://github.com/advisories/GHSA-w3x6-4m5h-cxqf
+D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Service\DTOs\PatientDto.cs(10,23): warning CS8618: Non-nullable property 'PatientCode' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable. [D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Service\Clinic.Saas.Service.csproj]
+D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Service\DTOs\ClinicSettingsDto.cs(9,23): warning CS8618: Non-nullable property 'WorkingDays' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable. [D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Service\Clinic.Saas.Service.csproj]
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5232
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+warn: LuckyPennySoftware.AutoMapper.License[0]
+      You do not have a valid license key for the Lucky Penny software AutoMapper. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+fail: Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware[1]
+      An unhandled exception has occurred while executing the request.
+      Microsoft.Data.SqlClient.SqlException (0x80131904): The column "RemainingAmount" cannot be modified because it is either a computed column or is the result of a UNION operator.
+         at Microsoft.Data.SqlClient.SqlConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+         at Microsoft.Data.SqlClient.Connection.SqlConnectionInternal.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+         at Microsoft.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, SqlCommand command, Boolean callerHasConnectionLock, Boolean asyncClose)
+         at Microsoft.Data.SqlClient.TdsParser.TryRun(RunBehavior runBehavior, SqlCommand cmdHandler, SqlDataReader dataStream, BulkCopySimpleResultSet bulkCopyHandler, TdsParserStateObject stateObj, Boolean& dataReady)
+         at Microsoft.Data.SqlClient.SqlCommand.FinishExecuteReader(SqlDataReader ds, RunBehavior runBehavior, String resetOptionsString, Boolean isInternal, Boolean forDescribeParameterEncryption, Boolean shouldCacheForAlwaysEncrypted)
+         at Microsoft.Data.SqlClient.SqlCommand.CompleteAsyncExecuteReader(Boolean isInternal, Boolean forDescribeParameterEncryption)
+         at Microsoft.Data.SqlClient.SqlCommand.InternalEndExecuteNonQuery(IAsyncResult asyncResult, Boolean isInternal, String endMethod)
+         at Microsoft.Data.SqlClient.SqlCommand.EndExecuteNonQueryInternal(IAsyncResult asyncResult)
+         at Microsoft.Data.SqlClient.SqlCommand.EndExecuteNonQueryAsync(IAsyncResult asyncResult)
+         at Microsoft.Data.SqlClient.SqlCommand.<>c.<InternalExecuteNonQueryAsync>b__251_1(IAsyncResult asyncResult)
+         at System.Threading.Tasks.TaskFactory`1.FromAsyncCoreLogic(IAsyncResult iar, Func`2 endFunction, Action`1 endAction, Task`1 promise, Boolean requiresSynchronization)
+      --- End of stack trace from previous location ---
+         at Dapper.SqlMapper.ExecuteImplAsync(IDbConnection cnn, CommandDefinition command, Object param) in /_/Dapper/SqlMapper.Async.cs:line 663
+         at Clinic.Saas.Infrastructure.Repositories.PaymentRepository.AddAsync(Payment entity) in D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Infrastructure\Repositories\PaymentRepository.cs:line 44
+         at Clinic.Saas.Service.UseCases.Payments.Commands.CreatePaymentCommand.Handler.Handle(Command command) in D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas.Service\UseCases\Payments\Commands\CreatePaymentCommand.cs:line 81
+         at Clinic.Saas.api.Controllers.BillingController.CreatePayment(CreatePaymentDto dto) in D:\Projects\Clinc Flow SAAS\Clinic.Saas\Clinic.Saas\Clinic.Saas\Controllers\BillingController.cs:line 38
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+         at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+         at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+         at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+         at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+         at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+      ClientConnectionId:b1b62e68-2b06-47d3-83ad-33e41f19f00b
+      Error Number:271,State:1,Class:16
