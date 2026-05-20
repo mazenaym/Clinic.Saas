@@ -1,4 +1,5 @@
 using Clinic.Saas.Infrastructure;
+using Clinic.Saas.api.Middleware;
 using Clinic.Saas.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -47,6 +48,7 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 

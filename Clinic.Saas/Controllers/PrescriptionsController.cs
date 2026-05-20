@@ -53,7 +53,16 @@ public class PrescriptionsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var result = await _getPrescription.Handle(new GetPrescriptionByIdQuery.Query { Id = id });
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getPrescription.Handle(new GetPrescriptionByIdQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Id = id
+        });
         return StatusCode(result.StatusCode, result);
     }
 }

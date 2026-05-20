@@ -17,7 +17,7 @@ namespace Clinic.Saas.Domain.Entities
         public decimal DiscountPct { get; set; }
         public decimal TaxAmount { get; set; }
         public decimal PaidAmount { get; set; }
-        public decimal RemainingAmount { get; private set; } // Computed
+        public decimal RemainingAmount { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public PaymentStatus Status { get; set; }
         public string? InsuranceCompany { get; set; }
@@ -28,10 +28,7 @@ namespace Clinic.Saas.Domain.Entities
         public DateTime UpdatedAt { get; set; }
         public Guid? CreatedBy { get; set; }
 
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Visit Visit { get; set; } = null!;
-        public Patient Patient { get; set; } = null!;
         public ICollection<PaymentItem> Items { get; set; } = new List<PaymentItem>();
+        public string PatientName { get; set; } = string.Empty;
     }
 }

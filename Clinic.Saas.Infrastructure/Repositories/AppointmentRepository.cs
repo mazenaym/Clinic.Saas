@@ -3,6 +3,7 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Infrastructure.Data;
 using Dapper;
+using System.Data;
 
 namespace Clinic.Saas.Infrastructure.Repositories;
 
@@ -22,7 +23,42 @@ public class AppointmentRepository : IAppointmentRepository
             entity.Id = Guid.NewGuid();
         }
 
-        var sql = @"
+        entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
+        entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
+
+        using var connection = _context.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+
+        try
+        {
+            const string conflictSql = @"
+SELECT COUNT(1)
+FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
+WHERE TenantId = @TenantId
+  AND DoctorId = @DoctorId
+  AND AppointmentDate = @AppointmentDate
+  AND IsDeleted = 0
+  AND Status <> @CancelledStatus
+  AND StartTime < @EndTime
+  AND EndTime > @StartTime;";
+
+            var conflicts = await connection.ExecuteScalarAsync<int>(conflictSql, new
+            {
+                entity.TenantId,
+                entity.DoctorId,
+                AppointmentDate = entity.AppointmentDate.Date,
+                entity.EndTime,
+                entity.StartTime,
+                CancelledStatus = AppointmentStatus.Cancelled
+            }, transaction);
+
+            if (conflicts > 0)
+            {
+                throw new InvalidOperationException("Appointment conflicts with an existing appointment for the same doctor.");
+            }
+
+            const string sql = @"
 INSERT INTO dbo.Appointments
 (
     Id, TenantId, PatientId, DoctorId, AppointmentDate, StartTime, EndTime,
@@ -34,34 +70,28 @@ VALUES
     @Id, @TenantId, @PatientId, @DoctorId, @AppointmentDate, @StartTime, @EndTime,
     @Status, @Type, @Source, @Notes, @CancelReason, @ReminderSent, @IsDeleted,
     @CreatedAt, @UpdatedAt, @CreatedBy
-);
+);";
 
-SELECT * FROM dbo.Appointments WHERE Id = @Id;";
+            await connection.ExecuteAsync(sql, entity, transaction);
+            transaction.Commit();
 
-        using var connection = _context.CreateConnection();
-        return await connection.QuerySingleAsync<Appointment>(sql, entity);
+            var created = await GetByIdAsync(entity.TenantId, entity.Id);
+            return created ?? throw new InvalidOperationException("Appointment was not found after creation.");
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
-    public async Task<Appointment?> GetByIdAsync(Guid id)
-    {
-        const string sql = @"
-SELECT * FROM dbo.Appointments
-WHERE Id = @Id AND IsDeleted = 0;";
+    public Task<Appointment?> GetByIdAsync(Guid id) => GetByIdInternalAsync(null, id);
 
-        using var connection = _context.CreateConnection();
-        return await connection.QueryFirstOrDefaultAsync<Appointment>(sql, new { Id = id });
-    }
+    public Task<Appointment?> GetByIdAsync(Guid tenantId, Guid id) => GetByIdInternalAsync(tenantId, id);
 
-    public async Task<IEnumerable<Appointment>> GetAllAsync()
-    {
-        const string sql = @"
-SELECT * FROM dbo.Appointments
-WHERE IsDeleted = 0
-ORDER BY AppointmentDate DESC, StartTime DESC;";
+    public Task<IEnumerable<Appointment>> GetAllAsync() => GetAllInternalAsync(null);
 
-        using var connection = _context.CreateConnection();
-        return await connection.QueryAsync<Appointment>(sql);
-    }
+    public Task<IEnumerable<Appointment>> GetAllAsync(Guid tenantId) => GetAllInternalAsync(tenantId);
 
     public async Task UpdateAsync(Appointment entity)
     {
@@ -78,8 +108,9 @@ SET PatientId = @PatientId,
     Notes = @Notes,
     CancelReason = @CancelReason,
     ReminderSent = @ReminderSent,
-    UpdatedAt = @UpdatedAt
-WHERE Id = @Id;";
+    UpdatedAt = SYSUTCDATETIME()
+WHERE Id = @Id
+  AND TenantId = @TenantId;";
 
         using var connection = _context.CreateConnection();
         await connection.ExecuteAsync(sql, entity);
@@ -98,9 +129,9 @@ WHERE Id = @Id;";
 
     public async Task<bool> HasConflictAsync(Guid tenantId, Guid doctorId, DateTime appointmentDate, TimeSpan startTime, TimeSpan endTime, Guid? excludeId = null)
     {
-        var sql = @"
+        const string sql = @"
 SELECT COUNT(1)
-FROM dbo.Appointments
+FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
 WHERE TenantId = @TenantId
   AND DoctorId = @DoctorId
   AND AppointmentDate = @AppointmentDate
@@ -127,19 +158,14 @@ WHERE TenantId = @TenantId
 
     public async Task<IEnumerable<Appointment>> GetByDateAsync(Guid tenantId, DateTime appointmentDate)
     {
-        const string sql = @"
-SELECT * FROM dbo.Appointments
-WHERE TenantId = @TenantId
-  AND AppointmentDate = @AppointmentDate
-  AND IsDeleted = 0
-ORDER BY StartTime;";
+        const string sql = AppointmentSelect + @"
+WHERE a.TenantId = @TenantId
+  AND a.AppointmentDate = @AppointmentDate
+  AND a.IsDeleted = 0
+ORDER BY a.StartTime;";
 
         using var connection = _context.CreateConnection();
-        return await connection.QueryAsync<Appointment>(sql, new
-        {
-            TenantId = tenantId,
-            AppointmentDate = appointmentDate.Date
-        });
+        return await connection.QueryAsync<Appointment>(sql, new { TenantId = tenantId, AppointmentDate = appointmentDate.Date });
     }
 
     public async Task<IEnumerable<TimeSlot>> GetBookedSlotsAsync(Guid tenantId, Guid doctorId, DateTime appointmentDate)
@@ -164,21 +190,71 @@ ORDER BY StartTime;";
         });
     }
 
-    public async Task UpdateStatusAsync(Guid id, AppointmentStatus status, string? cancelReason)
+    public async Task<bool> UpdateStatusAsync(Guid tenantId, Guid id, AppointmentStatus status, string? cancelReason)
     {
-        const string sql = @"
+        using var connection = _context.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
+
+        try
+        {
+            const string sql = @"
 UPDATE dbo.Appointments
 SET Status = @Status,
     CancelReason = @CancelReason,
     UpdatedAt = SYSUTCDATETIME()
-WHERE Id = @Id;";
+WHERE Id = @Id
+  AND TenantId = @TenantId
+  AND IsDeleted = 0;";
+
+            var rows = await connection.ExecuteAsync(sql, new
+            {
+                TenantId = tenantId,
+                Id = id,
+                Status = status,
+                CancelReason = cancelReason
+            }, transaction);
+
+            transaction.Commit();
+            return rows > 0;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    private const string AppointmentSelect = @"
+SELECT
+    a.*,
+    p.FullName AS PatientName,
+    p.PhoneNumber AS PatientPhone,
+    u.FullName AS DoctorName
+FROM dbo.Appointments a
+INNER JOIN dbo.Patients p ON p.Id = a.PatientId AND p.TenantId = a.TenantId
+INNER JOIN dbo.Users u ON u.Id = a.DoctorId AND u.TenantId = a.TenantId
+";
+
+    private async Task<Appointment?> GetByIdInternalAsync(Guid? tenantId, Guid id)
+    {
+        const string sql = AppointmentSelect + @"
+WHERE a.Id = @Id
+  AND a.IsDeleted = 0
+  AND (@TenantId IS NULL OR a.TenantId = @TenantId);";
 
         using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new
-        {
-            Id = id,
-            Status = status,
-            CancelReason = cancelReason
-        });
+        return await connection.QueryFirstOrDefaultAsync<Appointment>(sql, new { TenantId = tenantId, Id = id });
+    }
+
+    private async Task<IEnumerable<Appointment>> GetAllInternalAsync(Guid? tenantId)
+    {
+        const string sql = AppointmentSelect + @"
+WHERE a.IsDeleted = 0
+  AND (@TenantId IS NULL OR a.TenantId = @TenantId)
+ORDER BY a.AppointmentDate DESC, a.StartTime DESC;";
+
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<Appointment>(sql, new { TenantId = tenantId });
     }
 }

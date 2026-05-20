@@ -18,12 +18,8 @@ namespace Clinic.Saas.Domain.Entities
         public bool SentViaSms { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Visit Visit { get; set; } = null!;
-        public Patient Patient { get; set; } = null!;
-        public User Doctor { get; set; } = null!;
         public ICollection<PrescriptionItem> Items { get; set; } = new List<PrescriptionItem>();
+        public string PatientName { get; set; } = string.Empty;
+        public string DoctorName { get; set; } = string.Empty;
     }
 }

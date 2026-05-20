@@ -2,6 +2,7 @@ using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Infrastructure.Data;
 using Dapper;
+using System.Data;
 
 namespace Clinic.Saas.Infrastructure.Repositories;
 
@@ -23,10 +24,17 @@ public class PaymentRepository : IPaymentRepository
 
         using var connection = _context.CreateConnection();
         connection.Open();
-        using var transaction = connection.BeginTransaction();
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
         {
+            if (string.IsNullOrWhiteSpace(entity.InvoiceNumber))
+            {
+                entity.InvoiceNumber = await GenerateInvoiceNumberAsync(connection, transaction, entity.TenantId, entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt);
+            }
+
+            entity.RemainingAmount = entity.TotalAmount + entity.TaxAmount - entity.DiscountAmount - entity.PaidAmount;
+
             const string paymentSql = @"
 INSERT INTO dbo.Payments
 (
@@ -53,7 +61,7 @@ VALUES
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
-                RemainingAmount = entity.TotalAmount + entity.TaxAmount - entity.DiscountAmount - entity.PaidAmount,
+                entity.RemainingAmount,
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -100,7 +108,7 @@ VALUES
             }
 
             transaction.Commit();
-            return await GetByIdInternalAsync(connection, entity.Id);
+            return await GetByIdInternalAsync(connection, entity.Id, entity.TenantId);
         }
         catch
         {
@@ -112,7 +120,13 @@ VALUES
     public async Task<Payment?> GetByIdAsync(Guid id)
     {
         using var connection = _context.CreateConnection();
-        return await GetByIdInternalOrDefaultAsync(connection, id);
+        return await GetByIdInternalOrDefaultAsync(connection, id, null);
+    }
+
+    public async Task<Payment?> GetByIdAsync(Guid tenantId, Guid id)
+    {
+        using var connection = _context.CreateConnection();
+        return await GetByIdInternalOrDefaultAsync(connection, id, tenantId);
     }
 
     public async Task<IEnumerable<Payment>> GetAllAsync()
@@ -178,26 +192,20 @@ DELETE FROM dbo.Payments WHERE Id = @Id;";
 
     public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
     {
-        const string sql = @"
-SELECT ISNULL(MAX(TRY_CAST(RIGHT(InvoiceNumber, 5) AS INT)), 0) + 1
-FROM dbo.Payments
-WHERE TenantId = @TenantId
-  AND InvoiceNumber LIKE @Prefix + '%';";
-
-        var prefix = $"INV-{createdAt:yyyyMMdd}-";
-
         using var connection = _context.CreateConnection();
-        var nextNumber = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Prefix = prefix });
-        return $"{prefix}{nextNumber:D5}";
+        connection.Open();
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+        var number = await GenerateInvoiceNumberAsync(connection, transaction, tenantId, createdAt);
+        transaction.Commit();
+        return number;
     }
 
     public async Task<IEnumerable<Payment>> GetByDateAsync(Guid tenantId, DateTime date)
     {
-        const string sql = @"
-SELECT * FROM dbo.Payments
-WHERE TenantId = @TenantId
-  AND CAST(CreatedAt AS date) = @PaymentDate
-ORDER BY CreatedAt DESC;";
+        const string sql = PaymentSelect + @"
+WHERE pay.TenantId = @TenantId
+  AND CAST(pay.CreatedAt AS date) = @PaymentDate
+ORDER BY pay.CreatedAt DESC;";
 
         using var connection = _context.CreateConnection();
         return await connection.QueryAsync<Payment>(sql, new
@@ -207,9 +215,22 @@ ORDER BY CreatedAt DESC;";
         });
     }
 
-    private static async Task<Payment> GetByIdInternalAsync(System.Data.IDbConnection connection, Guid id)
+    private static async Task<string> GenerateInvoiceNumberAsync(IDbConnection connection, IDbTransaction transaction, Guid tenantId, DateTime createdAt)
     {
-        var payment = await GetByIdInternalOrDefaultAsync(connection, id);
+        const string sql = @"
+SELECT ISNULL(MAX(TRY_CAST(RIGHT(InvoiceNumber, 5) AS INT)), 0) + 1
+FROM dbo.Payments WITH (UPDLOCK, HOLDLOCK)
+WHERE TenantId = @TenantId
+  AND InvoiceNumber LIKE @Prefix + '%';";
+
+        var prefix = $"INV-{createdAt:yyyyMMdd}-";
+        var nextNumber = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Prefix = prefix }, transaction);
+        return $"{prefix}{nextNumber:D5}";
+    }
+
+    private static async Task<Payment> GetByIdInternalAsync(System.Data.IDbConnection connection, Guid id, Guid tenantId)
+    {
+        var payment = await GetByIdInternalOrDefaultAsync(connection, id, tenantId);
         if (payment is null)
         {
             throw new InvalidOperationException("Payment was not found after creation.");
@@ -218,18 +239,26 @@ ORDER BY CreatedAt DESC;";
         return payment;
     }
 
-    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id)
+    private const string PaymentSelect = @"
+SELECT
+    pay.*,
+    p.FullName AS PatientName
+FROM dbo.Payments pay
+INNER JOIN dbo.Patients p ON p.Id = pay.PatientId AND p.TenantId = pay.TenantId
+";
+
+    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id, Guid? tenantId)
     {
-        const string paymentSql = @"
-SELECT * FROM dbo.Payments
-WHERE Id = @Id;";
+        const string paymentSql = PaymentSelect + @"
+WHERE pay.Id = @Id
+  AND (@TenantId IS NULL OR pay.TenantId = @TenantId);";
 
         const string itemsSql = @"
 SELECT * FROM dbo.PaymentItems
 WHERE PaymentId = @Id
 ORDER BY ServiceName;";
 
-        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, new { Id = id });
+        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, new { Id = id, TenantId = tenantId });
         if (payment is null)
         {
             return null;

@@ -1,53 +1,48 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Clinic.Saas.Service.UseCases.Patients.Queries
+namespace Clinic.Saas.Service.UseCases.Patients.Queries;
+
+public class GetPatientByIdQuery
 {
-    public class GetPatientByIdQuery
+    public class Query
     {
-        public class Query
+        public Guid TenantId { get; set; }
+        public Guid Id { get; set; }
+    }
+
+    public class Handler
+    {
+        private readonly IPatientRepository _repository;
+        private readonly IMapper _mapper;
+
+        public Handler(IPatientRepository repository, IMapper mapper)
         {
-            public Guid Id { get; set; }
+            _repository = repository;
+            _mapper = mapper;
         }
 
-        public class Handler
+        public async Task<BaseResponse<PatientDto>> Handle(Query query)
         {
-            private readonly IPatientRepository _repository;
-            private readonly IMapper _mapper;
+            var patient = await _repository.GetByIdAsync(query.TenantId, query.Id);
 
-            public Handler(IPatientRepository repository, IMapper mapper)
+            if (patient is null)
             {
-                _repository = repository;
-                _mapper = mapper;
-            }
-
-            public async Task<BaseResponse<PatientDto>> Handle(Query query)
-            {
-                var patient = await _repository.GetByIdAsync(query.Id);
-
-                if (patient == null)
-                {
-                    return new BaseResponse<PatientDto>
-                    {
-                        Success = false,
-                        Message = "المريض غير موجود",
-                        StatusCode = 404
-                    };
-                }
-
-                var result = _mapper.Map<PatientDto>(patient);
-
                 return new BaseResponse<PatientDto>
                 {
-                    Success = true,
-                    Data = result,
-                    StatusCode = 200
+                    Success = false,
+                    Message = "المريض غير موجود",
+                    StatusCode = 404
                 };
             }
+
+            return new BaseResponse<PatientDto>
+            {
+                Success = true,
+                Data = _mapper.Map<PatientDto>(patient),
+                StatusCode = 200
+            };
         }
     }
-    }
+}

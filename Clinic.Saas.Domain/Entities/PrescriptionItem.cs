@@ -17,9 +17,5 @@ namespace Clinic.Saas.Domain.Entities
         public string? Route { get; set; }
         public string? Instructions { get; set; }
         public int SortOrder { get; set; }
-
-        // Navigation Properties
-        public Prescription Prescription { get; set; } = null!;
-        public Drug? Drug { get; set; }
     }
 }

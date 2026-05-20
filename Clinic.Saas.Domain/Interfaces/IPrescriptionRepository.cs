@@ -4,5 +4,6 @@ namespace Clinic.Saas.Domain.Interfaces;
 
 public interface IPrescriptionRepository : IBaseRepository<Prescription>
 {
-    Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid patientId);
+    Task<Prescription?> GetByIdAsync(Guid tenantId, Guid id);
+    Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid tenantId, Guid patientId);
 }

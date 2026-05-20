@@ -14,9 +14,6 @@ namespace Clinic.Saas.Domain.Entities
         public int Quantity { get; set; } = 1;
         public decimal UnitPrice { get; set; }
         public decimal DiscountPct { get; set; }
-        public decimal TotalPrice { get; private set; } // Computed
-
-        // Navigation Properties
-        public Payment Payment { get; set; } = null!;
+        public decimal TotalPrice { get; set; }
     }
 }

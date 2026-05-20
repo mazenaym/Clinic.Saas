@@ -7,6 +7,7 @@ public class UpdateAppointmentStatusCommand
 {
     public class Command
     {
+        public Guid TenantId { get; set; }
         public UpdateAppointmentStatusDto Request { get; set; } = null!;
     }
 
@@ -21,8 +22,13 @@ public class UpdateAppointmentStatusCommand
 
         public async Task<BaseResponse<object>> Handle(Command command)
         {
-            var appointment = await _repository.GetByIdAsync(command.Request.Id);
-            if (appointment is null)
+            var updated = await _repository.UpdateStatusAsync(
+                command.TenantId,
+                command.Request.Id,
+                command.Request.Status,
+                command.Request.CancelReason);
+
+            if (!updated)
             {
                 return new BaseResponse<object>
                 {
@@ -32,7 +38,6 @@ public class UpdateAppointmentStatusCommand
                 };
             }
 
-            await _repository.UpdateStatusAsync(command.Request.Id, command.Request.Status, command.Request.CancelReason);
             return new BaseResponse<object>
             {
                 Success = true,

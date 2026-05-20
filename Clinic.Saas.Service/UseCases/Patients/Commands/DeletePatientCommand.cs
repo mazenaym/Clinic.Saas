@@ -7,6 +7,7 @@ public class DeletePatientCommand
 {
     public class Command
     {
+        public Guid TenantId { get; set; }
         public Guid Id { get; set; }
     }
 
@@ -21,7 +22,7 @@ public class DeletePatientCommand
 
         public async Task<BaseResponse<object>> Handle(Command command)
         {
-            var existing = await _repository.GetByIdAsync(command.Id);
+            var existing = await _repository.GetByIdAsync(command.TenantId, command.Id);
             if (existing is null)
             {
                 return new BaseResponse<object>
@@ -32,7 +33,7 @@ public class DeletePatientCommand
                 };
             }
 
-            await _repository.DeleteAsync(command.Id);
+            await _repository.DeleteAsync(command.TenantId, command.Id);
             return new BaseResponse<object>
             {
                 Success = true,

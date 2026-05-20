@@ -20,11 +20,5 @@ namespace Clinic.Saas.Domain.Entities
         public string? Description { get; set; }
         public Guid? UploadedBy { get; set; }
         public DateTime UploadedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Patient Patient { get; set; } = null!;
-        public Visit? Visit { get; set; }
-        public User? UploadedByUser { get; set; }
     }
 }

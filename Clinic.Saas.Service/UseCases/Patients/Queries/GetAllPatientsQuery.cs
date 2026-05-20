@@ -6,6 +6,11 @@ namespace Clinic.Saas.Service.UseCases.Patients.Queries;
 
 public class GetAllPatientsQuery
 {
+    public class Query
+    {
+        public Guid TenantId { get; set; }
+    }
+
     public class Handler
     {
         private readonly IPatientRepository _repository;
@@ -17,9 +22,9 @@ public class GetAllPatientsQuery
             _mapper = mapper;
         }
 
-        public async Task<BaseResponse<List<PatientDto>>> Handle()
+        public async Task<BaseResponse<List<PatientDto>>> Handle(Query query)
         {
-            var patients = await _repository.GetAllAsync();
+            var patients = await _repository.GetAllAsync(query.TenantId);
             return new BaseResponse<List<PatientDto>>
             {
                 Success = true,

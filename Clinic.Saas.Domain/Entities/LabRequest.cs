@@ -19,10 +19,5 @@ namespace Clinic.Saas.Domain.Entities
         public string? ResultFileUrl { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Visit Visit { get; set; } = null!;
-        public Patient Patient { get; set; } = null!;
     }
 }

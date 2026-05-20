@@ -26,11 +26,5 @@ namespace Clinic.Saas.Domain.Entities
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public ICollection<Appointment> AppointmentsAsDoctor { get; set; } = new List<Appointment>();
-        public ICollection<Visit> VisitsAsDoctor { get; set; } = new List<Visit>();
-        public ICollection<Prescription> PrescriptionsAsDoctor { get; set; } = new List<Prescription>();
     }
 }

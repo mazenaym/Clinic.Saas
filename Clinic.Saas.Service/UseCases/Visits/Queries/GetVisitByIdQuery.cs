@@ -8,6 +8,7 @@ public class GetVisitByIdQuery
 {
     public class Query
     {
+        public Guid TenantId { get; set; }
         public Guid Id { get; set; }
     }
 
@@ -24,7 +25,7 @@ public class GetVisitByIdQuery
 
         public async Task<BaseResponse<VisitDto>> Handle(Query query)
         {
-            var visit = await _repository.GetByIdAsync(query.Id);
+            var visit = await _repository.GetByIdAsync(query.TenantId, query.Id);
             if (visit is null)
             {
                 return new BaseResponse<VisitDto>

@@ -78,15 +78,20 @@ VALUES
     public async Task<Prescription?> GetByIdAsync(Guid id)
     {
         using var connection = _context.CreateConnection();
-        return await GetByIdInternalOrDefaultAsync(connection, id);
+        return await GetByIdInternalOrDefaultAsync(connection, id, null);
+    }
+
+    public async Task<Prescription?> GetByIdAsync(Guid tenantId, Guid id)
+    {
+        using var connection = _context.CreateConnection();
+        return await GetByIdInternalOrDefaultAsync(connection, id, tenantId);
     }
 
     public async Task<IEnumerable<Prescription>> GetAllAsync()
     {
-        const string sql = @"
-SELECT * FROM dbo.Prescriptions
-WHERE IsActive = 1
-ORDER BY CreatedAt DESC;";
+        const string sql = PrescriptionSelect + @"
+WHERE pr.IsActive = 1
+ORDER BY pr.CreatedAt DESC;";
 
         using var connection = _context.CreateConnection();
         return await connection.QueryAsync<Prescription>(sql);
@@ -119,21 +124,21 @@ WHERE Id = @Id;";
         await connection.ExecuteAsync(sql, new { Id = id });
     }
 
-    public async Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid patientId)
+    public async Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid tenantId, Guid patientId)
     {
-        const string sql = @"
-SELECT * FROM dbo.Prescriptions
-WHERE PatientId = @PatientId
-  AND IsActive = 1
-ORDER BY CreatedAt DESC;";
+        const string sql = PrescriptionSelect + @"
+WHERE pr.TenantId = @TenantId
+  AND pr.PatientId = @PatientId
+  AND pr.IsActive = 1
+ORDER BY pr.CreatedAt DESC;";
 
         using var connection = _context.CreateConnection();
-        return await connection.QueryAsync<Prescription>(sql, new { PatientId = patientId });
+        return await connection.QueryAsync<Prescription>(sql, new { TenantId = tenantId, PatientId = patientId });
     }
 
     private static async Task<Prescription> GetByIdInternalAsync(System.Data.IDbConnection connection, Guid id)
     {
-        var prescription = await GetByIdInternalOrDefaultAsync(connection, id);
+        var prescription = await GetByIdInternalOrDefaultAsync(connection, id, null);
         if (prescription is null)
         {
             throw new InvalidOperationException("Prescription was not found after creation.");
@@ -142,18 +147,29 @@ ORDER BY CreatedAt DESC;";
         return prescription;
     }
 
-    private static async Task<Prescription?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id)
+    private const string PrescriptionSelect = @"
+SELECT
+    pr.*,
+    p.FullName AS PatientName,
+    u.FullName AS DoctorName
+FROM dbo.Prescriptions pr
+INNER JOIN dbo.Patients p ON p.Id = pr.PatientId AND p.TenantId = pr.TenantId
+INNER JOIN dbo.Users u ON u.Id = pr.DoctorId AND u.TenantId = pr.TenantId
+";
+
+    private static async Task<Prescription?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id, Guid? tenantId)
     {
-        const string prescriptionSql = @"
-SELECT * FROM dbo.Prescriptions
-WHERE Id = @Id AND IsActive = 1;";
+        const string prescriptionSql = PrescriptionSelect + @"
+WHERE pr.Id = @Id
+  AND pr.IsActive = 1
+  AND (@TenantId IS NULL OR pr.TenantId = @TenantId);";
 
         const string itemsSql = @"
 SELECT * FROM dbo.PrescriptionItems
 WHERE PrescriptionId = @Id
 ORDER BY SortOrder, DrugName;";
 
-        var prescription = await connection.QueryFirstOrDefaultAsync<Prescription>(prescriptionSql, new { Id = id });
+        var prescription = await connection.QueryFirstOrDefaultAsync<Prescription>(prescriptionSql, new { Id = id, TenantId = tenantId });
         if (prescription is null)
         {
             return null;

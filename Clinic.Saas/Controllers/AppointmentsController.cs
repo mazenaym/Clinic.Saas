@@ -91,8 +91,17 @@ public class AppointmentsController : ControllerBase
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateAppointmentStatusDto dto)
     {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
         dto.Id = id;
-        var result = await _updateStatus.Handle(new UpdateAppointmentStatusCommand.Command { Request = dto });
+        var result = await _updateStatus.Handle(new UpdateAppointmentStatusCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Request = dto
+        });
         return StatusCode(result.StatusCode, result);
     }
 }

@@ -21,10 +21,5 @@ namespace Clinic.Saas.Domain.Entities
         public string ConfirmCode { get; set; } = string.Empty;
         public string? RejectReason { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Appointment? Appointment { get; set; }
-        public User? Doctor { get; set; }
     }
 }

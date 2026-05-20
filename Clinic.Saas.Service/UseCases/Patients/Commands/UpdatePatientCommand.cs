@@ -9,6 +9,7 @@ public class UpdatePatientCommand
 {
     public class Command
     {
+        public Guid TenantId { get; set; }
         public UpdatePatientDto Patient { get; set; } = null!;
     }
 
@@ -27,7 +28,7 @@ public class UpdatePatientCommand
 
         public async Task<BaseResponse<PatientDto>> Handle(Command command)
         {
-            var existing = await _repository.GetByIdAsync(command.Patient.Id);
+            var existing = await _repository.GetByIdAsync(command.TenantId, command.Patient.Id);
             if (existing is null)
             {
                 return new BaseResponse<PatientDto>
@@ -52,14 +53,14 @@ public class UpdatePatientCommand
             }
 
             _mapper.Map(command.Patient, existing);
-            existing.UpdatedAt = DateTime.UtcNow;
-            await _repository.UpdateAsync(existing);
+            await _repository.UpdateAsync(command.TenantId, existing);
 
+            var updated = await _repository.GetByIdAsync(command.TenantId, existing.Id);
             return new BaseResponse<PatientDto>
             {
                 Success = true,
                 Message = "تم تعديل بيانات المريض بنجاح",
-                Data = _mapper.Map<PatientDto>(existing),
+                Data = _mapper.Map<PatientDto>(updated ?? existing),
                 StatusCode = 200
             };
         }

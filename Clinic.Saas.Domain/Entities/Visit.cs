@@ -26,15 +26,7 @@ namespace Clinic.Saas.Domain.Entities
         public bool IsDeleted { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Patient Patient { get; set; } = null!;
-        public Appointment? Appointment { get; set; }
-        public User Doctor { get; set; } = null!;
-        public ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
-        public ICollection<LabRequest> LabRequests { get; set; } = new List<LabRequest>();
-        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
-        public ICollection<PatientDocument> Documents { get; set; } = new List<PatientDocument>();
+        public string PatientName { get; set; } = string.Empty;
+        public string DoctorName { get; set; } = string.Empty;
     }
 }

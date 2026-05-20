@@ -8,6 +8,7 @@ public class GetPrescriptionByIdQuery
 {
     public class Query
     {
+        public Guid TenantId { get; set; }
         public Guid Id { get; set; }
     }
 
@@ -24,7 +25,7 @@ public class GetPrescriptionByIdQuery
 
         public async Task<BaseResponse<PrescriptionDto>> Handle(Query query)
         {
-            var prescription = await _repository.GetByIdAsync(query.Id);
+            var prescription = await _repository.GetByIdAsync(query.TenantId, query.Id);
             if (prescription is null)
             {
                 return new BaseResponse<PrescriptionDto>

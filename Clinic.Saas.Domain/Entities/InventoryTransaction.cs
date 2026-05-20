@@ -17,10 +17,5 @@ namespace Clinic.Saas.Domain.Entities
         public Guid? ReferenceId { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public Inventory Inventory { get; set; } = null!;
-        public User User { get; set; } = null!;
     }
 }

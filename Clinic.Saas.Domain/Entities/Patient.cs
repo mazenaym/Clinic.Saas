@@ -32,13 +32,5 @@ namespace Clinic.Saas.Domain.Entities
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public Guid? CreatedBy { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
-        public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
-        public ICollection<Visit> Visits { get; set; } = new List<Visit>();
-        public ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
-        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
-        public ICollection<PatientDocument> Documents { get; set; } = new List<PatientDocument>();
     }
 }

@@ -61,7 +61,16 @@ public class PatientsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var result = await _getPatient.Handle(new GetPatientByIdQuery.Query { Id = id });
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getPatient.Handle(new GetPatientByIdQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Id = id
+        });
         return StatusCode(result.StatusCode, result);
     }
 
@@ -105,8 +114,17 @@ public class PatientsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePatientDto dto)
     {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
         dto.Id = id;
-        var result = await _updatePatient.Handle(new UpdatePatientCommand.Command { Patient = dto });
+        var result = await _updatePatient.Handle(new UpdatePatientCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Patient = dto
+        });
         return StatusCode(result.StatusCode, result);
     }
 
@@ -114,7 +132,16 @@ public class PatientsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var result = await _deletePatient.Handle(new DeletePatientCommand.Command { Id = id });
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _deletePatient.Handle(new DeletePatientCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Id = id
+        });
         return StatusCode(result.StatusCode, result);
     }
 }

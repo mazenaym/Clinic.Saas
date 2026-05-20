@@ -21,8 +21,5 @@ namespace Clinic.Saas.Domain.Entities
         public string Language { get; set; } = "ar";
         public decimal TaxPct { get; set; }
         public DateTime UpdatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
     }
 }

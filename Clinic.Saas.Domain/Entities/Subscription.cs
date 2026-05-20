@@ -17,8 +17,5 @@ namespace Clinic.Saas.Domain.Entities
         public string? PaymentRef { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant Tenant { get; set; } = null!;
     }
 }

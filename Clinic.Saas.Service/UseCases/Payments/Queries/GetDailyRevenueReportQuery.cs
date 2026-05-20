@@ -29,13 +29,13 @@ public class GetDailyRevenueReportQuery
         {
             var payments = (await _paymentRepository.GetByDateAsync(query.TenantId, query.Date)).ToList();
             var appointments = (await _appointmentRepository.GetByDateAsync(query.TenantId, query.Date)).ToList();
-            var visits = (await _visitRepository.GetAllAsync()).Where(x => x.VisitDate.Date == query.Date.Date).ToList();
+            var completedVisits = await _visitRepository.CountByDateAsync(query.TenantId, query.Date);
 
             var report = new DailyRevenueReportDto
             {
                 Date = query.Date.Date,
                 TotalAppointments = appointments.Count,
-                CompletedVisits = visits.Count,
+                CompletedVisits = completedVisits,
                 GrossRevenue = payments.Sum(x => x.TotalAmount + x.TaxAmount),
                 TotalDiscounts = payments.Sum(x => x.DiscountAmount),
                 NetRevenue = payments.Sum(x => x.PaidAmount),

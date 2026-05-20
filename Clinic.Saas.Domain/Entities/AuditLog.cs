@@ -17,9 +17,5 @@ namespace Clinic.Saas.Domain.Entities
         public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public Tenant? Tenant { get; set; }
-        public User? User { get; set; }
     }
 }

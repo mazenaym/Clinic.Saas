@@ -1,6 +1,7 @@
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Auth.Commands;
+using Clinic.Saas.api.Middleware;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -31,6 +32,12 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Subdomain) &&
+            HttpContext.Items.TryGetValue(TenantResolutionMiddleware.TenantSubdomainItemKey, out var subdomain))
+        {
+            dto.Subdomain = subdomain?.ToString();
+        }
+
         var result = await _login.Handle(new LoginCommand.Command { Request = dto });
         return StatusCode(result.StatusCode, result);
     }

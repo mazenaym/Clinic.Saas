@@ -7,7 +7,7 @@ namespace Clinic.Saas.Service.DTOs
     public class PatientDto
     {
         public Guid Id { get; set; }
-        public string PatientCode { get; set; } 
+        public string PatientCode { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
         public DateTime? DateOfBirth { get; set; }

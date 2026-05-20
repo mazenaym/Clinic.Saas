@@ -71,7 +71,7 @@ public class LoginCommand
 
             if (user.LockedUntil.HasValue && user.LockedUntil.Value > DateTime.UtcNow)
             {
-                return Fail("الحساب مقفول مؤقتًا بسبب محاولات دخول فاشلة", 423);
+                return Fail("الحساب مقفول مؤقتا بسبب محاولات دخول فاشلة", 423);
             }
 
             var isValidPassword = _passwordService.VerifyPassword(user.PasswordHash, command.Request.Password);

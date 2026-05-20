@@ -17,8 +17,5 @@ namespace Clinic.Saas.Domain.Entities
         public string? Interactions { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
-
-        // Navigation Properties
-        public ICollection<PrescriptionItem> PrescriptionItems { get; set; } = new List<PrescriptionItem>();
     }
 }
