@@ -21,6 +21,11 @@ public class PrescriptionRepository : IPrescriptionRepository
             entity.Id = Guid.NewGuid();
         }
 
+        if (string.IsNullOrWhiteSpace(entity.QrCode))
+        {
+            entity.QrCode = $"RX-{entity.Id:N}";
+        }
+
         using var connection = _context.CreateConnection();
         connection.Open();
         using var transaction = connection.BeginTransaction();

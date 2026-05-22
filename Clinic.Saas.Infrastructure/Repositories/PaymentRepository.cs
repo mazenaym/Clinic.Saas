@@ -33,19 +33,17 @@ public class PaymentRepository : IPaymentRepository
                 entity.InvoiceNumber = await GenerateInvoiceNumberAsync(connection, transaction, entity.TenantId, entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt);
             }
 
-            entity.RemainingAmount = entity.TotalAmount + entity.TaxAmount - entity.DiscountAmount - entity.PaidAmount;
-
             const string paymentSql = @"
 INSERT INTO dbo.Payments
 (
     Id, TenantId, VisitId, PatientId, InvoiceNumber, TotalAmount, DiscountAmount,
-    DiscountPct, TaxAmount, PaidAmount, RemainingAmount, PaymentMethod, Status,
+    DiscountPct, TaxAmount, PaidAmount, PaymentMethod, Status,
     InsuranceCompany, InsuranceNumber, ReceiptUrl, Notes, CreatedAt, UpdatedAt, CreatedBy
 )
 VALUES
 (
     @Id, @TenantId, @VisitId, @PatientId, @InvoiceNumber, @TotalAmount, @DiscountAmount,
-    @DiscountPct, @TaxAmount, @PaidAmount, @RemainingAmount, @PaymentMethod, @Status,
+    @DiscountPct, @TaxAmount, @PaidAmount, @PaymentMethod, @Status,
     @InsuranceCompany, @InsuranceNumber, @ReceiptUrl, @Notes, @CreatedAt, @UpdatedAt, @CreatedBy
 );";
 
@@ -61,7 +59,6 @@ VALUES
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
-                entity.RemainingAmount,
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -78,11 +75,11 @@ VALUES
                 const string itemSql = @"
 INSERT INTO dbo.PaymentItems
 (
-    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice
+    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct
 )
 VALUES
 (
-    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice
+    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct
 );";
 
                 foreach (var item in entity.Items)
@@ -101,8 +98,7 @@ VALUES
                         item.ServiceType,
                         item.Quantity,
                         item.UnitPrice,
-                        item.DiscountPct,
-                        TotalPrice = (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m))
+                        item.DiscountPct
                     }, transaction);
                 }
             }
@@ -149,7 +145,6 @@ SET InvoiceNumber = @InvoiceNumber,
     DiscountPct = @DiscountPct,
     TaxAmount = @TaxAmount,
     PaidAmount = @PaidAmount,
-    RemainingAmount = @RemainingAmount,
     PaymentMethod = @PaymentMethod,
     Status = @Status,
     InsuranceCompany = @InsuranceCompany,
@@ -169,7 +164,6 @@ WHERE Id = @Id;";
             entity.DiscountPct,
             entity.TaxAmount,
             entity.PaidAmount,
-            RemainingAmount = entity.TotalAmount + entity.TaxAmount - entity.DiscountAmount - entity.PaidAmount,
             entity.PaymentMethod,
             entity.Status,
             entity.InsuranceCompany,
