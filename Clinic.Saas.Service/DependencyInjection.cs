@@ -1,5 +1,7 @@
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.UseCases.Admin.Commands;
+using Clinic.Saas.Service.UseCases.Admin.Queries;
 using Clinic.Saas.Service.UseCases.Auth.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
@@ -22,6 +24,15 @@ public static class DependencyInjection
     {
         services.AddAutoMapper(cfg => { }, typeof(DependencyInjection).Assembly);
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+        services.AddScoped<GetAdminDashboardQuery.Handler>();
+        services.AddScoped<GetAdminClinicsQuery.Handler>();
+        services.AddScoped<GetAdminClinicByIdQuery.Handler>();
+        services.AddScoped<BootstrapSuperAdminCommand.Handler>();
+        services.AddScoped<CreateClinicCommand.Handler>();
+        services.AddScoped<UpdateClinicCommand.Handler>();
+        services.AddScoped<SetClinicStatusCommand.Handler>();
+        services.AddScoped<CreateClinicSubscriptionCommand.Handler>();
 
         services.AddScoped<CreatePatientCommand.Handler>();
         services.AddScoped<GetPatientByIdQuery.Handler>();

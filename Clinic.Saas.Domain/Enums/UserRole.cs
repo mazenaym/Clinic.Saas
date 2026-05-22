@@ -6,6 +6,7 @@ namespace Clinic.Saas.Domain.Enums
 {
     public enum UserRole : short
     {
+        SuperAdmin = 0,
         Admin = 1,
         Doctor = 2,
         Reception = 3

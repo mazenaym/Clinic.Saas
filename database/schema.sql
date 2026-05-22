@@ -16,6 +16,24 @@ CREATE TABLE dbo.Tenants
 
 CREATE UNIQUE INDEX UX_Tenants_Subdomain ON dbo.Tenants(Subdomain);
 
+CREATE TABLE dbo.Subscriptions
+(
+    Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Subscriptions PRIMARY KEY,
+    TenantId UNIQUEIDENTIFIER NOT NULL,
+    [Plan] SMALLINT NOT NULL,
+    StartDate DATETIME2 NOT NULL,
+    EndDate DATETIME2 NOT NULL,
+    AmountPaid DECIMAL(18,2) NOT NULL,
+    [Status] SMALLINT NOT NULL,
+    PaymentRef NVARCHAR(200) NULL,
+    Notes NVARCHAR(MAX) NULL,
+    CreatedAt DATETIME2 NOT NULL,
+    CONSTRAINT FK_Subscriptions_Tenants FOREIGN KEY (TenantId) REFERENCES dbo.Tenants(Id)
+);
+
+CREATE INDEX IX_Subscriptions_Tenant_EndDate ON dbo.Subscriptions(TenantId, EndDate DESC);
+CREATE INDEX IX_Subscriptions_Status_CreatedAt ON dbo.Subscriptions([Status], CreatedAt);
+
 CREATE TABLE dbo.Users
 (
     Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Users PRIMARY KEY,
