@@ -10,6 +10,7 @@ public class GetAppointmentsByDateQuery
     {
         public Guid TenantId { get; set; }
         public DateTime Date { get; set; }
+        public Guid? DoctorId { get; set; }
     }
 
     public class Handler
@@ -26,6 +27,11 @@ public class GetAppointmentsByDateQuery
         public async Task<BaseResponse<List<AppointmentDto>>> Handle(Query query)
         {
             var appointments = await _repository.GetByDateAsync(query.TenantId, query.Date);
+            if (query.DoctorId.HasValue)
+            {
+                appointments = appointments.Where(x => x.DoctorId == query.DoctorId.Value);
+            }
+
             return new BaseResponse<List<AppointmentDto>>
             {
                 Success = true,

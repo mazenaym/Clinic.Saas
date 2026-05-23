@@ -17,19 +17,22 @@ public class AppointmentsController : ControllerBase
     private readonly GetAppointmentAvailabilityQuery.Handler _availability;
     private readonly UpdateAppointmentStatusCommand.Handler _updateStatus;
     private readonly ICurrentUserService _currentUser;
+    private readonly IClinicAuthorizationService _authorization;
 
     public AppointmentsController(
         CreateAppointmentCommand.Handler createAppointment,
         GetAppointmentsByDateQuery.Handler getByDate,
         GetAppointmentAvailabilityQuery.Handler availability,
         UpdateAppointmentStatusCommand.Handler updateStatus,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IClinicAuthorizationService authorization)
     {
         _createAppointment = createAppointment;
         _getByDate = getByDate;
         _availability = availability;
         _updateStatus = updateStatus;
         _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     [Authorize(Roles = "Admin,Doctor,Reception")]
@@ -39,6 +42,11 @@ public class AppointmentsController : ControllerBase
         if (!_currentUser.TenantId.HasValue)
         {
             return Unauthorized();
+        }
+
+        if (!await _authorization.CanAccessDoctorScheduleAsync(dto.DoctorId))
+        {
+            return Forbid();
         }
 
         var result = await _createAppointment.Handle(new CreateAppointmentCommand.Command
@@ -62,7 +70,8 @@ public class AppointmentsController : ControllerBase
         var result = await _getByDate.Handle(new GetAppointmentsByDateQuery.Query
         {
             TenantId = _currentUser.TenantId.Value,
-            Date = date
+            Date = date,
+            DoctorId = _currentUser.Role == Domain.Enums.UserRole.Doctor ? _currentUser.UserId : null
         });
 
         return StatusCode(result.StatusCode, result);
@@ -75,6 +84,11 @@ public class AppointmentsController : ControllerBase
         if (!_currentUser.TenantId.HasValue)
         {
             return Unauthorized();
+        }
+
+        if (!await _authorization.CanAccessDoctorScheduleAsync(doctorId))
+        {
+            return Forbid();
         }
 
         var result = await _availability.Handle(new GetAppointmentAvailabilityQuery.Query
@@ -97,6 +111,11 @@ public class AppointmentsController : ControllerBase
         }
 
         dto.Id = id;
+        if (!await _authorization.CanUpdateAppointmentAsync(_currentUser.TenantId.Value, id))
+        {
+            return Forbid();
+        }
+
         var result = await _updateStatus.Handle(new UpdateAppointmentStatusCommand.Command
         {
             TenantId = _currentUser.TenantId.Value,

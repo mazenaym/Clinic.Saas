@@ -15,15 +15,18 @@ public class VisitsController : ControllerBase
     private readonly CreateVisitCommand.Handler _createVisit;
     private readonly GetVisitByIdQuery.Handler _getVisit;
     private readonly ICurrentUserService _currentUser;
+    private readonly IClinicAuthorizationService _authorization;
 
     public VisitsController(
         CreateVisitCommand.Handler createVisit,
         GetVisitByIdQuery.Handler getVisit,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IClinicAuthorizationService authorization)
     {
         _createVisit = createVisit;
         _getVisit = getVisit;
         _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     [Authorize(Roles = "Admin,Doctor")]
@@ -49,13 +52,18 @@ public class VisitsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         if (!_currentUser.TenantId.HasValue)
         {
             return Unauthorized();
+        }
+
+        if (!await _authorization.CanViewVisitAsync(_currentUser.TenantId.Value, id))
+        {
+            return Forbid();
         }
 
         var result = await _getVisit.Handle(new GetVisitByIdQuery.Query

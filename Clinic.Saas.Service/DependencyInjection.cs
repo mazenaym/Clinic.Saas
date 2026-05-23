@@ -9,6 +9,10 @@ using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
+using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Services;
+using Clinic.Saas.Service.UseCases.Onboarding.Commands;
+using Clinic.Saas.Service.UseCases.Onboarding.Queries;
 using Clinic.Saas.Service.UseCases.Users.Commands;
 using Clinic.Saas.Service.UseCases.Users.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
@@ -24,6 +28,8 @@ public static class DependencyInjection
     {
         services.AddAutoMapper(cfg => { }, typeof(DependencyInjection).Assembly);
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+        services.AddScoped<IClinicAuthorizationService, ClinicAuthorizationService>();
 
         services.AddScoped<GetAdminDashboardQuery.Handler>();
         services.AddScoped<GetAdminClinicsQuery.Handler>();
@@ -58,6 +64,9 @@ public static class DependencyInjection
         services.AddScoped<LoginCommand.Handler>();
         services.AddScoped<RefreshTokenCommand.Handler>();
         services.AddScoped<LogoutCommand.Handler>();
+
+        services.AddScoped<RegisterClinicCommand.Handler>();
+        services.AddScoped<CheckSubdomainAvailabilityQuery.Handler>();
 
         services.AddScoped<CreateUserCommand.Handler>();
         services.AddScoped<GetTenantUsersQuery.Handler>();

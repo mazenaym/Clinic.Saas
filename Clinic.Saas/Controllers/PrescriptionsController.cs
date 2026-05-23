@@ -15,15 +15,18 @@ public class PrescriptionsController : ControllerBase
     private readonly CreatePrescriptionCommand.Handler _createPrescription;
     private readonly GetPrescriptionByIdQuery.Handler _getPrescription;
     private readonly ICurrentUserService _currentUser;
+    private readonly IClinicAuthorizationService _authorization;
 
     public PrescriptionsController(
         CreatePrescriptionCommand.Handler createPrescription,
         GetPrescriptionByIdQuery.Handler getPrescription,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IClinicAuthorizationService authorization)
     {
         _createPrescription = createPrescription;
         _getPrescription = getPrescription;
         _currentUser = currentUser;
+        _authorization = authorization;
     }
 
     [Authorize(Roles = "Admin,Doctor")]
@@ -49,13 +52,18 @@ public class PrescriptionsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         if (!_currentUser.TenantId.HasValue)
         {
             return Unauthorized();
+        }
+
+        if (!await _authorization.CanViewPrescriptionAsync(_currentUser.TenantId.Value, id))
+        {
+            return Forbid();
         }
 
         var result = await _getPrescription.Handle(new GetPrescriptionByIdQuery.Query
