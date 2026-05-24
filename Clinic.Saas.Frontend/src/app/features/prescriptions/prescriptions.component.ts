@@ -29,9 +29,17 @@ export class PrescriptionsComponent implements OnInit {
     this.patients.set(await firstValueFrom(this.api.patients()).catch(() => []));
     this.users.set(await firstValueFrom(this.api.users()).catch(() => []));
     this.templates.set(await firstValueFrom(this.api.clinicalTemplates()).catch(() => []));
+    this.applyDefaultLookups();
   }
 
   doctors() { return this.users().filter((u) => u.role === 'Doctor'); }
+  private applyDefaultLookups() {
+    this.form['patientId'] ||= this.patients()[0]?.id || '';
+    this.form['doctorId'] ||= this.doctors()[0]?.id || '';
+  }
+  drugName(drug: Record<string, unknown>) {
+    return String(drug['tradeName'] ?? drug['TradeName'] ?? drug['genericName'] ?? drug['GenericName'] ?? '');
+  }
   items() { return this.form['items'] as PrescriptionItem[]; }
   addItem() { this.items().push({ drugName: '', dosage: '', frequency: '', duration: '', route: '', instructions: '' }); }
   removeItem(index: number) { this.items().splice(index, 1); }
@@ -52,6 +60,7 @@ export class PrescriptionsComponent implements OnInit {
 
   async create() {
     await this.ui.run(async () => {
+      this.applyDefaultLookups();
       this.result.set(await firstValueFrom(this.api.createPrescription(this.form)));
     }, 'تم إنشاء الروشتة');
   }

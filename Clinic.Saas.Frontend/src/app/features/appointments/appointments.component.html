@@ -46,7 +46,7 @@
             @for (a of appointments(); track a.id) {
               <tr>
                 <td>{{ a.startTime }} - {{ a.endTime }}</td><td>{{ a.patientName }}<br><span class="muted">{{ a.patientPhone }}</span></td><td>{{ a.doctorName }}</td><td>{{ a.type }}</td><td><span class="badge">{{ a.status }}</span></td>
-                <td class="actions"><button class="secondary" (click)="pickReschedule(a)">جدولة</button><select #s (change)="status(a.id, +s.value)">@for (st of statuses; track st.value) { <option [value]="st.value">{{ st.label }}</option> }</select></td>
+                <td class="actions"><button class="secondary" (click)="pickReschedule(a)">جدولة</button><select [ngModel]="statusValue(a.status)" (ngModelChange)="status(a.id, +$event)">@for (st of statuses; track st.value) { <option [value]="st.value">{{ st.label }}</option> }</select></td>
               </tr>
             } @empty { <tr><td colspan="6" class="empty">لا توجد مواعيد.</td></tr> }
           </tbody>

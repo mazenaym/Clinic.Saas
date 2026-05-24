@@ -40,6 +40,7 @@ export class AppointmentsComponent implements OnInit {
   async loadLookups() {
     this.patients.set(await firstValueFrom(this.api.patients()).catch(() => []));
     this.users.set(await firstValueFrom(this.api.users()).catch(() => []));
+    this.applyDefaultLookups();
   }
 
   async loadExtras() {
@@ -55,9 +56,21 @@ export class AppointmentsComponent implements OnInit {
 
   doctors() { return this.users().filter((u) => u.role === 'Doctor'); }
   asString(value: unknown) { return String(value); }
+  statusValue(status: string) {
+    const normalized = status?.toLowerCase();
+    const map: Record<string, number> = { scheduled: 1, confirmed: 2, completed: 3, cancelled: 4, canceled: 4, noshow: 5, 'no-show': 5 };
+    return map[normalized] ?? 1;
+  }
+
+  private applyDefaultLookups() {
+    this.form['patientId'] ||= this.patients()[0]?.id || '';
+    this.form['doctorId'] ||= this.doctors()[0]?.id || '';
+  }
 
   async create() {
     await this.ui.run(async () => {
+      this.applyDefaultLookups();
+      this.form['appointmentDate'] = this.date;
       await firstValueFrom(this.api.createAppointment(this.form));
       await this.load();
       await this.loadExtras();

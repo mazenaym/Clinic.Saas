@@ -31,14 +31,22 @@ export class VisitsComponent implements OnInit {
     this.patients.set(await firstValueFrom(this.api.patients()).catch(() => []));
     this.users.set(await firstValueFrom(this.api.users()).catch(() => []));
     this.templates.set(await firstValueFrom(this.api.clinicalTemplates()).catch(() => []));
+    this.applyDefaultLookups();
+    await this.loadHistory();
   }
 
   doctors() { return this.users().filter((u) => u.role === 'Doctor'); }
+  private applyDefaultLookups() {
+    this.form['patientId'] ||= this.patients()[0]?.id || '';
+    this.form['doctorId'] ||= this.doctors()[0]?.id || '';
+  }
 
   async create() {
     await this.ui.run(async () => {
+      this.applyDefaultLookups();
       const payload = { ...this.form, appointmentId: this.form['appointmentId'] || null, followUpDate: this.form['followUpDate'] || null };
       this.created.set(await firstValueFrom(this.api.createVisit(payload)));
+      this.lookupId = this.created()?.id || '';
     }, 'تم تسجيل الكشف');
   }
 

@@ -10,8 +10,8 @@
       </div>
       @if (drugs().length) {
         <div class="actions">
-          @for (drug of drugs(); track drug['id']) {
-            <button type="button" class="secondary" (click)="useDrug(drug['tradeName'])">{{ drug['tradeName'] }}</button>
+          @for (drug of drugs(); track drugName(drug) + '-' + $index) {
+            <button type="button" class="secondary" (click)="useDrug(drugName(drug))">{{ drugName(drug) }}</button>
           }
         </div>
       }

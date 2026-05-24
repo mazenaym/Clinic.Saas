@@ -30,6 +30,7 @@ export class BillingComponent implements OnInit {
 
   async ngOnInit() {
     this.patients.set(await firstValueFrom(this.api.patients()).catch(() => []));
+    this.applyDefaultLookups();
     await this.loadReport();
     await this.loadExtras();
   }
@@ -43,6 +44,9 @@ export class BillingComponent implements OnInit {
   }
 
   items() { return this.form['items'] as any[]; }
+  private applyDefaultLookups() {
+    this.form['patientId'] ||= this.patients()[0]?.id || '';
+  }
   addItem() { this.items().push({ serviceName: '', serviceType: 1, quantity: 1, unitPrice: 0, discountPct: 0 }); }
   removeItem(index: number) { this.items().splice(index, 1); this.recalculate(); }
   recalculate() {
@@ -53,6 +57,8 @@ export class BillingComponent implements OnInit {
 
   async create() {
     await this.ui.run(async () => {
+      this.applyDefaultLookups();
+      this.recalculate();
       const id = this.editingPaymentId();
       if (id) {
         await firstValueFrom(this.api.updatePayment(id, this.form));
