@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
-import { AdminClinic, AdminStats, ApiResponse, Appointment, AuthSession, DailyRevenue, Patient, Prescription, User, Visit } from './models';
+import { AdminClinic, AdminStats, ApiResponse, Appointment, AuditLog, AuthSession, ClinicSettings, DailyRevenue, Patient, PatientTimelineItem, Prescription, TenantSubscriptionStatus, User, Visit } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -32,6 +32,22 @@ export class ApiService {
     return this.post<User>('/Users', payload);
   }
 
+  updateUser(id: string, payload: Record<string, unknown>) {
+    return this.put<User>(`/operations/users/${id}`, payload);
+  }
+
+  deactivateUser(id: string) {
+    return this.post<boolean>(`/operations/users/${id}/deactivate`, {});
+  }
+
+  resetUserPassword(id: string, newPassword: string) {
+    return this.post<boolean>(`/operations/users/${id}/reset-password`, { newPassword });
+  }
+
+  changePassword(payload: { currentPassword: string; newPassword: string }) {
+    return this.post<boolean>('/operations/auth/change-password', payload);
+  }
+
   patients(term = '') {
     return term ? this.get<Patient[]>('/Patients/search', { term }) : this.get<Patient[]>('/Patients');
   }
@@ -52,8 +68,28 @@ export class ApiService {
     return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/Patients/${id}`).pipe(map((r) => r.data));
   }
 
+  patientTimeline(id: string) {
+    return this.get<PatientTimelineItem[]>(`/operations/patients/${id}/timeline`);
+  }
+
+  patientDuplicates(phone?: string, nationalId?: string) {
+    return this.get<Patient[]>('/operations/patients/duplicates', { phone: phone ?? '', nationalId: nationalId ?? '' });
+  }
+
+  exportPatientsUrl() {
+    return `${this.baseUrl}/operations/patients/export`;
+  }
+
   appointments(date: string) {
     return this.get<Appointment[]>('/Appointments/daily', { date });
+  }
+
+  weeklyAppointments(weekStart: string) {
+    return this.get<Appointment[]>('/operations/appointments/weekly', { weekStart });
+  }
+
+  monthlyAppointments(year: number, month: number) {
+    return this.get<Appointment[]>('/operations/appointments/monthly', { year: String(year), month: String(month) });
   }
 
   createAppointment(payload: Record<string, unknown>) {
@@ -64,12 +100,36 @@ export class ApiService {
     return this.put<Appointment>(`/Appointments/${id}/status`, { status, cancelReason });
   }
 
+  rescheduleAppointment(id: string, payload: Record<string, unknown>) {
+    return this.put<boolean>(`/operations/appointments/${id}/reschedule`, payload);
+  }
+
+  cancellationReport(from: string, to: string) {
+    return this.get<Appointment[]>('/operations/appointments/cancellations', { from, to });
+  }
+
   createVisit(payload: Record<string, unknown>) {
     return this.post<Visit>('/Visits', payload);
   }
 
   visit(id: string) {
     return this.get<Visit>(`/Visits/${id}`);
+  }
+
+  updateVisit(id: string, payload: Record<string, unknown>) {
+    return this.put<boolean>(`/operations/visits/${id}`, payload);
+  }
+
+  visitHistory(patientId: string) {
+    return this.get<Visit[]>(`/operations/visits/patient/${patientId}`);
+  }
+
+  finalizeVisit(id: string) {
+    return this.post<boolean>(`/operations/visits/${id}/finalize`, {});
+  }
+
+  clinicalTemplates() {
+    return this.get<Record<string, unknown>[]>('/operations/clinical-templates');
   }
 
   createPrescription(payload: Record<string, unknown>) {
@@ -80,12 +140,60 @@ export class ApiService {
     return this.get<Prescription>(`/Prescriptions/${id}`);
   }
 
+  prescriptionPdfUrl(id: string) {
+    return `${this.baseUrl}/operations/prescriptions/${id}/pdf`;
+  }
+
+  sendPrescriptionWhatsapp(id: string) {
+    return this.post<boolean>(`/operations/prescriptions/${id}/send-whatsapp`, {});
+  }
+
+  drugs(term = '') {
+    return this.get<Record<string, unknown>[]>('/operations/drugs', { term });
+  }
+
   createPayment(payload: Record<string, unknown>) {
     return this.post('/Billing/payments', payload);
   }
 
   dailyRevenue(date: string) {
     return this.get<DailyRevenue>('/Billing/reports/daily-revenue', { date });
+  }
+
+  payment(id: string) {
+    return this.get<Record<string, unknown>>(`/operations/billing/payments/${id}`);
+  }
+
+  patientPayments(patientId: string) {
+    return this.get<Record<string, unknown>[]>(`/operations/billing/patients/${patientId}/payments`);
+  }
+
+  refundPayment(id: string, reason?: string) {
+    return this.post<boolean>(`/operations/billing/payments/${id}/refund`, { reason });
+  }
+
+  receiptPdfUrl(id: string) {
+    return `${this.baseUrl}/operations/billing/payments/${id}/receipt`;
+  }
+
+  debts() {
+    return this.get<Record<string, unknown>[]>('/operations/billing/debts');
+  }
+
+  monthlyRevenue(year: number, month: number) {
+    return this.get<Record<string, unknown>[]>('/operations/billing/reports/monthly-revenue', { year: String(year), month: String(month) });
+  }
+
+  tenantStatus() {
+    return this.get<TenantSubscriptionStatus>('/operations/tenant/status');
+  }
+
+  clinicSettings() {
+    return this.get<ClinicSettings>('/operations/tenant/settings');
+  }
+
+  updateClinicSettings(payload: ClinicSettings) {
+    return this.put<ClinicSettings>('/operations/tenant/settings', payload as unknown as Record<string, unknown>);
   }
 
   adminDashboard() {
@@ -102,6 +210,22 @@ export class ApiService {
 
   setClinicStatus(id: string, isActive: boolean) {
     return this.http.patch<ApiResponse<AdminClinic>>(`${this.baseUrl}/admin/clinics/${id}/status`, { isActive }).pipe(map((r) => r.data));
+  }
+
+  clinicUsageMetrics() {
+    return this.get<Record<string, unknown>[]>('/operations/admin/usage');
+  }
+
+  subscriptionRevenue() {
+    return this.get<Record<string, unknown>[]>('/operations/admin/subscription-revenue');
+  }
+
+  expiringSubscriptions(days = 14) {
+    return this.get<Record<string, unknown>[]>('/operations/admin/expiring-subscriptions', { days: String(days) });
+  }
+
+  activityLog() {
+    return this.get<AuditLog[]>('/operations/admin/activity-log');
   }
 
   private get<T>(path: string, params?: Record<string, string>) {

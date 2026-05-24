@@ -10,6 +10,24 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ClinicSaasCors", policy =>
+    {
+        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        if (origins.Length == 0)
+        {
+            policy.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(origin =>
+                origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase));
+            return;
+        }
+
+        policy.WithOrigins(origins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -70,7 +88,9 @@ app.UseSwaggerUI();
 app.UseHttpsRedirection();
 
 app.UseMiddleware<TenantResolutionMiddleware>();
+app.UseCors("ClinicSaasCors");
 app.UseAuthentication();
+app.UseMiddleware<TenantAccessMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

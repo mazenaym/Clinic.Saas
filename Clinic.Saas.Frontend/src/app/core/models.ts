@@ -168,6 +168,44 @@ export interface AdminClinic {
   subscriptionStatus?: number;
 }
 
+export interface TenantSubscriptionStatus {
+  state: string;
+  trialEndsAt?: string;
+  subscriptionEndsAt?: string;
+  maxUsers: number;
+  maxPatientsPerMonth: number;
+}
+
+export interface ClinicSettings {
+  workingDays: string;
+  openTime: string;
+  closeTime: string;
+  slotDurationMin: number;
+  consultFee: number;
+  smsEnabled: boolean;
+  whatsappEnabled: boolean;
+  emailEnabled: boolean;
+  language: string;
+  taxPct: number;
+}
+
+export interface PatientTimelineItem {
+  type: string;
+  id: string;
+  date: string;
+  title: string;
+  details?: string;
+}
+
+export interface AuditLog {
+  id: number;
+  action: string;
+  entityName: string;
+  entityId?: string;
+  newValues?: string;
+  createdAt: string;
+}
+
 export const enumValues = {
   gender: [
     { value: 1, label: 'ذكر' },

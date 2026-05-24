@@ -1,5 +1,10 @@
 <section class="page">
-  <div class="page-head"><div><h2>المستخدمين</h2><p>إضافة الأطباء والريسبشن وإدارة الفريق.</p></div></div>
+  <div class="page-head">
+    <div>
+      <h2>المستخدمين</h2>
+      <p>إضافة الأطباء والريسبشن وإدارة الفريق.</p>
+    </div>
+  </div>
   <div class="grid">
     <section class="panel span-4">
       <h3>مستخدم جديد</h3>
@@ -14,9 +19,23 @@
       </form>
     </section>
     <section class="panel span-8">
-      <table><thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور</th><th>الحالة</th></tr></thead><tbody>
-        @for (u of users(); track u.id) { <tr><td>{{ u.fullName }}<br><span class="muted">{{ u.specialty || '-' }}</span></td><td>{{ u.email }}</td><td><span class="badge">{{ u.role }}</span></td><td>{{ u.isActive ? 'نشط' : 'متوقف' }}</td></tr> }
-      </tbody></table>
+      <table>
+        <thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+        <tbody>
+          @for (u of users(); track u.id) {
+            <tr>
+              <td>{{ u.fullName }}<br><span class="muted">{{ u.specialty || '-' }}</span></td>
+              <td>{{ u.email }}</td>
+              <td><span class="badge">{{ u.role }}</span></td>
+              <td>{{ u.isActive ? 'نشط' : 'متوقف' }}</td>
+              <td class="actions">
+                <button type="button" class="secondary" (click)="resetPassword(u)">Reset</button>
+                <button type="button" class="secondary" [disabled]="!u.isActive" (click)="deactivate(u)">تعطيل</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </section>
   </div>
 </section>
