@@ -1,0 +1,35 @@
+<section class="page">
+  <div class="page-head"><div><h2>إدارة المنصة</h2><p>لوحة SuperAdmin للعيادات والاشتراكات.</p></div></div>
+  <div class="grid">
+    <article class="metric card span-3"><span>عيادات</span><strong>{{ stats()?.totalClinics || 0 }}</strong></article>
+    <article class="metric card span-3"><span>نشطة</span><strong>{{ stats()?.activeClinics || 0 }}</strong></article>
+    <article class="metric card span-3"><span>مستخدمين</span><strong>{{ stats()?.totalUsers || 0 }}</strong></article>
+    <article class="metric card span-3"><span>إيراد شهري</span><strong>{{ stats()?.monthlyRevenue || 0 | number:'1.0-0' }}</strong></article>
+  </div>
+
+  <div class="grid">
+    <section class="panel span-4">
+      <h3>عيادة جديدة</h3>
+      <form class="form-grid" (ngSubmit)="create()">
+        <label>اسم العيادة<input name="name" [(ngModel)]="form['name']" /></label>
+        <label>Subdomain<input name="subdomain" [(ngModel)]="form['subdomain']" /></label>
+        <label>إيميل العيادة<input name="email" type="email" [(ngModel)]="form['email']" /></label>
+        <label>الخطة<select name="plan" [(ngModel)]="form['plan']">@for (p of plans; track p.value) { <option [ngValue]="p.value">{{ p.label }}</option> }</select></label>
+        <label>اسم المالك<input name="ownerFullName" [(ngModel)]="form['ownerFullName']" /></label>
+        <label>إيميل المالك<input name="ownerEmail" type="email" [(ngModel)]="form['ownerEmail']" /></label>
+        <label class="span-all">كلمة مرور المالك<input name="ownerPassword" type="password" [(ngModel)]="form['ownerPassword']" /></label>
+        <button class="span-all" [disabled]="ui.busy()">إنشاء</button>
+      </form>
+    </section>
+
+    <section class="panel span-8">
+      <div class="table-wrap">
+        <table><thead><tr><th>العيادة</th><th>Subdomain</th><th>المستخدمين</th><th>المرضى</th><th>الإيراد</th><th></th></tr></thead><tbody>
+          @for (c of clinics(); track c.id) {
+            <tr><td><strong>{{ c.name }}</strong><br><span class="muted">{{ c.email }}</span></td><td>{{ c.subdomain }}</td><td>{{ c.usersCount }}</td><td>{{ c.patientsCount }}</td><td>{{ c.clinicRevenue | number:'1.0-0' }} {{ c.currency }}</td><td><button class="secondary" (click)="toggle(c)">{{ c.isActive ? 'إيقاف' : 'تفعيل' }}</button></td></tr>
+          } @empty { <tr><td colspan="6" class="empty">لا توجد عيادات</td></tr> }
+        </tbody></table>
+      </div>
+    </section>
+  </div>
+</section>

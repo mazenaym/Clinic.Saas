@@ -1,0 +1,71 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>المرضى</h2>
+      <p>ابدأ بتسجيل الاسم ورقم الهاتف فقط، ثم أضف التفاصيل الطبية عند الحاجة.</p>
+    </div>
+    <div class="actions">
+      <input placeholder="بحث بالاسم أو الهاتف" [(ngModel)]="search" (keyup.enter)="load()" />
+      <button class="secondary" (click)="load()">بحث</button>
+      <button (click)="showForm.set(true)">إضافة مريض</button>
+    </div>
+  </div>
+
+  @if (showForm()) {
+    <section class="panel">
+      <div class="page-head">
+        <div>
+          <h3>{{ selected() ? 'تعديل بيانات المريض' : 'إضافة مريض جديد' }}</h3>
+          <p>الحقول الأساسية كافية لإنشاء الملف بسرعة.</p>
+        </div>
+        <button type="button" class="secondary" (click)="reset()">إغلاق</button>
+      </div>
+
+      <form class="form-grid" (ngSubmit)="save()">
+        <label>الاسم الكامل<input name="fullName" [(ngModel)]="form['fullName']" required /></label>
+        <label>رقم الهاتف<input name="phoneNumber" [(ngModel)]="form['phoneNumber']" required /></label>
+        <label>النوع<select name="gender" [(ngModel)]="form['gender']">@for (g of genders; track g.value) { <option [ngValue]="g.value">{{ g.label }}</option> }</select></label>
+        <label>تاريخ الميلاد<input name="dateOfBirth" type="date" [(ngModel)]="form['dateOfBirth']" /></label>
+
+        <div class="actions span-all">
+          <button type="button" class="secondary" (click)="showMore.set(!showMore())">{{ showMore() ? 'إخفاء التفاصيل' : 'إضافة تفاصيل طبية' }}</button>
+        </div>
+
+        @if (showMore()) {
+          <label>فصيلة الدم<input name="bloodType" [(ngModel)]="form['bloodType']" /></label>
+          <label>الإيميل<input name="email" type="email" [(ngModel)]="form['email']" /></label>
+          <label class="span-all">العنوان<input name="address" [(ngModel)]="form['address']" /></label>
+          <label class="span-all">الحساسية<textarea name="drugAllergies" [(ngModel)]="form['drugAllergies']"></textarea></label>
+          <label class="span-all">التاريخ المرضي<textarea name="medicalHistory" [(ngModel)]="form['medicalHistory']"></textarea></label>
+        }
+
+        <div class="actions span-all">
+          <button [disabled]="ui.busy()">{{ selected() ? 'حفظ التعديل' : 'حفظ المريض' }}</button>
+          <button type="button" class="secondary" (click)="reset()">إلغاء</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>الكود</th><th>المريض</th><th>الهاتف</th><th>العمر</th><th>ملاحظات</th><th></th></tr></thead>
+        <tbody>
+          @for (p of patients(); track p.id) {
+            <tr>
+              <td>{{ p.patientCode }}</td>
+              <td><strong>{{ p.fullName }}</strong><br><span class="muted">{{ p.gender }}</span></td>
+              <td>{{ p.phoneNumber }}</td>
+              <td>{{ p.age || '-' }}</td>
+              <td>{{ p.drugAllergies || p.chronicDiseases || '-' }}</td>
+              <td class="actions"><button class="secondary" (click)="edit(p)">تعديل</button><button class="danger" (click)="remove(p.id)">حذف</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty">لا توجد بيانات. اضغط "إضافة مريض" لإنشاء أول ملف.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>

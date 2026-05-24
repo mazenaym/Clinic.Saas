@@ -1,0 +1,41 @@
+<section class="page">
+  <div class="page-head"><div><h2>الروشتات</h2><p>روشتة إلكترونية ببنود متعددة وربط بالزيارة.</p></div></div>
+  <div class="grid">
+    <section class="panel span-8">
+      <h3>روشتة جديدة</h3>
+      <p class="inline-help">اكتب الروشتة بعد حفظ الكشف. رقم الكشف يظهر في شاشة الكشف بعد الحفظ.</p>
+      <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولاً</a></div>
+      <form class="form-grid" (ngSubmit)="create()">
+        <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required placeholder="الصقه بعد حفظ الكشف" /></label>
+        <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+        <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
+        <label>ملاحظات<input name="notes" [(ngModel)]="form['notes']" /></label>
+        <div class="span-all">
+          @for (item of items(); track $index) {
+            <div class="service-item">
+              <div class="form-grid">
+                <label>الدواء<input name="drugName{{$index}}" [(ngModel)]="item.drugName" /></label>
+                <label>الجرعة<input name="dosage{{$index}}" [(ngModel)]="item.dosage" /></label>
+                <label>التكرار<input name="frequency{{$index}}" [(ngModel)]="item.frequency" /></label>
+                <label>المدة<input name="duration{{$index}}" [(ngModel)]="item.duration" /></label>
+                <label class="span-all">تعليمات<input name="instructions{{$index}}" [(ngModel)]="item.instructions" /></label>
+              </div>
+              <button type="button" class="secondary" (click)="removeItem($index)">حذف البند</button>
+            </div>
+          }
+        </div>
+        <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة دواء</button><button [disabled]="ui.busy()">حفظ الروشتة</button></div>
+      </form>
+    </section>
+
+    <section class="panel span-4">
+      <h3>عرض روشتة</h3>
+      <p class="inline-help">للاسترجاع السريع استخدم رقم الروشتة من نتيجة الحفظ.</p>
+      <div class="actions"><input placeholder="رقم الروشتة" [(ngModel)]="lookupId" /><button (click)="loadPrescription()">عرض</button></div>
+      @if (result()) {
+        <p><strong>{{ result()?.patientName }}</strong><br><span class="muted">{{ result()?.doctorName }}</span></p>
+        @for (item of result()?.items || []; track item.id) { <p><span class="badge">{{ item.drugName }}</span><br>{{ item.dosage }} - {{ item.frequency }} - {{ item.duration }}</p> }
+      }
+    </section>
+  </div>
+</section>

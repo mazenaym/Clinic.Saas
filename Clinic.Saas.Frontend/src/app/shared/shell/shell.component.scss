@@ -1,0 +1,200 @@
+:host {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f5f7f6;
+  overflow-x: hidden;
+}
+
+.sidebar {
+  background: #0e2a2f;
+  color: #f7fbf8;
+  padding: 22px;
+  min-width: 0;
+}
+
+.brand,
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand {
+  margin-bottom: 28px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #42b883;
+  color: #082024;
+  font-weight: 800;
+}
+
+small,
+.eyebrow {
+  display: block;
+  color: #78919a;
+  font-size: 12px;
+}
+
+nav {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nav-hint {
+  display: none;
+}
+
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #dce8e6;
+  text-decoration: none;
+}
+
+nav a.active,
+nav a:hover {
+  background: #173b42;
+  color: #ffffff;
+}
+
+nav span {
+  width: 24px;
+  text-align: center;
+  color: #7ee0b0;
+  font-weight: 700;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 24px;
+  overflow-x: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+h1 {
+  margin: 4px 0 0;
+  font-size: 24px;
+}
+
+.user-pill {
+  background: #ffffff;
+  border: 1px solid #dfe8e4;
+  border-radius: 8px;
+  padding: 8px 10px 8px 8px;
+}
+
+.user-pill button {
+  border: 0;
+  border-radius: 7px;
+  background: #eaf3ef;
+  color: #173238;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.toast {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+}
+
+.success {
+  background: #e7f7ef;
+  color: #12623a;
+}
+
+.error {
+  background: #fdecea;
+  color: #a72f22;
+}
+
+@media (max-width: 880px) {
+  :host {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 14px;
+    width: 100%;
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  nav {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    max-width: 100%;
+    scrollbar-color: #7ee0b0 #173b42;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+  }
+
+  nav::-webkit-scrollbar {
+    height: 7px;
+  }
+
+  nav::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: #173b42;
+  }
+
+  nav::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #7ee0b0;
+  }
+
+  nav a {
+    scroll-snap-align: start;
+  }
+
+  nav a {
+    white-space: nowrap;
+  }
+
+  .nav-hint {
+    display: block;
+    margin-top: 6px;
+    color: #9db3b8;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .workspace {
+    width: 100%;
+    max-width: 100vw;
+    padding: 16px;
+  }
+
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-pill {
+    justify-content: space-between;
+    width: 100%;
+  }
+}

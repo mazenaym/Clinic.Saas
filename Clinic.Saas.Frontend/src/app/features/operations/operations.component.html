@@ -1,0 +1,75 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>تشغيل العيادة</h2>
+      <p>واجهات جاهزة للأجزاء اللي لسه محتاجة API كامل: تقارير، مخزون، تحاليل، إعدادات، وحجز أونلاين.</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    @for (item of tabs; track item.id) {
+      <button type="button" [class.secondary]="tab() !== item.id" (click)="tab.set(item.id)">{{ item.label }}</button>
+    }
+  </div>
+
+  @if (tab() === 'reports') {
+    <div class="grid">
+      <article class="metric card span-3"><span>نسبة الحضور</span><strong>86%</strong></article>
+      <article class="metric card span-3"><span>إلغاء المواعيد</span><strong>7%</strong></article>
+      <article class="metric card span-3"><span>متوسط الكشف</span><strong>18 د</strong></article>
+      <article class="metric card span-3"><span>أكثر خدمة</span><strong>كشف</strong></article>
+      <section class="panel span-12">
+        <h3>مركز التقارير</h3>
+        <p>التقرير المالي اليومي مربوط بالفعل من صفحة الفواتير. هنا مكان التقارير الأسبوعية والشهرية، أداء الأطباء، وتحليلات الروشتات عند اكتمال endpoints الخاصة بها.</p>
+      </section>
+    </div>
+  }
+
+  @if (tab() === 'inventory') {
+    <section class="panel">
+      <div class="page-head"><div><h3>المخزون والتنبيهات</h3><p>واجهة جاهزة لقائمة الأصناف وحدود التنبيه.</p></div><button>إضافة صنف</button></div>
+      <table><thead><tr><th>الصنف</th><th>التصنيف</th><th>الكمية</th><th>حد التنبيه</th><th>الصلاحية</th><th>الحالة</th></tr></thead><tbody>
+        @for (item of inventory; track item.name) {
+          <tr><td>{{ item.name }}</td><td>{{ item.category }}</td><td>{{ item.quantity }}</td><td>{{ item.min }}</td><td>{{ item.expiry }}</td><td><span class="badge">{{ item.quantity <= item.min ? 'منخفض' : 'جيد' }}</span></td></tr>
+        }
+      </tbody></table>
+    </section>
+  }
+
+  @if (tab() === 'labs') {
+    <section class="panel">
+      <div class="page-head"><div><h3>طلبات التحاليل</h3><p>متابعة حالة الطلب ونتيجة التحليل.</p></div><button>طلب تحليل</button></div>
+      <table><thead><tr><th>التحليل</th><th>المريض</th><th>الحالة</th><th>النتيجة</th></tr></thead><tbody>
+        @for (lab of labs; track lab.test) {
+          <tr><td>{{ lab.test }}</td><td>{{ lab.patient }}</td><td><span class="badge">{{ lab.status }}</span></td><td>{{ lab.result }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+  }
+
+  @if (tab() === 'settings') {
+    <section class="panel">
+      <h3>إعدادات العيادة</h3>
+      <form class="form-grid">
+        <label>أيام العمل<input name="workingDays" [(ngModel)]="settings.workingDays" /></label>
+        <label>مدة الموعد بالدقيقة<input name="slotDuration" type="number" [(ngModel)]="settings.slotDuration" /></label>
+        <label>وقت الفتح<input name="openTime" type="time" [(ngModel)]="settings.openTime" /></label>
+        <label>وقت الإغلاق<input name="closeTime" type="time" [(ngModel)]="settings.closeTime" /></label>
+        <label>سعر الكشف<input name="consultFee" type="number" [(ngModel)]="settings.consultFee" /></label>
+        <label>WhatsApp مفعل<select name="whatsappEnabled" [(ngModel)]="settings.whatsappEnabled"><option [ngValue]="true">نعم</option><option [ngValue]="false">لا</option></select></label>
+      </form>
+    </section>
+  }
+
+  @if (tab() === 'portal') {
+    <section class="panel">
+      <h3>الحجز الأونلاين</h3>
+      <p>واجهة استقبال طلبات المرضى من رابط العيادة، مع مكان لحالة الطلب وكود التأكيد والتحويل لموعد فعلي.</p>
+      <div class="grid">
+        <article class="metric card span-4"><span>طلبات معلقة</span><strong>0</strong></article>
+        <article class="metric card span-4"><span>طلبات مؤكدة</span><strong>0</strong></article>
+        <article class="metric card span-4"><span>رابط العيادة</span><strong>/book</strong></article>
+      </div>
+    </section>
+  }
+</section>

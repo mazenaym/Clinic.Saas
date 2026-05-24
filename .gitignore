@@ -1,3 +1,18 @@
-.vs/ 
-[Bb]in/ 
-[Oo]bj/ 
+.vs/
+[Bb]in/
+[Oo]bj/
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/
+
+# Local runtime logs
+*.log
+*.err.log
+
+# Office temp files
+~$*
+
+# Codex scratch files
+.codex_tmp/

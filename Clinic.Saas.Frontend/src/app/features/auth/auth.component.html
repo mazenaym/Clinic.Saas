@@ -1,0 +1,126 @@
+<main class="auth-page">
+  <section class="intro">
+    <span class="brand">ClinicFlow</span>
+    <h1>إدارة عيادتك من شاشة واحدة</h1>
+    <p>دخول سريع وآمن لإدارة المرضى، المواعيد، الكشف، الروشتات، الفواتير، وفريق العيادة.</p>
+    <div class="highlights">
+      <span>صلاحيات حسب الدور</span>
+      <span>تجديد جلسة تلقائي</span>
+      <span>واجهة عربية RTL</span>
+    </div>
+  </section>
+
+  <section class="auth-card">
+    <div class="tabs" aria-label="اختيار نوع الدخول">
+      <button type="button" [class.active]="mode() === 'login'" (click)="mode.set('login'); helperMessage.set('')">دخول</button>
+      <button type="button" [class.active]="mode() === 'register'" (click)="mode.set('register'); helperMessage.set('')">تسجيل عيادة</button>
+    </div>
+
+    @if (ui.error()) {
+      <p class="alert">{{ ui.error() }}</p>
+    }
+    @if (ui.message()) {
+      <p class="alert success">{{ ui.message() }}</p>
+    }
+    @if (helperMessage()) {
+      <p class="alert info">{{ helperMessage() }}</p>
+    }
+
+    @if (mode() === 'login') {
+      <form #loginForm="ngForm" (ngSubmit)="loginForm.valid && submitLogin()" class="form-grid" novalidate>
+        <label class="span-all">
+          البريد الإلكتروني
+          <input #email="ngModel" name="email" type="email" [(ngModel)]="login.email" required email autocomplete="email" />
+          @if (email.invalid && email.touched) {
+            <small class="field-error">اكتب بريد إلكتروني صحيح.</small>
+          }
+        </label>
+
+        <label class="span-all">
+          كلمة المرور
+          <input #password="ngModel" name="password" type="password" [(ngModel)]="login.password" required autocomplete="current-password" />
+          @if (password.invalid && password.touched) {
+            <small class="field-error">كلمة المرور مطلوبة.</small>
+          }
+        </label>
+
+        <label class="span-all">
+          كود العيادة
+          <input #subdomain="ngModel" name="subdomain" [(ngModel)]="login.subdomain" required placeholder="مثال: cairo-smile" autocomplete="organization" />
+          @if (subdomain.invalid && subdomain.touched) {
+            <small class="field-error">كود العيادة مطلوب للدخول.</small>
+          }
+        </label>
+
+        <div class="form-row span-all">
+          <button [disabled]="ui.busy()" class="primary-action">تسجيل الدخول</button>
+          <button type="button" class="link-button" (click)="showPasswordHelp()">نسيت كلمة المرور؟</button>
+        </div>
+      </form>
+    } @else {
+      <form #registerForm="ngForm" (ngSubmit)="registerForm.valid && submitRegister()" class="form-grid" novalidate>
+        <div class="section-title span-all">
+          <strong>بيانات العيادة</strong>
+          <span>المعلومات الأساسية التي سيظهر بها حساب العيادة.</span>
+        </div>
+
+        <label>
+          اسم العيادة
+          <input name="clinicName" [(ngModel)]="register.clinicName" required />
+        </label>
+        <label>
+          كود العيادة
+          <input name="regSubdomain" [(ngModel)]="register.subdomain" required placeholder="مثال: cairo-smile" />
+        </label>
+        <label>
+          إيميل العيادة
+          <input name="clinicEmail" type="email" [(ngModel)]="register.email" required email />
+        </label>
+        <label>
+          هاتف العيادة
+          <input name="clinicPhone" [(ngModel)]="register.phone" />
+        </label>
+        <label>
+          الخطة
+          <select name="plan" [(ngModel)]="register.plan">
+            @for (plan of plans; track plan.value) {
+              <option [ngValue]="plan.value">{{ plan.label }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          سعر الكشف
+          <input name="consultFee" type="number" [(ngModel)]="register.consultFee" />
+        </label>
+
+        <div class="section-title span-all">
+          <strong>حساب المالك</strong>
+          <span>سيتم إنشاء أول مدير للعيادة بهذه البيانات.</span>
+        </div>
+
+        <label>
+          اسم المالك
+          <input name="ownerFullName" [(ngModel)]="register.ownerFullName" required />
+        </label>
+        <label>
+          إيميل المالك
+          <input name="ownerEmail" type="email" [(ngModel)]="register.ownerEmail" required email />
+        </label>
+        <label>
+          كلمة مرور المالك
+          <input name="ownerPassword" type="password" [(ngModel)]="register.ownerPassword" required minlength="8" autocomplete="new-password" />
+        </label>
+        <label>
+          الضريبة %
+          <input name="taxPct" type="number" [(ngModel)]="register.taxPct" />
+        </label>
+
+        @if (registerForm.invalid && registerForm.submitted) {
+          <p class="field-error span-all">راجع الحقول المطلوبة قبل إنشاء العيادة.</p>
+        }
+
+        <button [disabled]="ui.busy()" class="span-all primary-action">إنشاء العيادة</button>
+      </form>
+    }
+  </section>
+</main>

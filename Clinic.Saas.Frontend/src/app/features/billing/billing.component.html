@@ -1,0 +1,41 @@
+<section class="page">
+  <div class="page-head">
+    <div><h2>الفواتير والمدفوعات</h2><p>تسجيل الدفع ومتابعة إيراد اليوم.</p></div>
+    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="loadReport()">تقرير اليوم</button></div>
+  </div>
+
+  <div class="grid">
+    <article class="metric card span-3"><span>إجمالي</span><strong>{{ report()?.grossRevenue || 0 | number:'1.0-0' }}</strong></article>
+    <article class="metric card span-3"><span>خصومات</span><strong>{{ report()?.totalDiscounts || 0 | number:'1.0-0' }}</strong></article>
+    <article class="metric card span-3"><span>صافي</span><strong>{{ report()?.netRevenue || 0 | number:'1.0-0' }}</strong></article>
+    <article class="metric card span-3"><span>كاش</span><strong>{{ report()?.cashPayments || 0 | number:'1.0-0' }}</strong></article>
+  </div>
+
+  <section class="panel">
+    <h3>فاتورة جديدة</h3>
+    <p class="inline-help">الفاتورة مرتبطة بكشف محفوظ. لو لم تسجل كشفاً بعد، ابدأ من صفحة الكشف ثم ارجع لتسجيل الدفع.</p>
+    <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولاً</a></div>
+    <form class="form-grid" (ngSubmit)="create()">
+      <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required placeholder="الصقه بعد حفظ الكشف" /></label>
+      <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+      <label>طريقة الدفع<select name="paymentMethod" [(ngModel)]="form['paymentMethod']">@for (m of methods; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }</select></label>
+      <label>خصم<input name="discountAmount" type="number" [(ngModel)]="form['discountAmount']" (input)="recalculate()" /></label>
+      <div class="span-all">
+        @for (item of items(); track $index) {
+          <div class="service-item">
+            <div class="form-grid">
+              <label>الخدمة<input name="serviceName{{$index}}" [(ngModel)]="item.serviceName" /></label>
+              <label>النوع<select name="serviceType{{$index}}" [(ngModel)]="item.serviceType">@for (t of serviceTypes; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
+              <label>الكمية<input name="quantity{{$index}}" type="number" [(ngModel)]="item.quantity" (input)="recalculate()" /></label>
+              <label>السعر<input name="unitPrice{{$index}}" type="number" [(ngModel)]="item.unitPrice" (input)="recalculate()" /></label>
+            </div>
+            <button type="button" class="secondary" (click)="removeItem($index)">حذف الخدمة</button>
+          </div>
+        }
+      </div>
+      <label>الإجمالي<input name="totalAmount" type="number" [(ngModel)]="form['totalAmount']" /></label>
+      <label>المدفوع<input name="paidAmount" type="number" [(ngModel)]="form['paidAmount']" /></label>
+      <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة خدمة</button><button [disabled]="ui.busy()">تسجيل الدفع</button></div>
+    </form>
+  </section>
+</section>

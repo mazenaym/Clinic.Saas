@@ -1,0 +1,49 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>المواعيد</h2>
+      <p>حجز يومي سريع، مع متابعة حالة الموعد من نفس الشاشة.</p>
+    </div>
+    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="load()">عرض اليوم</button></div>
+  </div>
+
+  <div class="grid">
+    <section class="panel span-4">
+      <h3>موعد جديد</h3>
+
+      @if (!patients().length) {
+        <p class="inline-help">لا يوجد مرضى بعد. أضف مريضاً أولاً قبل حجز الموعد.</p>
+        <a routerLink="/patients" class="button-link">إضافة مريض</a>
+      } @else if (!doctors().length) {
+        <p class="inline-help">لا يوجد أطباء في العيادة. أضف دكتوراً من صفحة المستخدمين.</p>
+        <a routerLink="/users" class="button-link">إضافة دكتور</a>
+      } @else {
+        <form class="form-grid" (ngSubmit)="create()">
+          <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+          <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
+          <label>البداية<input name="startTime" type="time" step="1" [(ngModel)]="form['startTime']" /></label>
+          <label>النهاية<input name="endTime" type="time" step="1" [(ngModel)]="form['endTime']" /></label>
+          <label>النوع<select name="type" [(ngModel)]="form['type']">@for (t of types; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
+          <label>المصدر<select name="source" [(ngModel)]="form['source']">@for (s of sources; track s.value) { <option [ngValue]="s.value">{{ s.label }}</option> }</select></label>
+          <label class="span-all">ملاحظات<textarea name="notes" [(ngModel)]="form['notes']"></textarea></label>
+          <div class="actions span-all"><button [disabled]="ui.busy()">حجز الموعد</button></div>
+        </form>
+      }
+    </section>
+
+    <section class="panel span-8">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الوقت</th><th>المريض</th><th>الدكتور</th><th>النوع</th><th>الحالة</th><th></th></tr></thead>
+          <tbody>
+            @for (a of appointments(); track a.id) {
+              <tr><td>{{ a.startTime }} - {{ a.endTime }}</td><td>{{ a.patientName }}<br><span class="muted">{{ a.patientPhone }}</span></td><td>{{ a.doctorName }}</td><td>{{ a.type }}</td><td><span class="badge">{{ a.status }}</span></td><td><select #s (change)="status(a.id, +s.value)">@for (st of statuses; track st.value) { <option [value]="st.value">{{ st.label }}</option> }</select></td></tr>
+            } @empty {
+              <tr><td colspan="6" class="empty">لا توجد مواعيد لهذا اليوم. استخدم نموذج "موعد جديد" للحجز.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>

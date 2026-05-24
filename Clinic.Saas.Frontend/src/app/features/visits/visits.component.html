@@ -1,0 +1,39 @@
+<section class="page">
+  <div class="page-head"><div><h2>الكشف والزيارات</h2><p>تسجيل الشكوى، العلامات الحيوية، التشخيص، والمتابعة.</p></div></div>
+  <div class="grid">
+    <section class="panel span-8">
+      <h3>كشف جديد</h3>
+      @if (!patients().length) {
+        <p class="inline-help">لا يوجد مرضى بعد. أضف مريضاً أولاً لبدء الكشف.</p>
+        <a routerLink="/patients" class="button-link">إضافة مريض</a>
+      }
+      <form class="form-grid" (ngSubmit)="create()">
+        <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+        <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
+        <label>نوع الزيارة<select name="visitType" [(ngModel)]="form['visitType']">@for (t of types; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
+        <label>موعد المتابعة<input name="followUpDate" type="date" [(ngModel)]="form['followUpDate']" /></label>
+        <label class="span-all">الشكوى الرئيسية<textarea name="chiefComplaint" [(ngModel)]="form['chiefComplaint']" required></textarea></label>
+        <label>الضغط<input name="bloodPressure" [(ngModel)]="form['vitalSigns'].bloodPressure" placeholder="120/80" /></label>
+        <label>الحرارة<input name="temperature" type="number" [(ngModel)]="form['vitalSigns'].temperature" /></label>
+        <label>الوزن<input name="weight" type="number" [(ngModel)]="form['vitalSigns'].weight" /></label>
+        <label>النبض<input name="pulse" type="number" [(ngModel)]="form['vitalSigns'].pulse" /></label>
+        <label class="span-all">الفحص الإكلينيكي<textarea name="clinicalNotes" [(ngModel)]="form['clinicalNotes']"></textarea></label>
+        <label>التشخيص<input name="diagnosis" [(ngModel)]="form['diagnosis']" /></label>
+        <label>كود التشخيص<input name="diagnosisCode" [(ngModel)]="form['diagnosisCode']" /></label>
+        <button class="span-all" [disabled]="ui.busy()">حفظ الكشف</button>
+      </form>
+    </section>
+
+    <section class="panel span-4">
+      <h3>نتيجة الكشف</h3>
+      <p class="inline-help">بعد الحفظ سيظهر ملخص الكشف. استخدم رقم الكشف عند إنشاء روشتة أو فاتورة.</p>
+      <div class="actions"><input placeholder="رقم الكشف" [(ngModel)]="lookupId" /><button (click)="loadVisit()">عرض</button></div>
+      @if (created()) {
+        <p><strong>{{ created()?.patientName }}</strong><br><span class="muted">{{ created()?.doctorName }}</span></p>
+        <p class="copy-box">رقم الكشف: {{ created()?.id }}</p>
+        <p>{{ created()?.chiefComplaint }}</p>
+        <p><span class="badge">{{ created()?.diagnosis || 'بدون تشخيص' }}</span></p>
+      }
+    </section>
+  </div>
+</section>

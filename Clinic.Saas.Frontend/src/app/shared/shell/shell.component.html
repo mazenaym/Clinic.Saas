@@ -1,0 +1,42 @@
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">CF</span>
+    <div>
+      <strong>ClinicFlow</strong>
+      <small>{{ auth.tenant()?.name || 'نظام العيادة' }}</small>
+    </div>
+  </div>
+
+  <nav>
+    @for (item of visibleNav(); track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="active">
+        <span>{{ item.icon }}</span>
+        {{ item.label }}
+      </a>
+    }
+  </nav>
+  <small class="nav-hint">اسحب القائمة لعرض باقي الأقسام</small>
+</aside>
+
+<main class="workspace">
+  <header class="topbar">
+    <div>
+      <span class="eyebrow">مساحة العمل</span>
+      <h1>{{ auth.tenant()?.name || 'ClinicFlow' }}</h1>
+    </div>
+    <div class="user-pill">
+      <span>{{ auth.user()?.fullName }}</span>
+      <small>{{ auth.user()?.role }} · الجلسة {{ sessionState() }}</small>
+      <button type="button" (click)="logout()">خروج</button>
+    </div>
+  </header>
+
+  @if (ui.message()) {
+    <p class="toast success">{{ ui.message() }}</p>
+  }
+  @if (ui.error()) {
+    <p class="toast error">{{ ui.error() }}</p>
+  }
+
+  <router-outlet />
+</main>
