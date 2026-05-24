@@ -1,7 +1,7 @@
 <section class="page">
   <div class="page-head">
-    <div><h2>الفواتير والمدفوعات</h2><p>تسجيل الدفع ومتابعة إيراد اليوم.</p></div>
-    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="loadReport()">تقرير اليوم</button></div>
+    <div><h2>الفواتير والمدفوعات</h2><p>تسجيل الدفع، الإيراد اليومي والشهري، المديونيات، والرديات.</p></div>
+    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="loadReport(); loadExtras()">تحديث</button></div>
   </div>
 
   <div class="grid">
@@ -13,11 +13,10 @@
 
   <section class="panel">
     <h3>فاتورة جديدة</h3>
-    <p class="inline-help">الفاتورة مرتبطة بكشف محفوظ. لو لم تسجل كشفاً بعد، ابدأ من صفحة الكشف ثم ارجع لتسجيل الدفع.</p>
-    <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولاً</a></div>
+    <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولا</a></div>
     <form class="form-grid" (ngSubmit)="create()">
-      <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required placeholder="الصقه بعد حفظ الكشف" /></label>
-      <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+      <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required /></label>
+      <label>المريض<select name="patientId" [(ngModel)]="form['patientId']" (change)="loadPatientPayments()">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
       <label>طريقة الدفع<select name="paymentMethod" [(ngModel)]="form['paymentMethod']">@for (m of methods; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }</select></label>
       <label>خصم<input name="discountAmount" type="number" [(ngModel)]="form['discountAmount']" (input)="recalculate()" /></label>
       <div class="span-all">
@@ -35,7 +34,45 @@
       </div>
       <label>الإجمالي<input name="totalAmount" type="number" [(ngModel)]="form['totalAmount']" /></label>
       <label>المدفوع<input name="paidAmount" type="number" [(ngModel)]="form['paidAmount']" /></label>
-      <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة خدمة</button><button [disabled]="ui.busy()">تسجيل الدفع</button></div>
+      <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة خدمة</button>@if (editingPaymentId()) { <button type="button" class="secondary" (click)="cancelEdit()">إلغاء التعديل</button> }<button [disabled]="ui.busy()">{{ editingPaymentId() ? 'تحديث الدفع' : 'تسجيل الدفع' }}</button></div>
     </form>
   </section>
+
+  <section class="panel">
+    <h3>بحث وتعديل فاتورة</h3>
+    <div class="actions">
+      <input placeholder="Payment ID" [(ngModel)]="lookupPaymentId" />
+      <button type="button" (click)="loadPayment()">عرض للتعديل</button>
+    </div>
+    @if (selectedPayment()) {
+      <p class="inline-help">تم تحميل الفاتورة في النموذج بالأعلى. بعد التعديل اضغط تحديث الدفع.</p>
+    }
+    @if (patientPayments().length) {
+      <h4>مدفوعات المريض</h4>
+      <table><thead><tr><th>الفاتورة</th><th>الإجمالي</th><th>المدفوع</th><th>إجراءات</th></tr></thead><tbody>
+        @for (payment of patientPayments(); track payment['id']) {
+          <tr><td>{{ payment['invoiceNumber'] }}</td><td>{{ payment['totalAmount'] }}</td><td>{{ payment['paidAmount'] }}</td><td class="actions"><a class="button-link" [href]="receiptUrl(payment['id'] + '')" target="_blank">Receipt</a><button type="button" class="danger" (click)="refund(payment['id'] + '')">Refund</button></td></tr>
+        }
+      </tbody></table>
+    }
+  </section>
+
+  <div class="grid">
+    <section class="panel span-6">
+      <h3>Monthly Revenue</h3>
+      <table><thead><tr><th>التاريخ</th><th>المدفوع</th><th>المتبقي</th><th>الفواتير</th></tr></thead><tbody>
+        @for (row of monthly(); track row['date']) {
+          <tr><td>{{ row['date'] }}</td><td>{{ row['paidAmount'] }}</td><td>{{ row['remainingAmount'] }}</td><td>{{ row['invoiceCount'] }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+    <section class="panel span-6">
+      <h3>Debt Tracking</h3>
+      <table><thead><tr><th>المريض</th><th>الهاتف</th><th>الدين</th></tr></thead><tbody>
+        @for (row of debts(); track row['patientId']) {
+          <tr><td>{{ row['fullName'] }}</td><td>{{ row['phoneNumber'] }}</td><td>{{ row['totalDebt'] }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+  </div>
 </section>

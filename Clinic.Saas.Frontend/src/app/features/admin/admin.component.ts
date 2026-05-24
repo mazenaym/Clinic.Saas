@@ -16,6 +16,10 @@ export class AdminComponent implements OnInit {
   readonly ui = inject(UiService);
   readonly stats = signal<AdminStats | null>(null);
   readonly clinics = signal<AdminClinic[]>([]);
+  readonly usage = signal<Record<string, unknown>[]>([]);
+  readonly revenue = signal<Record<string, unknown>[]>([]);
+  readonly expiring = signal<Record<string, unknown>[]>([]);
+  readonly activity = signal<Record<string, unknown>[]>([]);
   readonly plans = enumValues.plans;
   form: Record<string, any> = {
     name: '', subdomain: '', email: '', phone: '', plan: 1, timeZone: 'Africa/Cairo', currency: 'EGP',
@@ -29,6 +33,10 @@ export class AdminComponent implements OnInit {
     await Promise.all([
       firstValueFrom(this.api.adminDashboard()).then((x) => this.stats.set(x)).catch(() => this.stats.set(null)),
       firstValueFrom(this.api.adminClinics()).then((x) => this.clinics.set(x ?? [])).catch(() => this.clinics.set([])),
+      firstValueFrom(this.api.clinicUsageMetrics()).then((x) => this.usage.set(x ?? [])).catch(() => this.usage.set([])),
+      firstValueFrom(this.api.subscriptionRevenue()).then((x) => this.revenue.set(x ?? [])).catch(() => this.revenue.set([])),
+      firstValueFrom(this.api.expiringSubscriptions()).then((x) => this.expiring.set(x ?? [])).catch(() => this.expiring.set([])),
+      firstValueFrom(this.api.activityLog()).then((x) => this.activity.set(x as unknown as Record<string, unknown>[] ?? [])).catch(() => this.activity.set([])),
     ]);
   }
 

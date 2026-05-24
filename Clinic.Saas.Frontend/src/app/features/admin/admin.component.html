@@ -32,4 +32,39 @@
       </div>
     </section>
   </div>
+
+  <div class="grid">
+    <section class="panel span-6">
+      <h3>Clinic Usage Metrics</h3>
+      <table><thead><tr><th>Clinic</th><th>Users</th><th>Patients</th><th>Appointments</th></tr></thead><tbody>
+        @for (row of usage(); track row['id']) {
+          <tr><td>{{ row['name'] }}</td><td>{{ row['usersCount'] }}</td><td>{{ row['patientsCount'] }}</td><td>{{ row['appointmentsCount'] }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+    <section class="panel span-6">
+      <h3>Revenue From Subscriptions</h3>
+      <table><thead><tr><th>Year</th><th>Month</th><th>Revenue</th><th>Count</th></tr></thead><tbody>
+        @for (row of revenue(); track row['year'] + '-' + row['month']) {
+          <tr><td>{{ row['year'] }}</td><td>{{ row['month'] }}</td><td>{{ row['revenue'] }}</td><td>{{ row['subscriptionCount'] }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+    <section class="panel span-6">
+      <h3>Expiring Subscriptions</h3>
+      <table><thead><tr><th>Clinic</th><th>Plan</th><th>End</th><th>Status</th></tr></thead><tbody>
+        @for (row of expiring(); track row['subdomain'] + '-' + row['endDate']) {
+          <tr><td>{{ row['name'] }}</td><td>{{ row['plan'] }}</td><td>{{ row['endDate'] }}</td><td>{{ row['status'] }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+    <section class="panel span-6">
+      <h3>Admin Activity Log</h3>
+      <table><thead><tr><th>Action</th><th>Entity</th><th>Date</th></tr></thead><tbody>
+        @for (row of activity(); track row['id']) {
+          <tr><td>{{ row['action'] }}</td><td>{{ row['entityName'] }}</td><td>{{ row['createdAt'] }}</td></tr>
+        }
+      </tbody></table>
+    </section>
+  </div>
 </section>

@@ -44,6 +44,14 @@ export class ApiService {
     return this.post<boolean>(`/operations/users/${id}/reset-password`, { newPassword });
   }
 
+  preferences() {
+    return this.get<Record<string, unknown>>('/operations/users/me/preferences');
+  }
+
+  savePreferences(payload: Record<string, unknown>) {
+    return this.put<Record<string, unknown>>('/operations/users/me/preferences', payload);
+  }
+
   changePassword(payload: { currentPassword: string; newPassword: string }) {
     return this.post<boolean>('/operations/auth/change-password', payload);
   }
@@ -74,6 +82,14 @@ export class ApiService {
 
   patientDuplicates(phone?: string, nationalId?: string) {
     return this.get<Patient[]>('/operations/patients/duplicates', { phone: phone ?? '', nationalId: nationalId ?? '' });
+  }
+
+  uploadPatientDocument(patientId: string, file: File, documentType = 1, description = '') {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('documentType', String(documentType));
+    form.append('description', description);
+    return this.http.post<ApiResponse<Record<string, unknown>>>(`${this.baseUrl}/operations/patients/${patientId}/documents`, form).pipe(map((r) => r.data));
   }
 
   exportPatientsUrl() {
@@ -108,6 +124,18 @@ export class ApiService {
     return this.get<Appointment[]>('/operations/appointments/cancellations', { from, to });
   }
 
+  onlineBookings() {
+    return this.get<Record<string, unknown>[]>('/operations/online-bookings');
+  }
+
+  approveOnlineBooking(id: string) {
+    return this.post<boolean>(`/operations/online-bookings/${id}/approve`, {});
+  }
+
+  rejectOnlineBooking(id: string, rejectReason: string) {
+    return this.post<boolean>(`/operations/online-bookings/${id}/reject`, { rejectReason });
+  }
+
   createVisit(payload: Record<string, unknown>) {
     return this.post<Visit>('/Visits', payload);
   }
@@ -132,6 +160,10 @@ export class ApiService {
     return this.get<Record<string, unknown>[]>('/operations/clinical-templates');
   }
 
+  createClinicalTemplate(payload: Record<string, unknown>) {
+    return this.post<Record<string, unknown>>('/operations/clinical-templates', payload);
+  }
+
   createPrescription(payload: Record<string, unknown>) {
     return this.post<Prescription>('/Prescriptions', payload);
   }
@@ -146,6 +178,10 @@ export class ApiService {
 
   sendPrescriptionWhatsapp(id: string) {
     return this.post<boolean>(`/operations/prescriptions/${id}/send-whatsapp`, {});
+  }
+
+  checkDrugInteractions(drugNames: string[]) {
+    return this.post<Record<string, unknown>[]>('/operations/prescriptions/check-interactions', drugNames);
   }
 
   drugs(term = '') {
@@ -166,6 +202,10 @@ export class ApiService {
 
   patientPayments(patientId: string) {
     return this.get<Record<string, unknown>[]>(`/operations/billing/patients/${patientId}/payments`);
+  }
+
+  updatePayment(id: string, payload: Record<string, unknown>) {
+    return this.put<boolean>(`/operations/billing/payments/${id}`, payload);
   }
 
   refundPayment(id: string, reason?: string) {

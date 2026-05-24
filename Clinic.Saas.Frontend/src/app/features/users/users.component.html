@@ -2,22 +2,31 @@
   <div class="page-head">
     <div>
       <h2>المستخدمين</h2>
-      <p>إضافة الأطباء والريسبشن وإدارة الفريق.</p>
+      <p>إضافة وتعديل وتعطيل المستخدمين، مع إعادة تعيين كلمة المرور من نفس الشاشة.</p>
     </div>
   </div>
+
   <div class="grid">
     <section class="panel span-4">
-      <h3>مستخدم جديد</h3>
-      <form class="form-grid" (ngSubmit)="create()">
+      <h3>{{ editing() ? 'تعديل مستخدم' : 'مستخدم جديد' }}</h3>
+      <form class="form-grid" (ngSubmit)="save()">
         <label>الاسم<input name="fullName" [(ngModel)]="form['fullName']" required /></label>
         <label>الإيميل<input name="email" type="email" [(ngModel)]="form['email']" required /></label>
-        <label>كلمة المرور<input name="password" type="password" [(ngModel)]="form['password']" required /></label>
+        @if (!editing()) {
+          <label>كلمة المرور<input name="password" type="password" [(ngModel)]="form['password']" required /></label>
+        }
         <label>الدور<select name="role" [(ngModel)]="form['role']">@for (role of roles; track role.value) { <option [ngValue]="role.value">{{ role.label }}</option> }</select></label>
         <label>الهاتف<input name="phone" [(ngModel)]="form['phone']" /></label>
         <label>التخصص<input name="specialty" [(ngModel)]="form['specialty']" /></label>
-        <button class="span-all" [disabled]="ui.busy()">إضافة</button>
+        <div class="actions span-all">
+          <button [disabled]="ui.busy()">{{ editing() ? 'حفظ التعديل' : 'إضافة' }}</button>
+          @if (editing()) {
+            <button type="button" class="secondary" (click)="cancelEdit()">إلغاء</button>
+          }
+        </div>
       </form>
     </section>
+
     <section class="panel span-8">
       <table>
         <thead><tr><th>الاسم</th><th>الإيميل</th><th>الدور</th><th>الحالة</th><th>إجراءات</th></tr></thead>
@@ -29,6 +38,7 @@
               <td><span class="badge">{{ u.role }}</span></td>
               <td>{{ u.isActive ? 'نشط' : 'متوقف' }}</td>
               <td class="actions">
+                <button type="button" class="secondary" (click)="edit(u)">Edit</button>
                 <button type="button" class="secondary" (click)="resetPassword(u)">Reset</button>
                 <button type="button" class="secondary" [disabled]="!u.isActive" (click)="deactivate(u)">تعطيل</button>
               </td>

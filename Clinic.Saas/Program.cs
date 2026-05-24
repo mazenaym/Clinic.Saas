@@ -19,7 +19,9 @@ builder.Services.AddCors(options =>
         {
             policy.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(origin =>
                 origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
-                origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase));
+                origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("https://127.0.0.1:", StringComparison.OrdinalIgnoreCase));
             return;
         }
 
@@ -85,7 +87,10 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseCors("ClinicSaasCors");

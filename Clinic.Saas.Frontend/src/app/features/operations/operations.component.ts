@@ -5,7 +5,7 @@ import { ApiService } from '../../core/api.service';
 import { ClinicSettings, TenantSubscriptionStatus } from '../../core/models';
 import { UiService } from '../../core/ui.service';
 
-type Tab = 'reports' | 'inventory' | 'labs' | 'settings' | 'portal';
+type Tab = 'reports' | 'profile' | 'inventory' | 'labs' | 'settings' | 'portal';
 
 @Component({
   selector: 'app-operations',
@@ -20,9 +20,11 @@ export class OperationsComponent implements OnInit {
   readonly monthlyRevenue = signal<Record<string, unknown>[]>([]);
   readonly debts = signal<Record<string, unknown>[]>([]);
   readonly cancellations = signal<Record<string, unknown>[]>([]);
+  readonly preferences = signal<Record<string, unknown> | null>(null);
 
   readonly tabs: { id: Tab; label: string }[] = [
     { id: 'reports', label: 'التقارير' },
+    { id: 'profile', label: 'الحساب' },
     { id: 'inventory', label: 'المخزون' },
     { id: 'labs', label: 'التحاليل' },
     { id: 'settings', label: 'الإعدادات' },
@@ -52,6 +54,9 @@ export class OperationsComponent implements OnInit {
     taxPct: 0,
   };
 
+  passwordForm = { currentPassword: '', newPassword: '' };
+  preferenceForm: Record<string, unknown> = { language: 'ar', theme: 'light', avatarUrl: '' };
+
   async ngOnInit() {
     await this.load();
   }
@@ -66,6 +71,10 @@ export class OperationsComponent implements OnInit {
       firstValueFrom(this.api.monthlyRevenue(now.getFullYear(), now.getMonth() + 1)).then((x) => this.monthlyRevenue.set(x ?? [])).catch(() => this.monthlyRevenue.set([])),
       firstValueFrom(this.api.debts()).then((x) => this.debts.set(x ?? [])).catch(() => this.debts.set([])),
       firstValueFrom(this.api.cancellationReport(start, end)).then((x) => this.cancellations.set(x as unknown as Record<string, unknown>[])).catch(() => this.cancellations.set([])),
+      firstValueFrom(this.api.preferences()).then((x) => {
+        this.preferences.set(x);
+        this.preferenceForm = { ...this.preferenceForm, ...x };
+      }).catch(() => undefined),
     ]);
   }
 
@@ -73,5 +82,19 @@ export class OperationsComponent implements OnInit {
     await this.ui.run(async () => {
       this.settings = await firstValueFrom(this.api.updateClinicSettings(this.settings));
     }, 'تم حفظ إعدادات العيادة');
+  }
+
+  async changePassword() {
+    await this.ui.run(async () => {
+      await firstValueFrom(this.api.changePassword(this.passwordForm));
+      this.passwordForm = { currentPassword: '', newPassword: '' };
+    }, 'تم تغيير كلمة المرور');
+  }
+
+  async savePreferences() {
+    await this.ui.run(async () => {
+      const prefs = await firstValueFrom(this.api.savePreferences(this.preferenceForm));
+      this.preferences.set(prefs);
+    }, 'تم حفظ تفضيلات الحساب');
   }
 }

@@ -14,6 +14,7 @@ export class UsersComponent implements OnInit {
   private readonly api = inject(ApiService);
   readonly ui = inject(UiService);
   readonly users = signal<User[]>([]);
+  readonly editing = signal<User | null>(null);
   readonly roles = enumValues.roles;
   form: Record<string, any> = { fullName: '', email: '', password: '', role: 2, phone: '', specialty: '', licenseNumber: '' };
 
@@ -23,12 +24,35 @@ export class UsersComponent implements OnInit {
     this.users.set(await firstValueFrom(this.api.users()));
   }
 
-  async create() {
+  edit(user: User) {
+    this.editing.set(user);
+    this.form = {
+      fullName: user.fullName,
+      email: user.email,
+      password: '',
+      role: user.role === 'Doctor' ? 2 : user.role === 'Reception' ? 3 : 1,
+      phone: user.phone || '',
+      specialty: user.specialty || '',
+      licenseNumber: '',
+    };
+  }
+
+  cancelEdit() {
+    this.editing.set(null);
+    this.form = { fullName: '', email: '', password: '', role: 2, phone: '', specialty: '', licenseNumber: '' };
+  }
+
+  async save() {
+    const user = this.editing();
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.createUser(this.form));
-      this.form = { fullName: '', email: '', password: '', role: 2, phone: '', specialty: '', licenseNumber: '' };
+      if (user) {
+        await firstValueFrom(this.api.updateUser(user.id, this.form));
+      } else {
+        await firstValueFrom(this.api.createUser(this.form));
+      }
+      this.cancelEdit();
       await this.load();
-    }, 'تم إضافة المستخدم');
+    }, user ? 'تم تحديث المستخدم' : 'تم إضافة المستخدم');
   }
 
   async deactivate(user: User) {

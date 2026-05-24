@@ -1,12 +1,22 @@
 <section class="page">
-  <div class="page-head"><div><h2>الروشتات</h2><p>روشتة إلكترونية ببنود متعددة وربط بالزيارة.</p></div></div>
+  <div class="page-head"><div><h2>الروشتات</h2><p>روشتة إلكترونية مع بحث أدوية، PDF/Print، وإرسال WhatsApp.</p></div></div>
   <div class="grid">
     <section class="panel span-8">
       <h3>روشتة جديدة</h3>
-      <p class="inline-help">اكتب الروشتة بعد حفظ الكشف. رقم الكشف يظهر في شاشة الكشف بعد الحفظ.</p>
-      <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولاً</a></div>
+      <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولا</a></div>
+      <div class="actions">
+        <input placeholder="بحث أدوية" [(ngModel)]="drugTerm" (keyup.enter)="searchDrugs()" />
+        <button type="button" class="secondary" (click)="searchDrugs()">بحث</button>
+      </div>
+      @if (drugs().length) {
+        <div class="actions">
+          @for (drug of drugs(); track drug['id']) {
+            <button type="button" class="secondary" (click)="useDrug(drug['tradeName'])">{{ drug['tradeName'] }}</button>
+          }
+        </div>
+      }
       <form class="form-grid" (ngSubmit)="create()">
-        <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required placeholder="الصقه بعد حفظ الكشف" /></label>
+        <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required /></label>
         <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
         <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
         <label>ملاحظات<input name="notes" [(ngModel)]="form['notes']" /></label>
@@ -24,17 +34,38 @@
             </div>
           }
         </div>
-        <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة دواء</button><button [disabled]="ui.busy()">حفظ الروشتة</button></div>
+        @if (interactionWarnings().length) {
+          <div class="inline-help span-all">
+            @for (warning of interactionWarnings(); track warning['drug']) {
+              <p><strong>{{ warning['drug'] }}</strong>: {{ warning['warning'] }}</p>
+            }
+          </div>
+        }
+        <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة دواء</button><button type="button" class="secondary" (click)="checkInteractions()">فحص التداخلات</button><button [disabled]="ui.busy()">حفظ الروشتة</button></div>
       </form>
     </section>
 
     <section class="panel span-4">
+      <h3>Clinical Templates</h3>
+      <form class="form-grid" (ngSubmit)="createTemplate()">
+        <label class="span-all">اسم القالب<input name="templateName" [(ngModel)]="templateForm['name']" /></label>
+        <label class="span-all">التخصص<input name="templateSpecialty" [(ngModel)]="templateForm['specialty']" /></label>
+        <label class="span-all">الشكوى<textarea name="templateComplaint" [(ngModel)]="templateForm['chiefComplaint']"></textarea></label>
+        <button class="span-all" [disabled]="ui.busy()">حفظ القالب</button>
+      </form>
+      @for (template of templates(); track template['id']) {
+        <p><span class="badge">{{ template['name'] }}</span><br>{{ template['specialty'] }}</p>
+      }
+
       <h3>عرض روشتة</h3>
-      <p class="inline-help">للاسترجاع السريع استخدم رقم الروشتة من نتيجة الحفظ.</p>
       <div class="actions"><input placeholder="رقم الروشتة" [(ngModel)]="lookupId" /><button (click)="loadPrescription()">عرض</button></div>
       @if (result()) {
         <p><strong>{{ result()?.patientName }}</strong><br><span class="muted">{{ result()?.doctorName }}</span></p>
         @for (item of result()?.items || []; track item.id) { <p><span class="badge">{{ item.drugName }}</span><br>{{ item.dosage }} - {{ item.frequency }} - {{ item.duration }}</p> }
+        <div class="actions">
+          <a class="button-link" [href]="pdfUrl()" target="_blank">PDF / Print</a>
+          <button type="button" class="secondary" (click)="sendWhatsapp()">WhatsApp</button>
+        </div>
       }
     </section>
   </div>

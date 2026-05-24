@@ -2,21 +2,18 @@
   <div class="page-head">
     <div>
       <h2>المواعيد</h2>
-      <p>حجز يومي سريع، مع متابعة حالة الموعد من نفس الشاشة.</p>
+      <p>حجز يومي مع weekly view، إعادة جدولة، طلبات أونلاين، وتقرير الإلغاءات.</p>
     </div>
-    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="load()">عرض اليوم</button></div>
+    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="load(); loadExtras()">عرض</button></div>
   </div>
 
   <div class="grid">
     <section class="panel span-4">
       <h3>موعد جديد</h3>
-
       @if (!patients().length) {
-        <p class="inline-help">لا يوجد مرضى بعد. أضف مريضاً أولاً قبل حجز الموعد.</p>
-        <a routerLink="/patients" class="button-link">إضافة مريض</a>
+        <p class="inline-help">لا يوجد مرضى بعد.</p><a routerLink="/patients" class="button-link">إضافة مريض</a>
       } @else if (!doctors().length) {
-        <p class="inline-help">لا يوجد أطباء في العيادة. أضف دكتوراً من صفحة المستخدمين.</p>
-        <a routerLink="/users" class="button-link">إضافة دكتور</a>
+        <p class="inline-help">لا يوجد أطباء.</p><a routerLink="/users" class="button-link">إضافة دكتور</a>
       } @else {
         <form class="form-grid" (ngSubmit)="create()">
           <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
@@ -29,21 +26,56 @@
           <div class="actions span-all"><button [disabled]="ui.busy()">حجز الموعد</button></div>
         </form>
       }
+
+      <h3>إعادة جدولة</h3>
+      <form class="form-grid" (ngSubmit)="saveReschedule()">
+        <label class="span-all">Appointment ID<input name="resId" [(ngModel)]="reschedule['id']" /></label>
+        <label>التاريخ<input name="resDate" type="date" [(ngModel)]="reschedule['appointmentDate']" /></label>
+        <label>البداية<input name="resStart" type="time" step="1" [(ngModel)]="reschedule['startTime']" /></label>
+        <label>النهاية<input name="resEnd" type="time" step="1" [(ngModel)]="reschedule['endTime']" /></label>
+        <button class="span-all">حفظ الجدولة</button>
+      </form>
     </section>
 
     <section class="panel span-8">
+      <h3>مواعيد اليوم</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>الوقت</th><th>المريض</th><th>الدكتور</th><th>النوع</th><th>الحالة</th><th></th></tr></thead>
           <tbody>
             @for (a of appointments(); track a.id) {
-              <tr><td>{{ a.startTime }} - {{ a.endTime }}</td><td>{{ a.patientName }}<br><span class="muted">{{ a.patientPhone }}</span></td><td>{{ a.doctorName }}</td><td>{{ a.type }}</td><td><span class="badge">{{ a.status }}</span></td><td><select #s (change)="status(a.id, +s.value)">@for (st of statuses; track st.value) { <option [value]="st.value">{{ st.label }}</option> }</select></td></tr>
-            } @empty {
-              <tr><td colspan="6" class="empty">لا توجد مواعيد لهذا اليوم. استخدم نموذج "موعد جديد" للحجز.</td></tr>
-            }
+              <tr>
+                <td>{{ a.startTime }} - {{ a.endTime }}</td><td>{{ a.patientName }}<br><span class="muted">{{ a.patientPhone }}</span></td><td>{{ a.doctorName }}</td><td>{{ a.type }}</td><td><span class="badge">{{ a.status }}</span></td>
+                <td class="actions"><button class="secondary" (click)="pickReschedule(a)">جدولة</button><select #s (change)="status(a.id, +s.value)">@for (st of statuses; track st.value) { <option [value]="st.value">{{ st.label }}</option> }</select></td>
+              </tr>
+            } @empty { <tr><td colspan="6" class="empty">لا توجد مواعيد.</td></tr> }
           </tbody>
         </table>
       </div>
+    </section>
+
+    <section class="panel span-6">
+      <h3>الأسبوع الحالي</h3>
+      <table><thead><tr><th>التاريخ</th><th>المريض</th><th>الدكتور</th><th>الوقت</th></tr></thead><tbody>
+        @for (a of rangeAppointments(); track a.id) { <tr><td>{{ a.appointmentDate }}</td><td>{{ a.patientName }}</td><td>{{ a.doctorName }}</td><td>{{ a.startTime }}</td></tr> }
+      </tbody></table>
+    </section>
+
+    <section class="panel span-6">
+      <h3>الشهر الحالي</h3>
+      <table><thead><tr><th>التاريخ</th><th>المريض</th><th>الدكتور</th><th>الحالة</th></tr></thead><tbody>
+        @for (a of monthlyAppointments(); track a.id) { <tr><td>{{ a.appointmentDate }}</td><td>{{ a.patientName }}</td><td>{{ a.doctorName }}</td><td>{{ a.status }}</td></tr> }
+        @empty { <tr><td colspan="4" class="empty">لا توجد مواعيد شهرية.</td></tr> }
+      </tbody></table>
+    </section>
+
+    <section class="panel span-6">
+      <h3>طلبات الحجز الأونلاين</h3>
+      <table><thead><tr><th>الاسم</th><th>الهاتف</th><th>التاريخ</th><th></th></tr></thead><tbody>
+        @for (b of onlineBookings(); track b['id']) {
+          <tr><td>{{ b['patientName'] }}</td><td>{{ b['patientPhone'] }}</td><td>{{ b['requestedDate'] }} {{ b['requestedTime'] }}</td><td class="actions"><button (click)="approveBooking(asString(b['id']))">قبول</button><button class="danger" (click)="rejectBooking(asString(b['id']))">رفض</button></td></tr>
+        } @empty { <tr><td colspan="4" class="empty">لا توجد طلبات.</td></tr> }
+      </tbody></table>
     </section>
   </div>
 </section>

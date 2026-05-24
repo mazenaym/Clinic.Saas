@@ -404,6 +404,49 @@ ORDER BY AppointmentDate DESC;",
         return OkResponse(rows);
     }
 
+    [HttpGet("online-bookings")]
+    public async Task<IActionResult> OnlineBookings()
+    {
+        var tenantId = RequireTenant();
+        if (tenantId is null) return Unauthorized();
+        using var connection = _db.CreateConnection();
+        var rows = await connection.QueryAsync(@"
+SELECT Id, PatientName, PatientPhone, PatientEmail, RequestedDate, RequestedTime, DoctorId, Complaint, Status, ConfirmCode, RejectReason, CreatedAt
+FROM dbo.OnlineBookings
+WHERE TenantId = @TenantId
+ORDER BY CreatedAt DESC;",
+            new { TenantId = tenantId.Value });
+        return OkResponse(rows);
+    }
+
+    [HttpPost("online-bookings/{id:guid}/approve")]
+    public async Task<IActionResult> ApproveOnlineBooking(Guid id)
+    {
+        var tenantId = RequireTenant();
+        if (tenantId is null) return Unauthorized();
+        using var connection = _db.CreateConnection();
+        var rows = await connection.ExecuteAsync(
+            "UPDATE dbo.OnlineBookings SET Status = @Status WHERE TenantId = @TenantId AND Id = @Id",
+            new { TenantId = tenantId.Value, Id = id, Status = OnlineBookingStatus.Confirmed });
+        if (rows == 0) return Error("Online booking not found.", StatusCodes.Status404NotFound);
+        await Audit("Approve", "OnlineBooking", id, new { id });
+        return OkResponse(true, "Online booking approved.");
+    }
+
+    [HttpPost("online-bookings/{id:guid}/reject")]
+    public async Task<IActionResult> RejectOnlineBooking(Guid id, [FromBody] RejectOnlineBookingDto dto)
+    {
+        var tenantId = RequireTenant();
+        if (tenantId is null) return Unauthorized();
+        using var connection = _db.CreateConnection();
+        var rows = await connection.ExecuteAsync(
+            "UPDATE dbo.OnlineBookings SET Status = @Status, RejectReason = @RejectReason WHERE TenantId = @TenantId AND Id = @Id",
+            new { TenantId = tenantId.Value, Id = id, Status = OnlineBookingStatus.Rejected, dto.RejectReason });
+        if (rows == 0) return Error("Online booking not found.", StatusCodes.Status404NotFound);
+        await Audit("Reject", "OnlineBooking", id, dto);
+        return OkResponse(true, "Online booking rejected.");
+    }
+
     [HttpGet("visits/patient/{patientId:guid}")]
     public async Task<IActionResult> VisitHistory(Guid patientId)
     {
@@ -549,6 +592,92 @@ ORDER BY TradeName;",
         using var connection = _db.CreateConnection();
         var rows = await connection.QueryAsync("SELECT * FROM dbo.Payments WHERE TenantId = @TenantId AND PatientId = @PatientId ORDER BY CreatedAt DESC", new { TenantId = tenantId.Value, PatientId = patientId });
         return OkResponse(rows);
+    }
+
+    [Authorize(Roles = "Admin,Reception")]
+    [HttpPut("billing/payments/{id:guid}")]
+    public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentDto dto)
+    {
+        var tenantId = RequireTenant();
+        if (tenantId is null) return Unauthorized();
+
+        var netAmount = dto.TotalAmount + dto.TaxAmount - dto.DiscountAmount;
+        var status = dto.PaidAmount switch
+        {
+            <= 0 => PaymentStatus.Pending,
+            var paid when paid < netAmount => PaymentStatus.Partial,
+            _ => PaymentStatus.Paid
+        };
+
+        using var connection = _db.CreateConnection();
+        connection.Open();
+        using var tx = connection.BeginTransaction();
+
+        var rows = await connection.ExecuteAsync(@"
+UPDATE dbo.Payments
+SET VisitId = @VisitId,
+    PatientId = @PatientId,
+    TotalAmount = @TotalAmount,
+    DiscountAmount = @DiscountAmount,
+    DiscountPct = @DiscountPct,
+    TaxAmount = @TaxAmount,
+    PaidAmount = @PaidAmount,
+    RemainingAmount = @RemainingAmount,
+    PaymentMethod = @PaymentMethod,
+    [Status] = @Status,
+    InsuranceCompany = @InsuranceCompany,
+    InsuranceNumber = @InsuranceNumber,
+    Notes = @Notes,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId AND Id = @Id;",
+            new
+            {
+                TenantId = tenantId.Value,
+                Id = id,
+                dto.VisitId,
+                dto.PatientId,
+                dto.TotalAmount,
+                dto.DiscountAmount,
+                dto.DiscountPct,
+                dto.TaxAmount,
+                dto.PaidAmount,
+                RemainingAmount = netAmount - dto.PaidAmount,
+                dto.PaymentMethod,
+                Status = status,
+                dto.InsuranceCompany,
+                dto.InsuranceNumber,
+                dto.Notes
+            },
+            tx);
+
+        if (rows == 0)
+        {
+            tx.Rollback();
+            return Error("Payment not found.", StatusCodes.Status404NotFound);
+        }
+
+        await connection.ExecuteAsync("DELETE FROM dbo.PaymentItems WHERE PaymentId = @Id", new { Id = id }, tx);
+        foreach (var item in dto.Items)
+        {
+            await connection.ExecuteAsync(@"
+INSERT INTO dbo.PaymentItems (Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice)
+VALUES (NEWID(), @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice);",
+                new
+                {
+                    PaymentId = id,
+                    item.ServiceName,
+                    item.ServiceType,
+                    item.Quantity,
+                    item.UnitPrice,
+                    item.DiscountPct,
+                    TotalPrice = (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m))
+                },
+                tx);
+        }
+
+        tx.Commit();
+        await Audit("Update", "Payment", id, dto);
+        return OkResponse(true, "Payment updated.");
     }
 
     [HttpPost("billing/payments/{id:guid}/refund")]

@@ -78,6 +78,29 @@
     </section>
   }
 
+  @if (tab() === 'profile') {
+    <div class="grid">
+      <section class="panel span-6">
+        <h3>تغيير كلمة المرور</h3>
+        <form class="form-grid" (ngSubmit)="changePassword()">
+          <label class="span-all">كلمة المرور الحالية<input name="currentPassword" type="password" [(ngModel)]="passwordForm.currentPassword" required /></label>
+          <label class="span-all">كلمة المرور الجديدة<input name="newPassword" type="password" [(ngModel)]="passwordForm.newPassword" required /></label>
+          <button class="span-all" [disabled]="ui.busy()">تغيير كلمة المرور</button>
+        </form>
+      </section>
+
+      <section class="panel span-6">
+        <h3>تفضيلات الحساب</h3>
+        <form class="form-grid" (ngSubmit)="savePreferences()">
+          <label>اللغة<select name="language" [(ngModel)]="preferenceForm['language']"><option value="ar">العربية</option><option value="en">English</option></select></label>
+          <label>الثيم<select name="theme" [(ngModel)]="preferenceForm['theme']"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+          <label class="span-all">رابط الصورة<input name="avatarUrl" [(ngModel)]="preferenceForm['avatarUrl']" /></label>
+          <button class="span-all" [disabled]="ui.busy()">حفظ التفضيلات</button>
+        </form>
+      </section>
+    </div>
+  }
+
   @if (tab() === 'labs') {
     <section class="panel">
       <h3>طلبات التحاليل</h3>
