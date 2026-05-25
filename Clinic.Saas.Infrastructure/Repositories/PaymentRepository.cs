@@ -32,7 +32,6 @@ public class PaymentRepository : IPaymentRepository
             {
                 entity.InvoiceNumber = await GenerateInvoiceNumberAsync(connection, transaction, entity.TenantId, entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt);
             }
-
             const string paymentSql = @"
 INSERT INTO dbo.Payments
 (
@@ -59,6 +58,7 @@ VALUES
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
+                
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -90,6 +90,7 @@ VALUES
                     }
 
                     item.PaymentId = entity.Id;
+                   
                     await connection.ExecuteAsync(itemSql, new
                     {
                         item.Id,
@@ -164,6 +165,7 @@ WHERE Id = @Id;";
             entity.DiscountPct,
             entity.TaxAmount,
             entity.PaidAmount,
+            
             entity.PaymentMethod,
             entity.Status,
             entity.InsuranceCompany,
