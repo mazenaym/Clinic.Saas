@@ -26,31 +26,7 @@ public class OperationsController : ControllerBase
         _passwordService = passwordService;
     }
 
-    [HttpPost("auth/change-password")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
-    {
-        if (!_currentUser.UserId.HasValue)
-        {
-            return Unauthorized();
-        }
-
-        using var connection = _db.CreateConnection();
-        var user = await connection.QueryFirstOrDefaultAsync<UserPasswordRow>(
-            "SELECT Id, PasswordHash FROM dbo.Users WHERE Id = @UserId AND IsActive = 1",
-            new { UserId = _currentUser.UserId.Value });
-
-        if (user is null || !_passwordService.VerifyPassword(dto.CurrentPassword, user.PasswordHash))
-        {
-            return Error("Current password is incorrect.", StatusCodes.Status400BadRequest);
-        }
-
-        await connection.ExecuteAsync(
-            "UPDATE dbo.Users SET PasswordHash = @Hash, RefreshToken = NULL, RefreshTokenExpiry = NULL, UpdatedAt = SYSUTCDATETIME() WHERE Id = @UserId",
-            new { UserId = user.Id, Hash = _passwordService.HashPassword(dto.NewPassword) });
-
-        await Audit("ChangePassword", "User", user.Id, new { user.Id });
-        return OkResponse(true, "Password changed successfully.");
-    }
+   
 
     [Authorize(Roles = "Admin")]
     [HttpPut("users/{id:guid}")]

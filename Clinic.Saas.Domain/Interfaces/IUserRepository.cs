@@ -11,4 +11,6 @@ public interface IUserRepository : IBaseRepository<User>
     Task UpdateRefreshTokenAsync(Guid userId, string? refreshToken, DateTime? expiry);
     Task IncrementFailedLoginAsync(Guid userId, int failedAttempts, DateTime? lockedUntil);
     Task ResetFailedLoginAsync(Guid userId);
+    Task<User?> GetActiveByIdAsync(Guid tenantId, Guid userId);
+    Task<bool> UpdatePasswordAsync(Guid tenantId, Guid userId, string passwordHash);
 }

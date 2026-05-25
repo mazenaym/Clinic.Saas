@@ -172,4 +172,43 @@ WHERE Id = @UserId;";
         using var connection = _context.CreateConnection();
         await connection.ExecuteAsync(sql, new { UserId = userId });
     }
+    public async Task<User?> GetActiveByIdAsync(Guid tenantId, Guid userId)
+    {
+        const string sql = @"
+SELECT *
+FROM dbo.Users
+WHERE TenantId = @TenantId
+  AND Id = @UserId
+  AND IsActive = 1;";
+
+        using var connection = _context.CreateConnection();
+        return await connection.QueryFirstOrDefaultAsync<User>(sql, new
+        {
+            TenantId = tenantId,
+            UserId = userId
+        });
+    }
+
+    public async Task<bool> UpdatePasswordAsync(Guid tenantId, Guid userId, string passwordHash)
+    {
+        const string sql = @"
+UPDATE dbo.Users
+SET PasswordHash = @PasswordHash,
+    RefreshToken = NULL,
+    RefreshTokenExpiry = NULL,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @UserId
+  AND IsActive = 1;";
+
+        using var connection = _context.CreateConnection();
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            PasswordHash = passwordHash
+        });
+
+        return rows > 0;
+    }
 }

@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<LoginCommand.Handler>();
         services.AddScoped<RefreshTokenCommand.Handler>();
         services.AddScoped<LogoutCommand.Handler>();
+        services.AddScoped<ChangePasswordCommand.Handler>();
 
         services.AddScoped<RegisterClinicCommand.Handler>();
         services.AddScoped<CheckSubdomainAvailabilityQuery.Handler>();

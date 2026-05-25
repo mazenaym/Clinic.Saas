@@ -15,17 +15,19 @@ public class AuthController : ControllerBase
     private readonly RefreshTokenCommand.Handler _refresh;
     private readonly LogoutCommand.Handler _logout;
     private readonly ICurrentUserService _currentUser;
+    private readonly ChangePasswordCommand.Handler _changePassword;
 
     public AuthController(
         LoginCommand.Handler login,
         RefreshTokenCommand.Handler refresh,
         LogoutCommand.Handler logout,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser , ChangePasswordCommand.Handler changePassword)
     {
         _login = login;
         _refresh = refresh;
         _logout = logout;
         _currentUser = currentUser;
+        _changePassword = changePassword;
     }
 
     [AllowAnonymous]
@@ -64,6 +66,24 @@ public class AuthController : ControllerBase
         }
 
         var result = await _logout.Handle(new LogoutCommand.Command { UserId = _currentUser.UserId.Value });
+        return StatusCode(result.StatusCode, result);
+    }
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _changePassword.Handle(new ChangePasswordCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = _currentUser.UserId.Value,
+            Request = dto
+        });
+
         return StatusCode(result.StatusCode, result);
     }
 }
