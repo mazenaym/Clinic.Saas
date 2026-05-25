@@ -7,11 +7,15 @@ namespace Clinic.Saas.Service.Interfaces
     public interface IFileStorageService
     {
         Task<string> SavePatientDocumentAsync(
-            Guid tenantId,
-            Guid patientId,
-            string originalFileName,
-            string contentType,
-            Stream fileStream,
+         Guid tenantId,
+         Guid patientId,
+         string originalFileName,
+         string contentType,
+         Stream fileStream,
+         CancellationToken cancellationToken = default);
+
+        Task<Stream?> OpenReadAsync(
+            string storageKey,
             CancellationToken cancellationToken = default);
     }
 }

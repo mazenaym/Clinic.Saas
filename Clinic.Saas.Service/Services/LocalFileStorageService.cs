@@ -69,5 +69,43 @@ namespace Clinic.Saas.Service.Services
                 patientId.ToString("N"),
                 storedFileName);
         }
+
+        public Task<Stream?> OpenReadAsync(
+        string storageKey,
+        CancellationToken cancellationToken = default)
+        {
+            var uploadsRoot = Path.Combine(AppContext.BaseDirectory, "uploads");
+
+            var normalizedStorageKey = storageKey
+                .Replace('\\', '/')
+                .TrimStart('/');
+
+            if (!normalizedStorageKey.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<Stream?>(null);
+            }
+
+            var relativePathWithoutUploads = normalizedStorageKey["uploads/".Length..]
+                .Replace('/', Path.DirectorySeparatorChar);
+
+            var fullPath = Path.Combine(uploadsRoot, relativePathWithoutUploads);
+
+            var rootFullPath = Path.GetFullPath(uploadsRoot);
+            var targetFullPath = Path.GetFullPath(fullPath);
+
+            if (!targetFullPath.StartsWith(rootFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<Stream?>(null);
+            }
+
+            if (!File.Exists(targetFullPath))
+            {
+                return Task.FromResult<Stream?>(null);
+            }
+
+            Stream stream = File.OpenRead(targetFullPath);
+            return Task.FromResult<Stream?>(stream);
+        }
     }
 }
+

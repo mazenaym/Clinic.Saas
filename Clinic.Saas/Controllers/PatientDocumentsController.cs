@@ -1,6 +1,7 @@
 ﻿using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
+using Clinic.Saas.Service.UseCases.PatientDocuments.Queries;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,13 +12,19 @@ namespace Clinic.Saas.api.Controllers
     public class PatientDocumentsController : ControllerBase
     {
         private readonly UploadPatientDocumentCommand.Handler _uploadDocument;
+        private readonly GetPatientDocumentsQuery.Handler _getDocuments;
+        private readonly DownloadPatientDocumentQuery.Handler _downloadDocument;
         private readonly ICurrentUserService _currentUser;
 
         public PatientDocumentsController(
             UploadPatientDocumentCommand.Handler uploadDocument,
+            GetPatientDocumentsQuery.Handler getDocuments,
+            DownloadPatientDocumentQuery.Handler downloadDocument,
             ICurrentUserService currentUser)
         {
             _uploadDocument = uploadDocument;
+            _getDocuments = getDocuments;
+            _downloadDocument = downloadDocument;
             _currentUser = currentUser;
         }
 
@@ -62,5 +69,50 @@ namespace Clinic.Saas.api.Controllers
 
             return StatusCode(result.StatusCode, result);
         }
+        [HttpGet]
+        public async Task<IActionResult> GetDocuments(Guid patientId)
+        {
+            if (!_currentUser.TenantId.HasValue)
+            {
+                return Unauthorized();
+            }
+
+            var result = await _getDocuments.Handle(new GetPatientDocumentsQuery.Query
+            {
+                TenantId = _currentUser.TenantId.Value,
+                PatientId = patientId
+            });
+
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpGet("{documentId:guid}/download")]
+        public async Task<IActionResult> Download(Guid patientId, Guid documentId)
+        {
+            if (!_currentUser.TenantId.HasValue)
+            {
+                return Unauthorized();
+            }
+
+            var result = await _downloadDocument.Handle(new DownloadPatientDocumentQuery.Query
+            {
+                TenantId = _currentUser.TenantId.Value,
+                PatientId = patientId,
+                DocumentId = documentId
+            });
+
+            if (!result.Success || result.Data is null)
+            {
+                return StatusCode(result.StatusCode, result);
+            }
+
+            return File(
+                result.Data.FileStream,
+                result.Data.FileType,
+                result.Data.FileName);
+        }
+
+        
     }
 }
+

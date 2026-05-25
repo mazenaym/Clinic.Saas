@@ -8,6 +8,7 @@ using Clinic.Saas.Service.UseCases.Auth.Commands;
 using Clinic.Saas.Service.UseCases.Onboarding.Commands;
 using Clinic.Saas.Service.UseCases.Onboarding.Queries;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
+using Clinic.Saas.Service.UseCases.PatientDocuments.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
@@ -75,6 +76,8 @@ public static class DependencyInjection
         services.AddScoped<GetCurrentUserQuery.Handler>();
 
         services.AddScoped<UploadPatientDocumentCommand.Handler>();
+        services.AddScoped<GetPatientDocumentsQuery.Handler>();
+        services.AddScoped<DownloadPatientDocumentQuery.Handler>();
 
         return services;
     }

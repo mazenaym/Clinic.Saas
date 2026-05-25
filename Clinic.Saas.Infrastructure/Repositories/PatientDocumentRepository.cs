@@ -34,5 +34,41 @@ VALUES
             using var connection = _context.CreateConnection();
             await connection.ExecuteAsync(sql, document);
         }
+    
+
+    public async Task<IEnumerable<PatientDocument>> GetByPatientAsync(Guid tenantId, Guid patientId)
+        {
+            const string sql = @"
+SELECT *
+FROM dbo.PatientDocuments
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+ORDER BY UploadedAt DESC;";
+
+            using var connection = _context.CreateConnection();
+            return await connection.QueryAsync<PatientDocument>(sql, new
+            {
+                TenantId = tenantId,
+                PatientId = patientId
+            });
+        }
+
+        public async Task<PatientDocument?> GetByIdAsync(Guid tenantId, Guid patientId, Guid documentId)
+        {
+            const string sql = @"
+SELECT *
+FROM dbo.PatientDocuments
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+  AND Id = @DocumentId;";
+
+            using var connection = _context.CreateConnection();
+            return await connection.QueryFirstOrDefaultAsync<PatientDocument>(sql, new
+            {
+                TenantId = tenantId,
+                PatientId = patientId,
+                DocumentId = documentId
+            });
+        }
     }
 }
