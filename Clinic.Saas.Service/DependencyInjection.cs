@@ -1,18 +1,19 @@
-using Clinic.Saas.Service.UseCases.Appointments.Commands;
-using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Services;
 using Clinic.Saas.Service.UseCases.Admin.Commands;
 using Clinic.Saas.Service.UseCases.Admin.Queries;
+using Clinic.Saas.Service.UseCases.Appointments.Commands;
+using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Clinic.Saas.Service.UseCases.Auth.Commands;
+using Clinic.Saas.Service.UseCases.Onboarding.Commands;
+using Clinic.Saas.Service.UseCases.Onboarding.Queries;
+using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
-using Clinic.Saas.Service.Interfaces;
-using Clinic.Saas.Service.Services;
-using Clinic.Saas.Service.UseCases.Onboarding.Commands;
-using Clinic.Saas.Service.UseCases.Onboarding.Queries;
 using Clinic.Saas.Service.UseCases.Users.Commands;
 using Clinic.Saas.Service.UseCases.Users.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
@@ -72,6 +73,8 @@ public static class DependencyInjection
         services.AddScoped<CreateUserCommand.Handler>();
         services.AddScoped<GetTenantUsersQuery.Handler>();
         services.AddScoped<GetCurrentUserQuery.Handler>();
+
+        services.AddScoped<UploadPatientDocumentCommand.Handler>();
 
         return services;
     }

@@ -284,47 +284,7 @@ ORDER BY CreatedAt DESC;",
         return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv", "patients-export.csv");
     }
 
-    [HttpPost("patients/{patientId:guid}/documents")]
-    [RequestSizeLimit(10_000_000)]
-    public async Task<IActionResult> UploadPatientDocument(Guid patientId, IFormFile file, [FromForm] short documentType = 1, [FromForm] string? description = null)
-    {
-        var tenantId = RequireTenant();
-        if (tenantId is null || !_currentUser.UserId.HasValue) return Unauthorized();
-        if (file.Length == 0) return Error("File is empty.", StatusCodes.Status400BadRequest);
-
-        var uploads = Path.Combine(AppContext.BaseDirectory, "uploads", tenantId.Value.ToString(), "patients", patientId.ToString());
-        Directory.CreateDirectory(uploads);
-        var safeName = $"{Guid.NewGuid()}-{Path.GetFileName(file.FileName)}";
-        var path = Path.Combine(uploads, safeName);
-        await using (var stream = System.IO.File.Create(path))
-        {
-            await file.CopyToAsync(stream);
-        }
-
-        var id = Guid.NewGuid();
-        using var connection = _db.CreateConnection();
-        await connection.ExecuteAsync(@"
-INSERT INTO dbo.PatientDocuments
-(Id, TenantId, PatientId, FileName, FileUrl, FileSizeKb, FileType, DocumentType, Description, UploadedBy, UploadedAt)
-VALUES
-(@Id, @TenantId, @PatientId, @FileName, @FileUrl, @FileSizeKb, @FileType, @DocumentType, @Description, @UploadedBy, SYSUTCDATETIME());",
-            new
-            {
-                Id = id,
-                TenantId = tenantId.Value,
-                PatientId = patientId,
-                FileName = file.FileName,
-                FileUrl = path,
-                FileSizeKb = (int)Math.Ceiling(file.Length / 1024d),
-                FileType = file.ContentType,
-                DocumentType = documentType,
-                Description = description,
-                UploadedBy = _currentUser.UserId.Value
-            });
-
-        await Audit("Upload", "PatientDocument", id, new { patientId, file.FileName });
-        return OkResponse(new { id, file.FileName, path });
-    }
+    
 
     [HttpGet("appointments/weekly")]
     public Task<IActionResult> WeeklyAppointments([FromQuery] DateTime weekStart) => AppointmentRange(weekStart.Date, weekStart.Date.AddDays(7));

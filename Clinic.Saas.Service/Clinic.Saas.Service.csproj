@@ -18,8 +18,4 @@
     <ProjectReference Include="..\Clinic.Saas.Domain\Clinic.Saas.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Interfaces\" />
-  </ItemGroup>
-
 </Project>

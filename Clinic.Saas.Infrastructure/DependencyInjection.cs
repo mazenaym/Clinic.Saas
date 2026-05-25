@@ -3,6 +3,7 @@ using Clinic.Saas.Infrastructure.Data;
 using Clinic.Saas.Infrastructure.Repositories;
 using Clinic.Saas.Infrastructure.Services;
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Clinic.Saas.Infrastructure;
@@ -26,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        services.AddScoped<IPatientDocumentRepository, PatientDocumentRepository>();
+        services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
         return services;
     }
