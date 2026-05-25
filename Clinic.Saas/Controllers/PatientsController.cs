@@ -47,7 +47,7 @@ public class PatientsController : ControllerBase
             return Unauthorized();
         }
 
-        dto.TenantId = _currentUser.TenantId.Value.ToString();
+       
         var result = await _createPatient.Handle(new CreatePatientCommand.Command
         {
             TenantId = _currentUser.TenantId.Value,
