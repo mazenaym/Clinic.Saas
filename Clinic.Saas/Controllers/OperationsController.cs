@@ -7,6 +7,8 @@ using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
+using Clinic.Saas.Service.UseCases.Visits.Commands;
+using Clinic.Saas.Service.UseCases.Visits.Queries;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +38,9 @@ public class OperationsController : ControllerBase
     private readonly GetPatientTimelineQuery.Handler _getPatientTimeline;
     private readonly FindPatientDuplicatesQuery.Handler _findPatientDuplicates;
     private readonly ExportPatientsQuery.Handler _exportPatients;
+    private readonly GetPatientVisitsQuery.Handler _getPatientVisits;
+    private readonly UpdateVisitCommand.Handler _updateVisit;
+    private readonly FinalizeVisitCommand.Handler _finalizeVisit;
 
     public OperationsController(
         DapperContext db,
@@ -53,7 +58,10 @@ public class OperationsController : ControllerBase
         GetMonthlyRevenueQuery.Handler monthlyRevenue,
         GetPatientTimelineQuery.Handler getPatientTimeline,
         FindPatientDuplicatesQuery.Handler findPatientDuplicates,
-        ExportPatientsQuery.Handler exportPatients)
+        ExportPatientsQuery.Handler exportPatients,
+        GetPatientVisitsQuery.Handler getPatientVisits,
+        UpdateVisitCommand.Handler updateVisit,
+        FinalizeVisitCommand.Handler finalizeVisit)
     {
         _db = db;
         _currentUser = currentUser;
@@ -71,6 +79,9 @@ public class OperationsController : ControllerBase
         _getPatientTimeline = getPatientTimeline;
         _findPatientDuplicates = findPatientDuplicates;
         _exportPatients = exportPatients;
+        _getPatientVisits = getPatientVisits;
+        _updateVisit = updateVisit;
+        _finalizeVisit = finalizeVisit;
     }
 
    
@@ -428,9 +439,15 @@ ORDER BY CreatedAt DESC;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync("SELECT * FROM dbo.Visits WHERE TenantId = @TenantId AND PatientId = @PatientId AND IsDeleted = 0 ORDER BY VisitDate DESC", new { TenantId = tenantId.Value, PatientId = patientId });
-        return OkResponse(rows);
+
+        // Compatibility route: visit history logic lives in VisitsController/GetPatientVisitsQuery.
+        var result = await _getPatientVisits.Handle(new GetPatientVisitsQuery.Query
+        {
+            TenantId = tenantId.Value,
+            PatientId = patientId
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPut("visits/{id:guid}")]
@@ -438,19 +455,21 @@ ORDER BY CreatedAt DESC;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var locked = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.Visits WHERE TenantId = @TenantId AND Id = @Id AND FinalizedAt IS NOT NULL", new { TenantId = tenantId.Value, Id = id });
-        if (locked > 0) return Error("Visit is finalized and cannot be updated.", StatusCodes.Status409Conflict);
 
-        var rows = await connection.ExecuteAsync(@"
-UPDATE dbo.Visits
-SET VisitType = @VisitType, ChiefComplaint = @ChiefComplaint, VitalSigns = @VitalSigns, ClinicalNotes = @ClinicalNotes,
-    Diagnosis = @Diagnosis, DiagnosisCode = @DiagnosisCode, FollowUpDate = @FollowUpDate, UpdatedAt = SYSUTCDATETIME()
-WHERE TenantId = @TenantId AND Id = @Id AND IsDeleted = 0;",
-            new { TenantId = tenantId.Value, Id = id, dto.VisitType, dto.ChiefComplaint, VitalSigns = JsonSerializer.Serialize(dto.VitalSigns), dto.ClinicalNotes, dto.Diagnosis, dto.DiagnosisCode, dto.FollowUpDate });
-        if (rows == 0) return Error("Visit not found.", StatusCodes.Status404NotFound);
-        await Audit("Update", "Visit", id, dto);
-        return OkResponse(true, "Visit updated.");
+        // Compatibility route: update logic lives in VisitsController/UpdateVisitCommand.
+        var result = await _updateVisit.Handle(new UpdateVisitCommand.Command
+        {
+            TenantId = tenantId.Value,
+            VisitId = id,
+            Visit = dto
+        });
+
+        if (result.Success)
+        {
+            await Audit("Update", "Visit", id, dto);
+        }
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost("visits/{id:guid}/finalize")]
@@ -458,11 +477,21 @@ WHERE TenantId = @TenantId AND Id = @Id AND IsDeleted = 0;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null || !_currentUser.UserId.HasValue) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.ExecuteAsync("UPDATE dbo.Visits SET FinalizedAt = SYSUTCDATETIME(), FinalizedBy = @UserId, UpdatedAt = SYSUTCDATETIME() WHERE TenantId = @TenantId AND Id = @Id AND IsDeleted = 0", new { TenantId = tenantId.Value, Id = id, UserId = _currentUser.UserId.Value });
-        if (rows == 0) return Error("Visit not found.", StatusCodes.Status404NotFound);
-        await Audit("Finalize", "Visit", id, new { id });
-        return OkResponse(true, "Visit finalized.");
+
+        // Compatibility route: finalize logic lives in VisitsController/FinalizeVisitCommand.
+        var result = await _finalizeVisit.Handle(new FinalizeVisitCommand.Command
+        {
+            TenantId = tenantId.Value,
+            VisitId = id,
+            FinalizedByUserId = _currentUser.UserId.Value
+        });
+
+        if (result.Success)
+        {
+            await Audit("Finalize", "Visit", id, new { id });
+        }
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("clinical-templates")]

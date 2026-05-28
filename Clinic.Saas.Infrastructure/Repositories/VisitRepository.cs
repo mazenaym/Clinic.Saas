@@ -248,6 +248,63 @@ ORDER BY v.VisitDate DESC;";
         return await connection.QueryAsync<Visit>(sql, new { TenantId = tenantId, PatientId = patientId });
     }
 
+    public async Task<int> UpdateClinicalDetailsAsync(Guid tenantId, Guid id, Visit entity)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Visits
+SET VisitType = @VisitType,
+    ChiefComplaint = @ChiefComplaint,
+    VitalSigns = @VitalSigns,
+    ClinicalNotes = @ClinicalNotes,
+    Diagnosis = @Diagnosis,
+    DiagnosisCode = @DiagnosisCode,
+    FollowUpDate = @FollowUpDate,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsDeleted = 0
+  AND FinalizedAt IS NULL;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            Id = id,
+            entity.VisitType,
+            entity.ChiefComplaint,
+            entity.VitalSigns,
+            entity.ClinicalNotes,
+            entity.Diagnosis,
+            entity.DiagnosisCode,
+            entity.FollowUpDate
+        });
+    }
+
+    public async Task<int> FinalizeAsync(Guid tenantId, Guid id, Guid finalizedByUserId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Visits
+SET FinalizedAt = SYSUTCDATETIME(),
+    FinalizedBy = @FinalizedByUserId,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsDeleted = 0
+  AND FinalizedAt IS NULL;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            Id = id,
+            FinalizedByUserId = finalizedByUserId
+        });
+    }
+
     public async Task<int> CountByDateAsync(Guid tenantId, DateTime date)
     {
         EnsureTenantId(tenantId);

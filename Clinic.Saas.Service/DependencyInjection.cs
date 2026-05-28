@@ -62,6 +62,9 @@ public static class DependencyInjection
 
         services.AddScoped<CreateVisitCommand.Handler>();
         services.AddScoped<GetVisitByIdQuery.Handler>();
+        services.AddScoped<GetPatientVisitsQuery.Handler>();
+        services.AddScoped<UpdateVisitCommand.Handler>();
+        services.AddScoped<FinalizeVisitCommand.Handler>();
 
         services.AddScoped<CreatePrescriptionCommand.Handler>();
         services.AddScoped<GetPrescriptionByIdQuery.Handler>();

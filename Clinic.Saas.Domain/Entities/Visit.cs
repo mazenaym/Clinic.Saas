@@ -23,6 +23,8 @@ namespace Clinic.Saas.Domain.Entities
         public string? DifferentialDx { get; set; }
         public DateTime? FollowUpDate { get; set; }
         public string? FollowUpNotes { get; set; }
+        public DateTime? FinalizedAt { get; set; }
+        public Guid? FinalizedBy { get; set; }
         public bool IsDeleted { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

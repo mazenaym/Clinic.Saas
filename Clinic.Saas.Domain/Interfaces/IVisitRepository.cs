@@ -9,5 +9,7 @@ public interface IVisitRepository : IBaseRepository<Visit>
     Task UpdateAsync(Guid tenantId, Visit entity);
     Task DeleteAsync(Guid tenantId, Guid id);
     Task<IEnumerable<Visit>> GetByPatientIdAsync(Guid tenantId, Guid patientId);
+    Task<int> UpdateClinicalDetailsAsync(Guid tenantId, Guid id, Visit entity);
+    Task<int> FinalizeAsync(Guid tenantId, Guid id, Guid finalizedByUserId);
     Task<int> CountByDateAsync(Guid tenantId, DateTime date);
 }
