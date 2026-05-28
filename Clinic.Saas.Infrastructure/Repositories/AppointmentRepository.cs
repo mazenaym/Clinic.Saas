@@ -267,6 +267,50 @@ ORDER BY a.StartTime;";
         return await connection.QueryAsync<Appointment>(sql, new { TenantId = tenantId, AppointmentDate = appointmentDate.Date });
     }
 
+    public async Task<IEnumerable<Appointment>> GetByDateRangeAsync(Guid tenantId, DateTime from, DateTime to)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = AppointmentSelect + @"
+WHERE a.TenantId = @TenantId
+  AND a.AppointmentDate >= @From
+  AND a.AppointmentDate < @To
+  AND a.IsDeleted = 0
+ORDER BY a.AppointmentDate, a.StartTime;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryAsync<Appointment>(sql, new
+        {
+            TenantId = tenantId,
+            From = from.Date,
+            To = to.Date
+        });
+    }
+
+    public async Task<IEnumerable<AppointmentCancellationReportRow>> GetCancellationReportAsync(Guid tenantId, DateTime from, DateTime to)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT Id, AppointmentDate, StartTime, EndTime, CancelReason, UpdatedAt
+FROM dbo.Appointments
+WHERE TenantId = @TenantId
+  AND Status = @Cancelled
+  AND AppointmentDate >= @From
+  AND AppointmentDate < @To
+  AND IsDeleted = 0
+ORDER BY AppointmentDate DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryAsync<AppointmentCancellationReportRow>(sql, new
+        {
+            TenantId = tenantId,
+            Cancelled = AppointmentStatus.Cancelled,
+            From = from.Date,
+            To = to.Date
+        });
+    }
+
     public async Task<IEnumerable<TimeSlot>> GetBookedSlotsAsync(Guid tenantId, Guid doctorId, DateTime appointmentDate)
     {
         EnsureTenantId(tenantId);

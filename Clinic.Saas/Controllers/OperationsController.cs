@@ -2,6 +2,8 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Infrastructure.Data;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.UseCases.Appointments.Commands;
+using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,12 +20,24 @@ public class OperationsController : ControllerBase
     private readonly DapperContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IPasswordService _passwordService;
+    private readonly GetAppointmentRangeQuery.Handler _getAppointmentRange;
+    private readonly GetAppointmentCancellationsQuery.Handler _getAppointmentCancellations;
+    private readonly RescheduleAppointmentCommand.Handler _rescheduleAppointment;
 
-    public OperationsController(DapperContext db, ICurrentUserService currentUser, IPasswordService passwordService)
+    public OperationsController(
+        DapperContext db,
+        ICurrentUserService currentUser,
+        IPasswordService passwordService,
+        GetAppointmentRangeQuery.Handler getAppointmentRange,
+        GetAppointmentCancellationsQuery.Handler getAppointmentCancellations,
+        RescheduleAppointmentCommand.Handler rescheduleAppointment)
     {
         _db = db;
         _currentUser = currentUser;
         _passwordService = passwordService;
+        _getAppointmentRange = getAppointmentRange;
+        _getAppointmentCancellations = getAppointmentCancellations;
+        _rescheduleAppointment = rescheduleAppointment;
     }
 
    
@@ -287,11 +301,16 @@ ORDER BY CreatedAt DESC;",
     
 
     [HttpGet("appointments/weekly")]
-    public Task<IActionResult> WeeklyAppointments([FromQuery] DateTime weekStart) => AppointmentRange(weekStart.Date, weekStart.Date.AddDays(7));
+    public Task<IActionResult> WeeklyAppointments([FromQuery] DateTime weekStart)
+    {
+        // Compatibility route. New code should call GET /api/appointments/weekly.
+        return AppointmentRange(weekStart.Date, weekStart.Date.AddDays(7));
+    }
 
     [HttpGet("appointments/monthly")]
     public Task<IActionResult> MonthlyAppointments([FromQuery] int year, [FromQuery] int month)
     {
+        // Compatibility route. New code should call GET /api/appointments/monthly.
         var start = new DateTime(year, month, 1);
         return AppointmentRange(start, start.AddMonths(1));
     }
@@ -299,45 +318,40 @@ ORDER BY CreatedAt DESC;",
     [HttpPut("appointments/{id:guid}/reschedule")]
     public async Task<IActionResult> RescheduleAppointment(Guid id, [FromBody] RescheduleAppointmentDto dto)
     {
+        // Compatibility route. New code should call PUT /api/appointments/{id}/reschedule.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
 
-        var appointment = await connection.QueryFirstOrDefaultAsync(
-            "SELECT Id, DoctorId FROM dbo.Appointments WHERE TenantId = @TenantId AND Id = @Id AND IsDeleted = 0",
-            new { TenantId = tenantId.Value, Id = id });
-        if (appointment is null) return Error("Appointment not found.", StatusCodes.Status404NotFound);
+        var result = await _rescheduleAppointment.Handle(new RescheduleAppointmentCommand.Command
+        {
+            TenantId = tenantId.Value,
+            AppointmentId = id,
+            Request = dto
+        });
 
-        var conflict = await connection.ExecuteScalarAsync<int>(@"
-SELECT COUNT(1) FROM dbo.Appointments
-WHERE TenantId = @TenantId AND DoctorId = @DoctorId AND Id <> @Id AND AppointmentDate = @Date AND IsDeleted = 0 AND Status <> @Cancelled
-  AND StartTime < @EndTime AND EndTime > @StartTime;",
-            new { TenantId = tenantId.Value, DoctorId = appointment.DoctorId, Id = id, Date = dto.AppointmentDate.Date, dto.StartTime, dto.EndTime, Cancelled = AppointmentStatus.Cancelled });
-        if (conflict > 0) return Error("Appointment conflicts with another booking.", StatusCodes.Status409Conflict);
+        if (result.Success)
+        {
+            await Audit("Reschedule", "Appointment", id, dto);
+        }
 
-        await connection.ExecuteAsync(@"
-UPDATE dbo.Appointments
-SET AppointmentDate = @Date, StartTime = @StartTime, EndTime = @EndTime, UpdatedAt = SYSUTCDATETIME()
-WHERE TenantId = @TenantId AND Id = @Id;",
-            new { TenantId = tenantId.Value, Id = id, Date = dto.AppointmentDate.Date, dto.StartTime, dto.EndTime });
-
-        await Audit("Reschedule", "Appointment", id, dto);
-        return OkResponse(true, "Appointment rescheduled.");
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("appointments/cancellations")]
     public async Task<IActionResult> CancellationReport([FromQuery] DateTime from, [FromQuery] DateTime to)
     {
+        // Compatibility route. New code should call GET /api/appointments/cancellations.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT Id, AppointmentDate, StartTime, EndTime, CancelReason, UpdatedAt
-FROM dbo.Appointments
-WHERE TenantId = @TenantId AND Status = @Cancelled AND AppointmentDate >= @From AND AppointmentDate < @To
-ORDER BY AppointmentDate DESC;",
-            new { TenantId = tenantId.Value, Cancelled = AppointmentStatus.Cancelled, From = from.Date, To = to.Date.AddDays(1) });
-        return OkResponse(rows);
+
+        var result = await _getAppointmentCancellations.Handle(new GetAppointmentCancellationsQuery.Query
+        {
+            TenantId = tenantId.Value,
+            From = from.Date,
+            To = to.Date
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("online-bookings")]
@@ -736,16 +750,16 @@ ORDER BY CreatedAt DESC;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT a.*, p.FullName AS PatientName, u.FullName AS DoctorName
-FROM dbo.Appointments a
-INNER JOIN dbo.Patients p ON p.Id = a.PatientId AND p.TenantId = a.TenantId
-INNER JOIN dbo.Users u ON u.Id = a.DoctorId AND u.TenantId = a.TenantId
-WHERE a.TenantId = @TenantId AND a.AppointmentDate >= @From AND a.AppointmentDate < @To AND a.IsDeleted = 0
-ORDER BY a.AppointmentDate, a.StartTime;",
-            new { TenantId = tenantId.Value, From = from, To = to });
-        return OkResponse(rows);
+
+        var result = await _getAppointmentRange.Handle(new GetAppointmentRangeQuery.Query
+        {
+            TenantId = tenantId.Value,
+            From = from.Date,
+            To = to.Date,
+            DoctorId = _currentUser.Role == UserRole.Doctor ? _currentUser.UserId : null
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     private Guid? RequireTenant() => _currentUser.TenantId;

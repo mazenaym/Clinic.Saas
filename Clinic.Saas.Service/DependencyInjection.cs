@@ -51,7 +51,10 @@ public static class DependencyInjection
 
         services.AddScoped<CreateAppointmentCommand.Handler>();
         services.AddScoped<GetAppointmentsByDateQuery.Handler>();
+        services.AddScoped<GetAppointmentRangeQuery.Handler>();
+        services.AddScoped<GetAppointmentCancellationsQuery.Handler>();
         services.AddScoped<GetAppointmentAvailabilityQuery.Handler>();
+        services.AddScoped<RescheduleAppointmentCommand.Handler>();
         services.AddScoped<UpdateAppointmentStatusCommand.Handler>();
 
         services.AddScoped<CreateVisitCommand.Handler>();

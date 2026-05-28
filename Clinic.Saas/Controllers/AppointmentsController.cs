@@ -14,7 +14,10 @@ public class AppointmentsController : ControllerBase
 {
     private readonly CreateAppointmentCommand.Handler _createAppointment;
     private readonly GetAppointmentsByDateQuery.Handler _getByDate;
+    private readonly GetAppointmentRangeQuery.Handler _getRange;
+    private readonly GetAppointmentCancellationsQuery.Handler _getCancellations;
     private readonly GetAppointmentAvailabilityQuery.Handler _availability;
+    private readonly RescheduleAppointmentCommand.Handler _rescheduleAppointment;
     private readonly UpdateAppointmentStatusCommand.Handler _updateStatus;
     private readonly ICurrentUserService _currentUser;
     private readonly IClinicAuthorizationService _authorization;
@@ -22,14 +25,20 @@ public class AppointmentsController : ControllerBase
     public AppointmentsController(
         CreateAppointmentCommand.Handler createAppointment,
         GetAppointmentsByDateQuery.Handler getByDate,
+        GetAppointmentRangeQuery.Handler getRange,
+        GetAppointmentCancellationsQuery.Handler getCancellations,
         GetAppointmentAvailabilityQuery.Handler availability,
+        RescheduleAppointmentCommand.Handler rescheduleAppointment,
         UpdateAppointmentStatusCommand.Handler updateStatus,
         ICurrentUserService currentUser,
         IClinicAuthorizationService authorization)
     {
         _createAppointment = createAppointment;
         _getByDate = getByDate;
+        _getRange = getRange;
+        _getCancellations = getCancellations;
         _availability = availability;
+        _rescheduleAppointment = rescheduleAppointment;
         _updateStatus = updateStatus;
         _currentUser = currentUser;
         _authorization = authorization;
@@ -78,6 +87,21 @@ public class AppointmentsController : ControllerBase
     }
 
     [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("weekly")]
+    public Task<IActionResult> GetWeekly([FromQuery] DateTime weekStart)
+    {
+        return GetRange(weekStart.Date, weekStart.Date.AddDays(7));
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("monthly")]
+    public Task<IActionResult> GetMonthly([FromQuery] int year, [FromQuery] int month)
+    {
+        var start = new DateTime(year, month, 1);
+        return GetRange(start, start.AddMonths(1));
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
     [HttpGet("availability")]
     public async Task<IActionResult> GetAvailability([FromQuery] Guid doctorId, [FromQuery] DateTime date)
     {
@@ -96,6 +120,49 @@ public class AppointmentsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             DoctorId = doctorId,
             Date = date
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpPut("{id:guid}/reschedule")]
+    public async Task<IActionResult> Reschedule(Guid id, [FromBody] RescheduleAppointmentDto dto)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        if (!await _authorization.CanUpdateAppointmentAsync(_currentUser.TenantId.Value, id))
+        {
+            return Forbid();
+        }
+
+        var result = await _rescheduleAppointment.Handle(new RescheduleAppointmentCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            AppointmentId = id,
+            Request = dto
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("cancellations")]
+    public async Task<IActionResult> GetCancellations([FromQuery] DateTime from, [FromQuery] DateTime to)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getCancellations.Handle(new GetAppointmentCancellationsQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            From = from.Date,
+            To = to.Date
         });
 
         return StatusCode(result.StatusCode, result);
@@ -121,6 +188,24 @@ public class AppointmentsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Request = dto
         });
+        return StatusCode(result.StatusCode, result);
+    }
+
+    private async Task<IActionResult> GetRange(DateTime from, DateTime to)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getRange.Handle(new GetAppointmentRangeQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            From = from.Date,
+            To = to.Date,
+            DoctorId = _currentUser.Role == Domain.Enums.UserRole.Doctor ? _currentUser.UserId : null
+        });
+
         return StatusCode(result.StatusCode, result);
     }
 }
