@@ -58,7 +58,8 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Queries
                         DocumentType = (short)x.DocumentType,
                         Description = x.Description,
                         UploadedBy = x.UploadedBy,
-                        UploadedAt = x.UploadedAt
+                        UploadedAt = x.UploadedAt,
+                        RowVersion = x.RowVersion.ToBase64RowVersion()
                     }).ToList(),
                     StatusCode = 200
                 };

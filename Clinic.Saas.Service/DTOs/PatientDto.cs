@@ -22,5 +22,6 @@ namespace Clinic.Saas.Service.DTOs
         public string? ChronicDiseases { get; set; }
         public string? InsuranceCompany { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? RowVersion { get; set; }
     }
 }

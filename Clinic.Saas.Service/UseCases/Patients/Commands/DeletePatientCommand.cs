@@ -1,3 +1,4 @@
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
@@ -9,6 +10,7 @@ public class DeletePatientCommand
     {
         public Guid TenantId { get; set; }
         public Guid Id { get; set; }
+        public string? RowVersion { get; set; }
     }
 
     public class Handler
@@ -33,7 +35,31 @@ public class DeletePatientCommand
                 };
             }
 
-            await _repository.DeleteAsync(command.TenantId, command.Id);
+            try
+            {
+                var rowVersion = string.IsNullOrWhiteSpace(command.RowVersion)
+                    ? existing.RowVersion
+                    : command.RowVersion.FromBase64RowVersion();
+                await _repository.DeleteAsync(command.TenantId, command.Id, rowVersion);
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
             return new BaseResponse<object>
             {
                 Success = true,

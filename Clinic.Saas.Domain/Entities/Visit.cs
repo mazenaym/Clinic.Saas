@@ -30,5 +30,6 @@ namespace Clinic.Saas.Domain.Entities
         public DateTime UpdatedAt { get; set; }
         public string PatientName { get; set; } = string.Empty;
         public string DoctorName { get; set; } = string.Empty;
+        public byte[] RowVersion { get; set; } = [];
     }
 }

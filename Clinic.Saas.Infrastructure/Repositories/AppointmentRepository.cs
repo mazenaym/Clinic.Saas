@@ -1,5 +1,6 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Enums;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
@@ -184,13 +185,15 @@ SET PatientId = @PatientId,
     ReminderSent = @ReminderSent,
     UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
             TenantId = tenantId,
+            entity.RowVersion,
             entity.PatientId,
             entity.DoctorId,
             AppointmentDate = entity.AppointmentDate.Date,
@@ -203,12 +206,14 @@ WHERE Id = @Id
             entity.CancelReason,
             entity.ReminderSent
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows);
     }
 
     public Task DeleteAsync(Guid id) =>
         throw new NotSupportedException("Use DeleteAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
-    public async Task DeleteAsync(Guid tenantId, Guid id)
+    public async Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -216,10 +221,12 @@ WHERE Id = @Id
 UPDATE dbo.Appointments
 SET IsDeleted = 1, UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+        var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
     }
 
     public async Task<bool> HasConflictAsync(Guid tenantId, Guid doctorId, DateTime appointmentDate, TimeSpan startTime, TimeSpan endTime, Guid? excludeId = null)
@@ -335,7 +342,7 @@ ORDER BY StartTime;";
         });
     }
 
-    public async Task<bool> UpdateStatusAsync(Guid tenantId, Guid id, AppointmentStatus status, string? cancelReason)
+    public async Task<bool> UpdateStatusAsync(Guid tenantId, Guid id, AppointmentStatus status, string? cancelReason, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -351,17 +358,20 @@ SET Status = @Status,
     UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
   AND TenantId = @TenantId
-  AND IsDeleted = 0;";
+  AND IsDeleted = 0
+  AND RowVersion = @RowVersion;";
 
             var rows = await connection.ExecuteAsync(sql, new
             {
                 TenantId = tenantId,
                 Id = id,
                 Status = status,
-                CancelReason = cancelReason
+                CancelReason = cancelReason,
+                RowVersion = rowVersion
             }, transaction);
 
             transaction.Commit();
+            await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
             return rows > 0;
         }
         catch
@@ -388,6 +398,29 @@ INNER JOIN dbo.Users u ON u.Id = a.DoctorId AND u.TenantId = a.TenantId
         {
             throw new InvalidOperationException("TenantId is required.");
         }
+    }
+
+    private static async Task ThrowIfConcurrencyConflictAsync(IDbConnection connection, Guid tenantId, Guid id, int rows)
+    {
+        if (rows > 0)
+        {
+            return;
+        }
+
+        const string existsSql = @"
+SELECT COUNT(1)
+FROM dbo.Appointments
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsDeleted = 0;";
+
+        var exists = await connection.ExecuteScalarAsync<int>(existsSql, new { TenantId = tenantId, Id = id });
+        if (exists > 0)
+        {
+            throw new ConcurrencyConflictException("Appointment was modified by another request.");
+        }
+
+        throw new RecordNotFoundException("Appointment was not found.");
     }
 
     private sealed class AppointmentReferenceStatus

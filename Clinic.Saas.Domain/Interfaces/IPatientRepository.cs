@@ -10,7 +10,7 @@ namespace Clinic.Saas.Domain.Interfaces
         Task<Patient?> GetByIdAsync(Guid tenantId, Guid id);
         Task<IEnumerable<Patient>> GetAllAsync(Guid tenantId);
         Task UpdateAsync(Guid tenantId, Patient entity);
-        Task DeleteAsync(Guid tenantId, Guid id);
+        Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion);
         Task<Patient?> GetByPhoneAsync(Guid tenantId, string phone);
         Task<IEnumerable<Patient>> SearchAsync(Guid tenantId, string searchTerm);
         Task<IEnumerable<PatientTimelineRow>> GetTimelineAsync(Guid tenantId, Guid patientId);

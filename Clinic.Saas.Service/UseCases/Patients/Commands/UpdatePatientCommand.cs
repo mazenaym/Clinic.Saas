@@ -1,4 +1,5 @@
 using AutoMapper;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 using FluentValidation;
@@ -52,8 +53,33 @@ public class UpdatePatientCommand
                 };
             }
 
+            var currentRowVersion = existing.RowVersion;
             _mapper.Map(command.Patient, existing);
-            await _repository.UpdateAsync(command.TenantId, existing);
+            existing.RowVersion = string.IsNullOrWhiteSpace(command.Patient.RowVersion)
+                ? currentRowVersion
+                : command.Patient.RowVersion.FromBase64RowVersion();
+            try
+            {
+                await _repository.UpdateAsync(command.TenantId, existing);
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<PatientDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<PatientDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
 
             var updated = await _repository.GetByIdAsync(command.TenantId, existing.Id);
             return new BaseResponse<PatientDto>

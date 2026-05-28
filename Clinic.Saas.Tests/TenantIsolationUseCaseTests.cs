@@ -311,7 +311,7 @@ public class TenantIsolationUseCaseTests
             return Task.CompletedTask;
         }
 
-        public Task DeleteAsync(Guid tenantId, Guid id)
+        public Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is not null)
@@ -381,7 +381,7 @@ public class TenantIsolationUseCaseTests
             return Task.CompletedTask;
         }
 
-        public Task DeleteAsync(Guid tenantId, Guid id)
+        public Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is not null)
@@ -407,7 +407,7 @@ public class TenantIsolationUseCaseTests
         public Task<IEnumerable<TimeSlot>> GetBookedSlotsAsync(Guid tenantId, Guid doctorId, DateTime appointmentDate) =>
             Task.FromResult(Enumerable.Empty<TimeSlot>());
 
-        public Task<bool> UpdateStatusAsync(Guid tenantId, Guid id, AppointmentStatus status, string? cancelReason)
+        public Task<bool> UpdateStatusAsync(Guid tenantId, Guid id, AppointmentStatus status, string? cancelReason, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is null)
@@ -447,7 +447,7 @@ public class TenantIsolationUseCaseTests
 
         public Task UpdateAsync(Guid tenantId, Visit entity) => Task.CompletedTask;
 
-        public Task DeleteAsync(Guid tenantId, Guid id)
+        public Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is not null)
@@ -464,7 +464,7 @@ public class TenantIsolationUseCaseTests
         public Task<int> UpdateClinicalDetailsAsync(Guid tenantId, Guid id, Visit entity) =>
             Task.FromResult(Find(tenantId, id) is null ? 0 : 1);
 
-        public Task<int> FinalizeAsync(Guid tenantId, Guid id, Guid finalizedByUserId)
+        public Task<int> FinalizeAsync(Guid tenantId, Guid id, Guid finalizedByUserId, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is null)
@@ -504,7 +504,7 @@ public class TenantIsolationUseCaseTests
 
         public Task UpdateAsync(Guid tenantId, Prescription entity) => Task.CompletedTask;
 
-        public Task DeleteAsync(Guid tenantId, Guid id)
+        public Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is not null)
@@ -518,7 +518,7 @@ public class TenantIsolationUseCaseTests
         public Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid tenantId, Guid patientId) =>
             Task.FromResult(_prescriptions.Where(x => x.TenantId == tenantId && x.PatientId == patientId).AsEnumerable());
 
-        public Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id)
+        public Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is null)
@@ -558,7 +558,7 @@ public class TenantIsolationUseCaseTests
         public Task UpdateAsync(Guid tenantId, Payment entity) => Task.CompletedTask;
         public Task<bool> UpdateWithItemsAsync(Guid tenantId, Payment entity) => Task.FromResult(Find(tenantId, entity.Id) is not null);
 
-        public Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason)
+        public Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason, byte[] rowVersion)
         {
             var existing = Find(tenantId, id);
             if (existing is null)
@@ -571,7 +571,7 @@ public class TenantIsolationUseCaseTests
             return Task.FromResult(true);
         }
 
-        public Task DeleteAsync(Guid tenantId, Guid id) => Task.CompletedTask;
+        public Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion) => Task.CompletedTask;
         public Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt) => Task.FromResult("INV-TEST");
         public Task<IEnumerable<Payment>> GetByDateAsync(Guid tenantId, DateTime date) =>
             Task.FromResult(_payments.Where(x => x.TenantId == tenantId && x.CreatedAt.Date == date.Date).AsEnumerable());

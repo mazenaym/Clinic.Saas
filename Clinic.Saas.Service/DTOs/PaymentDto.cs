@@ -16,5 +16,6 @@ namespace Clinic.Saas.Service.DTOs
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string PatientName { get; set; } = string.Empty;
+        public string? RowVersion { get; set; }
     }
 }

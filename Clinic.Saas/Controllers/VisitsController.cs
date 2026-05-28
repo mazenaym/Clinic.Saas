@@ -121,7 +121,7 @@ public class VisitsController : ControllerBase
 
     [Authorize(Roles = "Admin,Doctor")]
     [HttpPost("{id:guid}/finalize")]
-    public async Task<IActionResult> Finalize(Guid id)
+    public async Task<IActionResult> Finalize(Guid id, [FromHeader(Name = "If-Match")] string? rowVersion)
     {
         if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue)
         {
@@ -132,7 +132,8 @@ public class VisitsController : ControllerBase
         {
             TenantId = _currentUser.TenantId.Value,
             VisitId = id,
-            FinalizedByUserId = _currentUser.UserId.Value
+            FinalizedByUserId = _currentUser.UserId.Value,
+            RowVersion = rowVersion
         });
 
         return StatusCode(result.StatusCode, result);

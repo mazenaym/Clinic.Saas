@@ -1,5 +1,6 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Enums;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
@@ -217,13 +218,15 @@ SET InvoiceNumber = @InvoiceNumber,
     Notes = @Notes,
     UpdatedAt = @UpdatedAt
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
             TenantId = tenantId,
+            entity.RowVersion,
             entity.InvoiceNumber,
             entity.TotalAmount,
             entity.DiscountAmount,
@@ -238,6 +241,8 @@ WHERE Id = @Id
             entity.Notes,
             entity.UpdatedAt
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows);
     }
 
     public async Task<bool> UpdateWithItemsAsync(Guid tenantId, Payment entity)
@@ -267,12 +272,14 @@ SET VisitId = @VisitId,
     Notes = @Notes,
     UpdatedAt = SYSUTCDATETIME()
 WHERE TenantId = @TenantId
-  AND Id = @Id;";
+  AND Id = @Id
+  AND RowVersion = @RowVersion;";
 
             var rows = await connection.ExecuteAsync(updatePaymentSql, new
             {
                 TenantId = tenantId,
                 entity.Id,
+                entity.RowVersion,
                 entity.VisitId,
                 entity.PatientId,
                 entity.TotalAmount,
@@ -289,6 +296,7 @@ WHERE TenantId = @TenantId
 
             if (rows == 0)
             {
+                await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows, transaction);
                 transaction.Rollback();
                 return false;
             }
@@ -349,7 +357,7 @@ VALUES
         }
     }
 
-    public async Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason)
+    public async Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -360,7 +368,8 @@ SET Status = @Status,
     Notes = CONCAT(COALESCE(Notes, ''), @Reason),
     UpdatedAt = SYSUTCDATETIME()
 WHERE TenantId = @TenantId
-  AND Id = @Id;";
+  AND Id = @Id
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         var rows = await connection.ExecuteAsync(sql, new
@@ -368,20 +377,46 @@ WHERE TenantId = @TenantId
             TenantId = tenantId,
             Id = id,
             Status = PaymentStatus.Refunded,
-            Reason = $" Refund: {reason}"
+            Reason = $" Refund: {reason}",
+            RowVersion = rowVersion
         });
 
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
         return rows > 0;
     }
 
     public Task DeleteAsync(Guid id) =>
         throw new NotSupportedException("Use DeleteAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
-    public async Task DeleteAsync(Guid tenantId, Guid id)
+    public async Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
-        const string sql = @"
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+
+        try
+        {
+            const string lockPaymentSql = @"
+SELECT COUNT(1)
+FROM dbo.Payments WITH (UPDLOCK, HOLDLOCK)
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND RowVersion = @RowVersion;";
+
+            var matched = await connection.ExecuteScalarAsync<int>(
+                lockPaymentSql,
+                new { TenantId = tenantId, Id = id, RowVersion = rowVersion },
+                transaction);
+
+            if (matched == 0)
+            {
+                await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, 0, transaction);
+                transaction.Rollback();
+                return;
+            }
+
+            const string sql = @"
 DELETE pi
 FROM dbo.PaymentItems pi
 INNER JOIN dbo.Payments pay ON pay.Id = pi.PaymentId
@@ -390,10 +425,18 @@ WHERE pay.Id = @Id
 
 DELETE FROM dbo.Payments
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+            var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion }, transaction);
+            await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows, transaction);
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
@@ -572,6 +615,33 @@ ORDER BY ServiceName;";
         {
             throw new InvalidOperationException("TenantId is required.");
         }
+    }
+
+    private static async Task ThrowIfConcurrencyConflictAsync(
+        IDbConnection connection,
+        Guid tenantId,
+        Guid id,
+        int rows,
+        IDbTransaction? transaction = null)
+    {
+        if (rows > 0)
+        {
+            return;
+        }
+
+        const string existsSql = @"
+SELECT COUNT(1)
+FROM dbo.Payments
+WHERE TenantId = @TenantId
+  AND Id = @Id;";
+
+        var exists = await connection.ExecuteScalarAsync<int>(existsSql, new { TenantId = tenantId, Id = id }, transaction);
+        if (exists > 0)
+        {
+            throw new ConcurrencyConflictException("Payment was modified by another request.");
+        }
+
+        throw new RecordNotFoundException("Payment was not found.");
     }
 
     private sealed class PaymentReferenceStatus

@@ -1,4 +1,5 @@
 using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 using System.Text.Json;
@@ -54,10 +55,35 @@ public class UpdateVisitCommand
                 ClinicalNotes = command.Visit.ClinicalNotes,
                 Diagnosis = command.Visit.Diagnosis,
                 DiagnosisCode = command.Visit.DiagnosisCode,
-                FollowUpDate = command.Visit.FollowUpDate
+                FollowUpDate = command.Visit.FollowUpDate,
+                RowVersion = string.IsNullOrWhiteSpace(command.Visit.RowVersion)
+                    ? visit.RowVersion
+                    : command.Visit.RowVersion.FromBase64RowVersion()
             };
 
-            var rows = await _repository.UpdateClinicalDetailsAsync(command.TenantId, command.VisitId, entity);
+            int rows;
+            try
+            {
+                rows = await _repository.UpdateClinicalDetailsAsync(command.TenantId, command.VisitId, entity);
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
             if (rows == 0)
             {
                 return new BaseResponse<object>

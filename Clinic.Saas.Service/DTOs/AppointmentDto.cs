@@ -18,5 +18,6 @@ namespace Clinic.Saas.Service.DTOs
         public string DoctorName { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public bool ReminderSent { get; set; }
+        public string? RowVersion { get; set; }
     }
 }

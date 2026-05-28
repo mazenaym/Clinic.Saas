@@ -1,3 +1,4 @@
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
@@ -55,8 +56,32 @@ public class RescheduleAppointmentCommand
             appointment.AppointmentDate = command.Request.AppointmentDate.Date;
             appointment.StartTime = command.Request.StartTime;
             appointment.EndTime = command.Request.EndTime;
+            appointment.RowVersion = string.IsNullOrWhiteSpace(command.Request.RowVersion)
+                ? appointment.RowVersion
+                : command.Request.RowVersion.FromBase64RowVersion();
 
-            await _repository.UpdateAsync(command.TenantId, appointment);
+            try
+            {
+                await _repository.UpdateAsync(command.TenantId, appointment);
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
 
             return new BaseResponse<object>
             {

@@ -21,5 +21,6 @@ namespace Clinic.Saas.Domain.Entities
         public ICollection<PrescriptionItem> Items { get; set; } = new List<PrescriptionItem>();
         public string PatientName { get; set; } = string.Empty;
         public string DoctorName { get; set; } = string.Empty;
+        public byte[] RowVersion { get; set; } = [];
     }
 }

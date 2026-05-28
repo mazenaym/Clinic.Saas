@@ -1,4 +1,5 @@
 using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
@@ -171,13 +172,15 @@ SET Notes = @Notes,
     SentViaSms = @SentViaSms,
     IsActive = @IsActive
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
             TenantId = tenantId,
+            entity.RowVersion,
             entity.Notes,
             entity.QrCode,
             entity.PdfUrl,
@@ -185,12 +188,14 @@ WHERE Id = @Id
             entity.SentViaSms,
             entity.IsActive
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows);
     }
 
     public Task DeleteAsync(Guid id) =>
         throw new NotSupportedException("Use DeleteAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
-    public async Task DeleteAsync(Guid tenantId, Guid id)
+    public async Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -198,10 +203,12 @@ WHERE Id = @Id
 UPDATE dbo.Prescriptions
 SET IsActive = 0
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+        var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
     }
 
     public async Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid tenantId, Guid patientId)
@@ -218,7 +225,7 @@ ORDER BY pr.CreatedAt DESC;";
         return await connection.QueryAsync<Prescription>(sql, new { TenantId = tenantId, PatientId = patientId });
     }
 
-    public async Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id)
+    public async Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -227,10 +234,13 @@ UPDATE dbo.Prescriptions
 SET SentViaWhatsapp = 1
 WHERE TenantId = @TenantId
   AND Id = @Id
-  AND IsActive = 1;";
+  AND IsActive = 1
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        return await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+        var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
+        return rows;
     }
 
     private const string PrescriptionSelect = @"
@@ -268,6 +278,29 @@ ORDER BY SortOrder, DrugName;";
         {
             throw new InvalidOperationException("TenantId is required.");
         }
+    }
+
+    private static async Task ThrowIfConcurrencyConflictAsync(IDbConnection connection, Guid tenantId, Guid id, int rows)
+    {
+        if (rows > 0)
+        {
+            return;
+        }
+
+        const string existsSql = @"
+SELECT COUNT(1)
+FROM dbo.Prescriptions
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsActive = 1;";
+
+        var exists = await connection.ExecuteScalarAsync<int>(existsSql, new { TenantId = tenantId, Id = id });
+        if (exists > 0)
+        {
+            throw new ConcurrencyConflictException("Prescription was modified by another request.");
+        }
+
+        throw new RecordNotFoundException("Prescription was not found.");
     }
 
     private sealed class PrescriptionReferenceStatus

@@ -105,7 +105,7 @@ public class PrescriptionsController : ControllerBase
 
     [Authorize(Roles = "Admin,Doctor")]
     [HttpPost("{id:guid}/send-whatsapp")]
-    public async Task<IActionResult> SendWhatsapp(Guid id)
+    public async Task<IActionResult> SendWhatsapp(Guid id, [FromHeader(Name = "If-Match")] string? rowVersion)
     {
         if (!_currentUser.TenantId.HasValue)
         {
@@ -115,7 +115,8 @@ public class PrescriptionsController : ControllerBase
         var result = await _sendWhatsapp.Handle(new SendPrescriptionWhatsappCommand.Command
         {
             TenantId = _currentUser.TenantId.Value,
-            PrescriptionId = id
+            PrescriptionId = id,
+            RowVersion = rowVersion
         });
 
         return StatusCode(result.StatusCode, result);

@@ -10,5 +10,6 @@ namespace Clinic.Saas.Service.DTOs
         public Guid Id { get; set; }
         public AppointmentStatus Status { get; set; }
         public string? CancelReason { get; set; }
+        public string? RowVersion { get; set; }
     }
 }

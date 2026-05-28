@@ -1,4 +1,5 @@
 using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Infrastructure.Data;
 using Clinic.Saas.Service.Interfaces;
@@ -287,13 +288,15 @@ SET FullName = @FullName,
     InsuranceNumber = @InsuranceNumber,
     UpdatedAt = @UpdatedAt
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
             TenantId = tenantId,
+            entity.RowVersion,
             entity.FullName,
             entity.PhoneNumber,
             entity.DateOfBirth,
@@ -311,22 +314,51 @@ WHERE Id = @Id
             entity.InsuranceNumber,
             entity.UpdatedAt
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows, "Patient");
     }
 
-    public async Task DeleteAsync(Guid tenantId, Guid id)
+    public async Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
     {
         const string sql = @"
 UPDATE dbo.Patients
 SET IsDeleted = 1, UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
-            Id = id
+            Id = id,
+            RowVersion = rowVersion
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows, "Patient");
+    }
+
+    private static async Task ThrowIfConcurrencyConflictAsync(IDbConnection connection, Guid tenantId, Guid id, int rows, string entityName)
+    {
+        if (rows > 0)
+        {
+            return;
+        }
+
+        const string existsSql = @"
+SELECT COUNT(1)
+FROM dbo.Patients
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsDeleted = 0;";
+
+        var exists = await connection.ExecuteScalarAsync<int>(existsSql, new { TenantId = tenantId, Id = id });
+        if (exists > 0)
+        {
+            throw new ConcurrencyConflictException($"{entityName} was modified by another request.");
+        }
+
+        throw new RecordNotFoundException($"{entityName} was not found.");
     }
 
 }

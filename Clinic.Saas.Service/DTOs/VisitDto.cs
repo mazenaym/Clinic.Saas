@@ -16,5 +16,6 @@ namespace Clinic.Saas.Service.DTOs
         public DateTime? FollowUpDate { get; set; }
         public string PatientName { get; set; } = string.Empty;
         public string DoctorName { get; set; } = string.Empty;
+        public string? RowVersion { get; set; }
     }
 }

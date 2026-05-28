@@ -6,7 +6,7 @@ public interface IPrescriptionRepository : IBaseRepository<Prescription>
 {
     Task<Prescription?> GetByIdAsync(Guid tenantId, Guid id);
     Task UpdateAsync(Guid tenantId, Prescription entity);
-    Task DeleteAsync(Guid tenantId, Guid id);
+    Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion);
     Task<IEnumerable<Prescription>> GetByPatientIdAsync(Guid tenantId, Guid patientId);
-    Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id);
+    Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id, byte[] rowVersion);
 }

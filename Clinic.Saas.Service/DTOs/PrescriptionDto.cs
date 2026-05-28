@@ -15,5 +15,6 @@ namespace Clinic.Saas.Service.DTOs
         public List<PrescriptionItemDto> Items { get; set; } = new();
         public string DoctorName { get; set; } = string.Empty;
         public string PatientName { get; set; } = string.Empty;
+        public string? RowVersion { get; set; }
     }
 }

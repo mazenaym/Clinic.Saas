@@ -8,8 +8,8 @@ public interface IPaymentRepository : IBaseRepository<Payment>
     Task<IEnumerable<Payment>> GetByPatientAsync(Guid tenantId, Guid patientId);
     Task UpdateAsync(Guid tenantId, Payment entity);
     Task<bool> UpdateWithItemsAsync(Guid tenantId, Payment entity);
-    Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason);
-    Task DeleteAsync(Guid tenantId, Guid id);
+    Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason, byte[] rowVersion);
+    Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion);
     Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt);
     Task<IEnumerable<Payment>> GetByDateAsync(Guid tenantId, DateTime date);
     Task<IEnumerable<PaymentDebtRow>> GetDebtTrackingAsync(Guid tenantId);

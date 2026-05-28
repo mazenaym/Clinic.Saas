@@ -1,5 +1,6 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Enums;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
@@ -25,6 +26,17 @@ public class UpdatePaymentCommand
 
         public async Task<BaseResponse<object>> Handle(Command command)
         {
+            var existing = await _repository.GetByIdAsync(command.TenantId, command.PaymentId);
+            if (existing is null)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = "Payment not found.",
+                    StatusCode = 404
+                };
+            }
+
             var netAmount = command.Payment.TotalAmount + command.Payment.TaxAmount - command.Payment.DiscountAmount;
             var status = command.Payment.PaidAmount switch
             {
@@ -49,6 +61,9 @@ public class UpdatePaymentCommand
                 InsuranceCompany = command.Payment.InsuranceCompany,
                 InsuranceNumber = command.Payment.InsuranceNumber,
                 Notes = command.Payment.Notes,
+                RowVersion = string.IsNullOrWhiteSpace(command.Payment.RowVersion)
+                    ? existing.RowVersion
+                    : command.Payment.RowVersion.FromBase64RowVersion(),
                 Items = command.Payment.Items.Select(item => new PaymentItem
                 {
                     ServiceName = item.ServiceName,
@@ -59,7 +74,29 @@ public class UpdatePaymentCommand
                 }).ToList()
             };
 
-            var updated = await _repository.UpdateWithItemsAsync(command.TenantId, entity);
+            bool updated;
+            try
+            {
+                updated = await _repository.UpdateWithItemsAsync(command.TenantId, entity);
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
             if (!updated)
             {
                 return new BaseResponse<object>

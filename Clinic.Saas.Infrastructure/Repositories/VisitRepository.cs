@@ -1,5 +1,6 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Enums;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
@@ -195,13 +196,15 @@ SET AppointmentId = @AppointmentId,
     FollowUpNotes = @FollowUpNotes,
     UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
             TenantId = tenantId,
+            entity.RowVersion,
             entity.AppointmentId,
             entity.DoctorId,
             entity.VisitDate,
@@ -215,12 +218,14 @@ WHERE Id = @Id
             entity.FollowUpDate,
             entity.FollowUpNotes
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows);
     }
 
     public Task DeleteAsync(Guid id) =>
         throw new NotSupportedException("Use DeleteAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
-    public async Task DeleteAsync(Guid tenantId, Guid id)
+    public async Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -228,10 +233,12 @@ WHERE Id = @Id
 UPDATE dbo.Visits
 SET IsDeleted = 1, UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
-  AND TenantId = @TenantId;";
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+        var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
     }
 
     public async Task<IEnumerable<Visit>> GetByPatientIdAsync(Guid tenantId, Guid patientId)
@@ -265,10 +272,11 @@ SET VisitType = @VisitType,
 WHERE TenantId = @TenantId
   AND Id = @Id
   AND IsDeleted = 0
-  AND FinalizedAt IS NULL;";
+  AND FinalizedAt IS NULL
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        return await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
             Id = id,
@@ -278,11 +286,15 @@ WHERE TenantId = @TenantId
             entity.ClinicalNotes,
             entity.Diagnosis,
             entity.DiagnosisCode,
-            entity.FollowUpDate
+            entity.FollowUpDate,
+            entity.RowVersion
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
+        return rows;
     }
 
-    public async Task<int> FinalizeAsync(Guid tenantId, Guid id, Guid finalizedByUserId)
+    public async Task<int> FinalizeAsync(Guid tenantId, Guid id, Guid finalizedByUserId, byte[] rowVersion)
     {
         EnsureTenantId(tenantId);
 
@@ -294,15 +306,20 @@ SET FinalizedAt = SYSUTCDATETIME(),
 WHERE TenantId = @TenantId
   AND Id = @Id
   AND IsDeleted = 0
-  AND FinalizedAt IS NULL;";
+  AND FinalizedAt IS NULL
+  AND RowVersion = @RowVersion;";
 
         using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
-        return await connection.ExecuteAsync(sql, new
+        var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
             Id = id,
-            FinalizedByUserId = finalizedByUserId
+            FinalizedByUserId = finalizedByUserId,
+            RowVersion = rowVersion
         });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
+        return rows;
     }
 
     public async Task<int> CountByDateAsync(Guid tenantId, DateTime date)
@@ -336,6 +353,29 @@ INNER JOIN dbo.Users u ON u.Id = v.DoctorId AND u.TenantId = v.TenantId
         {
             throw new InvalidOperationException("TenantId is required.");
         }
+    }
+
+    private static async Task ThrowIfConcurrencyConflictAsync(IDbConnection connection, Guid tenantId, Guid id, int rows)
+    {
+        if (rows > 0)
+        {
+            return;
+        }
+
+        const string existsSql = @"
+SELECT COUNT(1)
+FROM dbo.Visits
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsDeleted = 0;";
+
+        var exists = await connection.ExecuteScalarAsync<int>(existsSql, new { TenantId = tenantId, Id = id });
+        if (exists > 0)
+        {
+            throw new ConcurrencyConflictException("Visit was modified by another request.");
+        }
+
+        throw new RecordNotFoundException("Visit was not found.");
     }
 
     private sealed class VisitReferenceStatus

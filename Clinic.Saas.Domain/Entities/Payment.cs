@@ -30,5 +30,6 @@ namespace Clinic.Saas.Domain.Entities
 
         public ICollection<PaymentItem> Items { get; set; } = new List<PaymentItem>();
         public string PatientName { get; set; } = string.Empty;
+        public byte[] RowVersion { get; set; } = [];
     }
 }

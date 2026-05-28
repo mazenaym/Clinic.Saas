@@ -1,3 +1,4 @@
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
@@ -9,6 +10,7 @@ public class SendPrescriptionWhatsappCommand
     {
         public Guid TenantId { get; set; }
         public Guid PrescriptionId { get; set; }
+        public string? RowVersion { get; set; }
     }
 
     public class Handler
@@ -46,7 +48,31 @@ public class SendPrescriptionWhatsappCommand
                 };
             }
 
-            await _prescriptionRepository.MarkSentViaWhatsappAsync(command.TenantId, command.PrescriptionId);
+            try
+            {
+                await _prescriptionRepository.MarkSentViaWhatsappAsync(
+                    command.TenantId,
+                    command.PrescriptionId,
+                    (command.RowVersion ?? prescription.RowVersion.ToBase64RowVersion()).FromBase64RowVersion());
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
 
             return new BaseResponse<object>
             {

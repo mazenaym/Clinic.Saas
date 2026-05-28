@@ -118,7 +118,8 @@ SELECT
     DocumentType,
     Description,
     UploadedBy,
-    UploadedAt
+    UploadedAt,
+    RowVersion
 FROM dbo.PatientDocuments
 WHERE TenantId = @TenantId
   AND PatientId = @PatientId
@@ -150,7 +151,8 @@ SELECT
     DocumentType,
     Description,
     UploadedBy,
-    UploadedAt
+    UploadedAt,
+    RowVersion
 FROM dbo.PatientDocuments
 WHERE TenantId = @TenantId
   AND PatientId = @PatientId

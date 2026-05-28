@@ -1,3 +1,4 @@
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
@@ -23,10 +24,48 @@ public class RefundPaymentCommand
 
         public async Task<BaseResponse<object>> Handle(Command command)
         {
-            var refunded = await _repository.RefundAsync(
-                command.TenantId,
-                command.PaymentId,
-                command.Refund.Reason);
+            var existing = await _repository.GetByIdAsync(command.TenantId, command.PaymentId);
+            if (existing is null)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = "Payment not found.",
+                    StatusCode = 404
+                };
+            }
+
+            bool refunded;
+            try
+            {
+                var rowVersion = string.IsNullOrWhiteSpace(command.Refund.RowVersion)
+                    ? existing.RowVersion
+                    : command.Refund.RowVersion.FromBase64RowVersion();
+
+                refunded = await _repository.RefundAsync(
+                    command.TenantId,
+                    command.PaymentId,
+                    command.Refund.Reason,
+                    rowVersion);
+            }
+            catch (ConcurrencyConflictException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 409
+                };
+            }
+            catch (RecordNotFoundException ex)
+            {
+                return new BaseResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    StatusCode = 404
+                };
+            }
 
             if (!refunded)
             {

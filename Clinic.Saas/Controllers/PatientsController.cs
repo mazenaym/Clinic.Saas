@@ -198,7 +198,7 @@ public class PatientsController : ControllerBase
 
     [Authorize(Roles = "Admin,Reception")]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, [FromHeader(Name = "If-Match")] string? rowVersion)
     {
         if (!_currentUser.TenantId.HasValue)
         {
@@ -208,7 +208,8 @@ public class PatientsController : ControllerBase
         var result = await _deletePatient.Handle(new DeletePatientCommand.Command
         {
             TenantId = _currentUser.TenantId.Value,
-            Id = id
+            Id = id,
+            RowVersion = rowVersion
         });
         return StatusCode(result.StatusCode, result);
     }

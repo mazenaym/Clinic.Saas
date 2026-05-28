@@ -52,6 +52,7 @@ public class RescheduleAppointmentDto
     public DateTime AppointmentDate { get; set; }
     public TimeSpan StartTime { get; set; }
     public TimeSpan EndTime { get; set; }
+    public string? RowVersion { get; set; }
 }
 
 public class RejectOnlineBookingDto
@@ -77,6 +78,7 @@ public class OnlineBookingOperationDto
 
 public class UpdateVisitDto : CreateVisitDto
 {
+    public string? RowVersion { get; set; }
 }
 
 public class ClinicalTemplateDto
@@ -100,11 +102,13 @@ public class CreateClinicalTemplateDto
 
 public class UpdatePaymentDto : CreatePaymentDto
 {
+    public string? RowVersion { get; set; }
 }
 
 public class RefundPaymentDto
 {
     public string? Reason { get; set; }
+    public string? RowVersion { get; set; }
 }
 
 public class AuditLogDto
