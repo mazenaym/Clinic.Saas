@@ -204,6 +204,28 @@ WHERE TenantId = @TenantId
         return rows > 0;
     }
 
+    public async Task<bool> UpdatePreferencesAsync(Guid tenantId, Guid userId, string? avatarUrl)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Users
+SET AvatarUrl = COALESCE(@AvatarUrl, AvatarUrl),
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            AvatarUrl = avatarUrl
+        });
+
+        return rows > 0;
+    }
+
     private static void EnsureTenantId(Guid tenantId)
     {
         if (tenantId == Guid.Empty)

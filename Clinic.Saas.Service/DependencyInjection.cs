@@ -95,6 +95,8 @@ public static class DependencyInjection
         services.AddScoped<CreateUserCommand.Handler>();
         services.AddScoped<GetTenantUsersQuery.Handler>();
         services.AddScoped<GetCurrentUserQuery.Handler>();
+        services.AddScoped<GetUserPreferencesQuery.Handler>();
+        services.AddScoped<SaveUserPreferencesCommand.Handler>();
 
         services.AddScoped<UploadPatientDocumentCommand.Handler>();
         services.AddScoped<GetPatientDocumentsQuery.Handler>();

@@ -14,4 +14,5 @@ public interface IUserRepository : IBaseRepository<User>
     Task ResetFailedLoginAsync(Guid userId);
     Task<User?> GetActiveByIdAsync(Guid tenantId, Guid userId);
     Task<bool> UpdatePasswordAsync(Guid tenantId, Guid userId, string passwordHash);
+    Task<bool> UpdatePreferencesAsync(Guid tenantId, Guid userId, string? avatarUrl);
 }

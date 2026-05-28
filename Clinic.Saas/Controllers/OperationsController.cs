@@ -10,6 +10,8 @@ using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
+using Clinic.Saas.Service.UseCases.Users.Commands;
+using Clinic.Saas.Service.UseCases.Users.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
 using Clinic.Saas.Service.UseCases.Visits.Queries;
 using Dapper;
@@ -48,6 +50,8 @@ public class OperationsController : ControllerBase
     private readonly SendPrescriptionWhatsappCommand.Handler _sendPrescriptionWhatsapp;
     private readonly SearchDrugsQuery.Handler _searchDrugs;
     private readonly CheckDrugInteractionsQuery.Handler _checkDrugInteractions;
+    private readonly GetUserPreferencesQuery.Handler _getUserPreferences;
+    private readonly SaveUserPreferencesCommand.Handler _saveUserPreferences;
 
     public OperationsController(
         DapperContext db,
@@ -72,7 +76,9 @@ public class OperationsController : ControllerBase
         GetPrescriptionPdfQuery.Handler getPrescriptionPdf,
         SendPrescriptionWhatsappCommand.Handler sendPrescriptionWhatsapp,
         SearchDrugsQuery.Handler searchDrugs,
-        CheckDrugInteractionsQuery.Handler checkDrugInteractions)
+        CheckDrugInteractionsQuery.Handler checkDrugInteractions,
+        GetUserPreferencesQuery.Handler getUserPreferences,
+        SaveUserPreferencesCommand.Handler saveUserPreferences)
     {
         _db = db;
         _currentUser = currentUser;
@@ -97,6 +103,8 @@ public class OperationsController : ControllerBase
         _sendPrescriptionWhatsapp = sendPrescriptionWhatsapp;
         _searchDrugs = searchDrugs;
         _checkDrugInteractions = checkDrugInteractions;
+        _getUserPreferences = getUserPreferences;
+        _saveUserPreferences = saveUserPreferences;
     }
 
    
@@ -215,21 +223,34 @@ WHERE TenantId = @TenantId AND Id = @Id;",
     }
 
     [HttpGet("users/me/preferences")]
-    public IActionResult GetPreferences()
+    public async Task<IActionResult> GetPreferences()
     {
-        return OkResponse(new UserPreferencesDto { Language = "ar", Theme = "light" });
+        // Compatibility forwarding route. New canonical endpoint: GET /api/users/me/preferences.
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue) return Unauthorized();
+
+        var result = await _getUserPreferences.Handle(new GetUserPreferencesQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = _currentUser.UserId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPut("users/me/preferences")]
     public async Task<IActionResult> SavePreferences([FromBody] UserPreferencesDto dto)
     {
-        if (!_currentUser.UserId.HasValue) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        await connection.ExecuteAsync(
-            "UPDATE dbo.Users SET AvatarUrl = COALESCE(@AvatarUrl, AvatarUrl), UpdatedAt = SYSUTCDATETIME() WHERE Id = @UserId",
-            new { UserId = _currentUser.UserId.Value, dto.AvatarUrl });
-        await Audit("UpdatePreferences", "User", _currentUser.UserId.Value, dto);
-        return OkResponse(dto);
+        // Compatibility forwarding route. New canonical endpoint: PUT /api/users/me/preferences.
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue) return Unauthorized();
+
+        var result = await _saveUserPreferences.Handle(new SaveUserPreferencesCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = _currentUser.UserId.Value,
+            Preferences = dto
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("tenant/status")]

@@ -15,17 +15,23 @@ public class UsersController : ControllerBase
     private readonly CreateUserCommand.Handler _createUser;
     private readonly GetTenantUsersQuery.Handler _getTenantUsers;
     private readonly GetCurrentUserQuery.Handler _getCurrentUser;
+    private readonly GetUserPreferencesQuery.Handler _getUserPreferences;
+    private readonly SaveUserPreferencesCommand.Handler _saveUserPreferences;
     private readonly ICurrentUserService _currentUser;
 
     public UsersController(
         CreateUserCommand.Handler createUser,
         GetTenantUsersQuery.Handler getTenantUsers,
         GetCurrentUserQuery.Handler getCurrentUser,
+        GetUserPreferencesQuery.Handler getUserPreferences,
+        SaveUserPreferencesCommand.Handler saveUserPreferences,
         ICurrentUserService currentUser)
     {
         _createUser = createUser;
         _getTenantUsers = getTenantUsers;
         _getCurrentUser = getCurrentUser;
+        _getUserPreferences = getUserPreferences;
+        _saveUserPreferences = saveUserPreferences;
         _currentUser = currentUser;
     }
 
@@ -76,6 +82,41 @@ public class UsersController : ControllerBase
         {
             TenantId = _currentUser.TenantId.Value,
             UserId = _currentUser.UserId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("me/preferences")]
+    public async Task<IActionResult> GetPreferences()
+    {
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getUserPreferences.Handle(new GetUserPreferencesQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = _currentUser.UserId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpPut("me/preferences")]
+    public async Task<IActionResult> SavePreferences([FromBody] UserPreferencesDto dto)
+    {
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _saveUserPreferences.Handle(new SaveUserPreferencesCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = _currentUser.UserId.Value,
+            Preferences = dto
         });
 
         return StatusCode(result.StatusCode, result);
