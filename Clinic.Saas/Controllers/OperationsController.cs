@@ -4,6 +4,8 @@ using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.UseCases.ClinicalTemplates.Commands;
+using Clinic.Saas.Service.UseCases.ClinicalTemplates.Queries;
 using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Commands;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Queries;
@@ -54,6 +56,8 @@ public class OperationsController : ControllerBase
     private readonly GetOnlineBookingsQuery.Handler _getOnlineBookings;
     private readonly ApproveOnlineBookingCommand.Handler _approveOnlineBooking;
     private readonly RejectOnlineBookingCommand.Handler _rejectOnlineBooking;
+    private readonly GetClinicalTemplatesQuery.Handler _getClinicalTemplates;
+    private readonly CreateClinicalTemplateCommand.Handler _createClinicalTemplate;
     private readonly UpdateUserCommand.Handler _updateUser;
     private readonly DeactivateUserCommand.Handler _deactivateUser;
     private readonly ResetUserPasswordCommand.Handler _resetUserPassword;
@@ -86,6 +90,8 @@ public class OperationsController : ControllerBase
         GetOnlineBookingsQuery.Handler getOnlineBookings,
         ApproveOnlineBookingCommand.Handler approveOnlineBooking,
         RejectOnlineBookingCommand.Handler rejectOnlineBooking,
+        GetClinicalTemplatesQuery.Handler getClinicalTemplates,
+        CreateClinicalTemplateCommand.Handler createClinicalTemplate,
         UpdateUserCommand.Handler updateUser,
         DeactivateUserCommand.Handler deactivateUser,
         ResetUserPasswordCommand.Handler resetUserPassword,
@@ -117,6 +123,8 @@ public class OperationsController : ControllerBase
         _getOnlineBookings = getOnlineBookings;
         _approveOnlineBooking = approveOnlineBooking;
         _rejectOnlineBooking = rejectOnlineBooking;
+        _getClinicalTemplates = getClinicalTemplates;
+        _createClinicalTemplate = createClinicalTemplate;
         _updateUser = updateUser;
         _deactivateUser = deactivateUser;
         _resetUserPassword = resetUserPassword;
@@ -489,26 +497,30 @@ VALUES
     [HttpGet("clinical-templates")]
     public async Task<IActionResult> ClinicalTemplates()
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync<ClinicalTemplateDto>("SELECT Id, Name, Specialty, ChiefComplaint, ClinicalNotes, Diagnosis FROM dbo.ClinicalTemplates WHERE TenantId = @TenantId AND IsActive = 1 ORDER BY Name", new { TenantId = tenantId.Value });
-        return OkResponse(rows);
+        // Compatibility forwarding route. New canonical endpoint: GET /api/clinical-templates.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
+
+        var result = await _getClinicalTemplates.Handle(new GetClinicalTemplatesQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost("clinical-templates")]
     public async Task<IActionResult> CreateClinicalTemplate([FromBody] CreateClinicalTemplateDto dto)
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
-        var id = Guid.NewGuid();
-        using var connection = _db.CreateConnection();
-        await connection.ExecuteAsync(@"
-INSERT INTO dbo.ClinicalTemplates (Id, TenantId, Name, Specialty, ChiefComplaint, ClinicalNotes, Diagnosis, IsActive, CreatedAt, UpdatedAt)
-VALUES (@Id, @TenantId, @Name, @Specialty, @ChiefComplaint, @ClinicalNotes, @Diagnosis, 1, SYSUTCDATETIME(), SYSUTCDATETIME());",
-            new { Id = id, TenantId = tenantId.Value, dto.Name, dto.Specialty, dto.ChiefComplaint, dto.ClinicalNotes, dto.Diagnosis });
-        await Audit("Create", "ClinicalTemplate", id, dto);
-        return OkResponse(new { id });
+        // Compatibility forwarding route. New canonical endpoint: POST /api/clinical-templates.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
+
+        var result = await _createClinicalTemplate.Handle(new CreateClinicalTemplateCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Template = dto
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("prescriptions/{id:guid}/pdf")]

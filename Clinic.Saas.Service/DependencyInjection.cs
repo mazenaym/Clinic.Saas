@@ -5,6 +5,8 @@ using Clinic.Saas.Service.UseCases.Admin.Queries;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Clinic.Saas.Service.UseCases.Auth.Commands;
+using Clinic.Saas.Service.UseCases.ClinicalTemplates.Commands;
+using Clinic.Saas.Service.UseCases.ClinicalTemplates.Queries;
 using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Commands;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Queries;
@@ -66,6 +68,9 @@ public static class DependencyInjection
         services.AddScoped<GetOnlineBookingsQuery.Handler>();
         services.AddScoped<ApproveOnlineBookingCommand.Handler>();
         services.AddScoped<RejectOnlineBookingCommand.Handler>();
+
+        services.AddScoped<GetClinicalTemplatesQuery.Handler>();
+        services.AddScoped<CreateClinicalTemplateCommand.Handler>();
 
         services.AddScoped<CreateVisitCommand.Handler>();
         services.AddScoped<GetVisitByIdQuery.Handler>();
