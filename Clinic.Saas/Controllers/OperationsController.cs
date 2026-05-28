@@ -4,6 +4,7 @@ using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Dapper;
@@ -32,6 +33,9 @@ public class OperationsController : ControllerBase
     private readonly GetReceiptPdfQuery.Handler _receiptPdf;
     private readonly GetDebtTrackingQuery.Handler _debtTracking;
     private readonly GetMonthlyRevenueQuery.Handler _monthlyRevenue;
+    private readonly GetPatientTimelineQuery.Handler _getPatientTimeline;
+    private readonly FindPatientDuplicatesQuery.Handler _findPatientDuplicates;
+    private readonly ExportPatientsQuery.Handler _exportPatients;
 
     public OperationsController(
         DapperContext db,
@@ -46,7 +50,10 @@ public class OperationsController : ControllerBase
         RefundPaymentCommand.Handler refundPayment,
         GetReceiptPdfQuery.Handler receiptPdf,
         GetDebtTrackingQuery.Handler debtTracking,
-        GetMonthlyRevenueQuery.Handler monthlyRevenue)
+        GetMonthlyRevenueQuery.Handler monthlyRevenue,
+        GetPatientTimelineQuery.Handler getPatientTimeline,
+        FindPatientDuplicatesQuery.Handler findPatientDuplicates,
+        ExportPatientsQuery.Handler exportPatients)
     {
         _db = db;
         _currentUser = currentUser;
@@ -61,6 +68,9 @@ public class OperationsController : ControllerBase
         _receiptPdf = receiptPdf;
         _debtTracking = debtTracking;
         _monthlyRevenue = monthlyRevenue;
+        _getPatientTimeline = getPatientTimeline;
+        _findPatientDuplicates = findPatientDuplicates;
+        _exportPatients = exportPatients;
     }
 
    
@@ -264,61 +274,54 @@ VALUES
     [HttpGet("patients/{id:guid}/timeline")]
     public async Task<IActionResult> PatientTimeline(Guid id)
     {
+        // Compatibility route. New code should call GET /api/patients/{id}/timeline.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
 
-        var rows = await connection.QueryAsync<PatientTimelineItemDto>(@"
-SELECT 'Appointment' AS [Type], Id, CAST(AppointmentDate AS datetime2) AS [Date], CONCAT(N'Appointment ', CAST([Status] AS nvarchar(10))) AS Title, Notes AS Details
-FROM dbo.Appointments WHERE TenantId = @TenantId AND PatientId = @PatientId AND IsDeleted = 0
-UNION ALL
-SELECT 'Visit', Id, VisitDate, ChiefComplaint, Diagnosis FROM dbo.Visits WHERE TenantId = @TenantId AND PatientId = @PatientId AND IsDeleted = 0
-UNION ALL
-SELECT 'Prescription', Id, CreatedAt, N'Prescription', Notes FROM dbo.Prescriptions WHERE TenantId = @TenantId AND PatientId = @PatientId AND IsActive = 1
-UNION ALL
-SELECT 'Payment', Id, CreatedAt, InvoiceNumber, CONCAT(N'Paid ', PaidAmount, N' / Total ', TotalAmount) FROM dbo.Payments WHERE TenantId = @TenantId AND PatientId = @PatientId
-ORDER BY [Date] DESC;",
-            new { TenantId = tenantId.Value, PatientId = id });
+        var result = await _getPatientTimeline.Handle(new GetPatientTimelineQuery.Query
+        {
+            TenantId = tenantId.Value,
+            PatientId = id
+        });
 
-        return OkResponse(rows);
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("patients/duplicates")]
     public async Task<IActionResult> PatientDuplicates([FromQuery] string? phone, [FromQuery] string? nationalId)
     {
+        // Compatibility route. New code should call GET /api/patients/duplicates.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT TOP 20 Id, PatientCode, FullName, PhoneNumber, NationalId
-FROM dbo.Patients
-WHERE TenantId = @TenantId AND IsDeleted = 0
-  AND ((@Phone IS NOT NULL AND PhoneNumber = @Phone) OR (@NationalId IS NOT NULL AND NationalId = @NationalId));",
-            new { TenantId = tenantId.Value, Phone = string.IsNullOrWhiteSpace(phone) ? null : phone, NationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId });
-        return OkResponse(rows);
+
+        var result = await _findPatientDuplicates.Handle(new FindPatientDuplicatesQuery.Query
+        {
+            TenantId = tenantId.Value,
+            Phone = phone,
+            NationalId = nationalId
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("patients/export")]
     public async Task<IActionResult> ExportPatients()
     {
+        // Compatibility route. New code should call GET /api/patients/export.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT PatientCode, FullName, PhoneNumber, NationalId, Email, Gender, CreatedAt
-FROM dbo.Patients
-WHERE TenantId = @TenantId AND IsDeleted = 0
-ORDER BY CreatedAt DESC;",
-            new { TenantId = tenantId.Value });
 
-        var csv = new StringBuilder();
-        csv.AppendLine("PatientCode,FullName,PhoneNumber,NationalId,Email,Gender,CreatedAt");
-        foreach (var row in rows)
+        var result = await _exportPatients.Handle(new ExportPatientsQuery.Query
         {
-            csv.AppendLine($"{Csv(row.PatientCode)},{Csv(row.FullName)},{Csv(row.PhoneNumber)},{Csv(row.NationalId)},{Csv(row.Email)},{row.Gender},{row.CreatedAt:O}");
+            TenantId = tenantId.Value
+        });
+
+        if (!result.Success || result.Data is null)
+        {
+            return StatusCode(result.StatusCode, result);
         }
 
-        return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv", "patients-export.csv");
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     

@@ -46,6 +46,9 @@ public static class DependencyInjection
         services.AddScoped<GetPatientByIdQuery.Handler>();
         services.AddScoped<GetAllPatientsQuery.Handler>();
         services.AddScoped<SearchPatientsQuery.Handler>();
+        services.AddScoped<GetPatientTimelineQuery.Handler>();
+        services.AddScoped<FindPatientDuplicatesQuery.Handler>();
+        services.AddScoped<ExportPatientsQuery.Handler>();
         services.AddScoped<UpdatePatientCommand.Handler>();
         services.AddScoped<DeletePatientCommand.Handler>();
 

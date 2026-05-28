@@ -16,6 +16,9 @@ public class PatientsController : ControllerBase
     private readonly GetPatientByIdQuery.Handler _getPatient;
     private readonly GetAllPatientsQuery.Handler _getAllPatients;
     private readonly SearchPatientsQuery.Handler _searchPatients;
+    private readonly GetPatientTimelineQuery.Handler _getTimeline;
+    private readonly FindPatientDuplicatesQuery.Handler _findDuplicates;
+    private readonly ExportPatientsQuery.Handler _exportPatients;
     private readonly UpdatePatientCommand.Handler _updatePatient;
     private readonly DeletePatientCommand.Handler _deletePatient;
     private readonly ICurrentUserService _currentUser;
@@ -25,6 +28,9 @@ public class PatientsController : ControllerBase
         GetPatientByIdQuery.Handler getPatient,
         GetAllPatientsQuery.Handler getAllPatients,
         SearchPatientsQuery.Handler searchPatients,
+        GetPatientTimelineQuery.Handler getTimeline,
+        FindPatientDuplicatesQuery.Handler findDuplicates,
+        ExportPatientsQuery.Handler exportPatients,
         UpdatePatientCommand.Handler updatePatient,
         DeletePatientCommand.Handler deletePatient,
         ICurrentUserService currentUser)
@@ -33,6 +39,9 @@ public class PatientsController : ControllerBase
         _getPatient = getPatient;
         _getAllPatients = getAllPatients;
         _searchPatients = searchPatients;
+        _getTimeline = getTimeline;
+        _findDuplicates = findDuplicates;
+        _exportPatients = exportPatients;
         _updatePatient = updatePatient;
         _deletePatient = deletePatient;
         _currentUser = currentUser;
@@ -108,6 +117,65 @@ public class PatientsController : ControllerBase
         });
 
         return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("{id:guid}/timeline")]
+    public async Task<IActionResult> Timeline(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getTimeline.Handle(new GetPatientTimelineQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            PatientId = id
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("duplicates")]
+    public async Task<IActionResult> Duplicates([FromQuery] string? phone, [FromQuery] string? nationalId)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _findDuplicates.Handle(new FindPatientDuplicatesQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Phone = phone,
+            NationalId = nationalId
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Reception")]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export()
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _exportPatients.Handle(new ExportPatientsQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value
+        });
+
+        if (!result.Success || result.Data is null)
+        {
+            return StatusCode(result.StatusCode, result);
+        }
+
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [Authorize(Roles = "Admin,Doctor,Reception")]

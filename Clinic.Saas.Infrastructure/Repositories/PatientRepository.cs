@@ -145,6 +145,88 @@ ORDER BY FullName;";
         return await connection.QueryAsync<Patient>(sql, new { TenantId = tenantId, Search = $"%{searchTerm}%" });
     }
 
+    public async Task<IEnumerable<PatientTimelineRow>> GetTimelineAsync(Guid tenantId, Guid patientId)
+    {
+        const string sql = @"
+SELECT 'Appointment' AS [Type],
+       Id,
+       CAST(AppointmentDate AS datetime2) AS [Date],
+       CONCAT(N'Appointment ', CAST([Status] AS nvarchar(10))) AS Title,
+       Notes AS Details
+FROM dbo.Appointments
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+  AND IsDeleted = 0
+UNION ALL
+SELECT 'Visit',
+       Id,
+       VisitDate,
+       ChiefComplaint,
+       Diagnosis
+FROM dbo.Visits
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+  AND IsDeleted = 0
+UNION ALL
+SELECT 'Prescription',
+       Id,
+       CreatedAt,
+       N'Prescription',
+       Notes
+FROM dbo.Prescriptions
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+  AND IsActive = 1
+UNION ALL
+SELECT 'Payment',
+       Id,
+       CreatedAt,
+       InvoiceNumber,
+       CONCAT(N'Paid ', PaidAmount, N' / Total ', TotalAmount)
+FROM dbo.Payments
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+ORDER BY [Date] DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryAsync<PatientTimelineRow>(sql, new
+        {
+            TenantId = tenantId,
+            PatientId = patientId
+        });
+    }
+
+    public async Task<IEnumerable<PatientDuplicateRow>> FindDuplicatesAsync(Guid tenantId, string? phone, string? nationalId)
+    {
+        const string sql = @"
+SELECT TOP 20 Id, PatientCode, FullName, PhoneNumber, NationalId
+FROM dbo.Patients
+WHERE TenantId = @TenantId
+  AND IsDeleted = 0
+  AND ((@Phone IS NOT NULL AND PhoneNumber = @Phone) OR (@NationalId IS NOT NULL AND NationalId = @NationalId));";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryAsync<PatientDuplicateRow>(sql, new
+        {
+            TenantId = tenantId,
+            Phone = string.IsNullOrWhiteSpace(phone) ? null : phone,
+            NationalId = string.IsNullOrWhiteSpace(nationalId) ? null : nationalId
+        });
+    }
+
+    public async Task<IEnumerable<PatientExportRow>> GetExportRowsAsync(Guid tenantId)
+    {
+        const string sql = @"
+SELECT PatientCode, FullName, PhoneNumber, NationalId, Email, Gender, CreatedAt
+FROM dbo.Patients
+WHERE TenantId = @TenantId
+  AND IsDeleted = 0
+ORDER BY CreatedAt DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryAsync<PatientExportRow>(sql, new { TenantId = tenantId });
+    }
+
     public async Task<bool> ExistsAsync(Guid tenantId, string phone)
     {
         const string sql = @"
