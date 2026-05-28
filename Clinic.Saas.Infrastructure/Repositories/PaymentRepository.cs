@@ -1,6 +1,6 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Interfaces;
-using Clinic.Saas.Infrastructure.Data;
+using Clinic.Saas.Service.Interfaces;
 using Dapper;
 using System.Data;
 
@@ -8,11 +8,11 @@ namespace Clinic.Saas.Infrastructure.Repositories;
 
 public class PaymentRepository : IPaymentRepository
 {
-    private readonly DapperContext _context;
+    private readonly IDbConnectionFactory _connectionFactory;
 
-    public PaymentRepository(DapperContext context)
+    public PaymentRepository(IDbConnectionFactory connectionFactory)
     {
-        _context = context;
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<Payment> AddAsync(Payment entity)
@@ -22,16 +22,59 @@ public class PaymentRepository : IPaymentRepository
             entity.Id = Guid.NewGuid();
         }
 
-        using var connection = _context.CreateConnection();
-        connection.Open();
+        EnsureTenantId(entity.TenantId);
+
+        entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
+        entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
         {
+            const string validateReferencesSql = @"
+SELECT
+    VisitExists = CASE WHEN EXISTS (
+        SELECT 1
+        FROM dbo.Visits
+        WHERE TenantId = @TenantId
+          AND Id = @VisitId
+          AND PatientId = @PatientId
+          AND IsDeleted = 0
+    ) THEN 1 ELSE 0 END,
+    PatientExists = CASE WHEN EXISTS (
+        SELECT 1
+        FROM dbo.Patients
+        WHERE TenantId = @TenantId
+          AND Id = @PatientId
+          AND IsDeleted = 0
+    ) THEN 1 ELSE 0 END;";
+
+            var referenceStatus = await connection.QuerySingleAsync<PaymentReferenceStatus>(
+                validateReferencesSql,
+                new
+                {
+                    entity.TenantId,
+                    entity.VisitId,
+                    entity.PatientId
+                },
+                transaction);
+
+            if (referenceStatus.VisitExists == 0)
+            {
+                throw new InvalidOperationException("Visit does not belong to this tenant and patient.");
+            }
+
+            if (referenceStatus.PatientExists == 0)
+            {
+                throw new InvalidOperationException("Patient does not belong to this tenant.");
+            }
+
             if (string.IsNullOrWhiteSpace(entity.InvoiceNumber))
             {
                 entity.InvoiceNumber = await GenerateInvoiceNumberAsync(connection, transaction, entity.TenantId, entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt);
             }
+
             const string paymentSql = @"
 INSERT INTO dbo.Payments
 (
@@ -58,7 +101,6 @@ VALUES
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
-                
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -105,7 +147,9 @@ VALUES
             }
 
             transaction.Commit();
-            return await GetByIdInternalAsync(connection, entity.Id, entity.TenantId);
+
+            var created = await GetByIdInternalAsync(connection, entity.Id, entity.TenantId);
+            return created;
         }
         catch
         {
@@ -114,30 +158,31 @@ VALUES
         }
     }
 
-    public async Task<Payment?> GetByIdAsync(Guid id)
-    {
-        using var connection = _context.CreateConnection();
-        return await GetByIdInternalOrDefaultAsync(connection, id, null);
-    }
+    public Task<Payment?> GetByIdAsync(Guid id) =>
+        throw new NotSupportedException("Use GetByIdAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
     public async Task<Payment?> GetByIdAsync(Guid tenantId, Guid id)
     {
-        using var connection = _context.CreateConnection();
-        return await GetByIdInternalOrDefaultAsync(connection, id, tenantId);
+        EnsureTenantId(tenantId);
+
+        const string paymentSql = PaymentSelect + @"
+WHERE pay.Id = @Id
+  AND pay.TenantId = @TenantId;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await GetByIdInternalOrDefaultAsync(connection, paymentSql, new { TenantId = tenantId, Id = id });
     }
 
-    public async Task<IEnumerable<Payment>> GetAllAsync()
-    {
-        const string sql = @"
-SELECT * FROM dbo.Payments
-ORDER BY CreatedAt DESC;";
+    public Task<IEnumerable<Payment>> GetAllAsync() =>
+        throw new NotSupportedException("Use tenant-scoped payment queries for tenant-owned data.");
 
-        using var connection = _context.CreateConnection();
-        return await connection.QueryAsync<Payment>(sql);
-    }
+    public Task UpdateAsync(Payment entity) =>
+        throw new NotSupportedException("Use UpdateAsync(Guid tenantId, Payment entity) for tenant-owned data.");
 
-    public async Task UpdateAsync(Payment entity)
+    public async Task UpdateAsync(Guid tenantId, Payment entity)
     {
+        EnsureTenantId(tenantId);
+
         const string sql = @"
 UPDATE dbo.Payments
 SET InvoiceNumber = @InvoiceNumber,
@@ -153,19 +198,20 @@ SET InvoiceNumber = @InvoiceNumber,
     ReceiptUrl = @ReceiptUrl,
     Notes = @Notes,
     UpdatedAt = @UpdatedAt
-WHERE Id = @Id;";
+WHERE Id = @Id
+  AND TenantId = @TenantId;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         await connection.ExecuteAsync(sql, new
         {
             entity.Id,
+            TenantId = tenantId,
             entity.InvoiceNumber,
             entity.TotalAmount,
             entity.DiscountAmount,
             entity.DiscountPct,
             entity.TaxAmount,
             entity.PaidAmount,
-            
             entity.PaymentMethod,
             entity.Status,
             entity.InsuranceCompany,
@@ -176,20 +222,33 @@ WHERE Id = @Id;";
         });
     }
 
-    public async Task DeleteAsync(Guid id)
-    {
-        const string sql = @"
-DELETE FROM dbo.PaymentItems WHERE PaymentId = @Id;
-DELETE FROM dbo.Payments WHERE Id = @Id;";
+    public Task DeleteAsync(Guid id) =>
+        throw new NotSupportedException("Use DeleteAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
-        using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new { Id = id });
+    public async Task DeleteAsync(Guid tenantId, Guid id)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+DELETE pi
+FROM dbo.PaymentItems pi
+INNER JOIN dbo.Payments pay ON pay.Id = pi.PaymentId
+WHERE pay.Id = @Id
+  AND pay.TenantId = @TenantId;
+
+DELETE FROM dbo.Payments
+WHERE Id = @Id
+  AND TenantId = @TenantId;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
     }
 
     public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
     {
-        using var connection = _context.CreateConnection();
-        connection.Open();
+        EnsureTenantId(tenantId);
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
         var number = await GenerateInvoiceNumberAsync(connection, transaction, tenantId, createdAt);
         transaction.Commit();
@@ -198,12 +257,14 @@ DELETE FROM dbo.Payments WHERE Id = @Id;";
 
     public async Task<IEnumerable<Payment>> GetByDateAsync(Guid tenantId, DateTime date)
     {
+        EnsureTenantId(tenantId);
+
         const string sql = PaymentSelect + @"
 WHERE pay.TenantId = @TenantId
   AND CAST(pay.CreatedAt AS date) = @PaymentDate
 ORDER BY pay.CreatedAt DESC;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QueryAsync<Payment>(sql, new
         {
             TenantId = tenantId,
@@ -224,9 +285,13 @@ WHERE TenantId = @TenantId
         return $"{prefix}{nextNumber:D5}";
     }
 
-    private static async Task<Payment> GetByIdInternalAsync(System.Data.IDbConnection connection, Guid id, Guid tenantId)
+    private static async Task<Payment> GetByIdInternalAsync(IDbConnection connection, Guid id, Guid tenantId)
     {
-        var payment = await GetByIdInternalOrDefaultAsync(connection, id, tenantId);
+        const string paymentSql = PaymentSelect + @"
+WHERE pay.Id = @Id
+  AND pay.TenantId = @TenantId;";
+
+        var payment = await GetByIdInternalOrDefaultAsync(connection, paymentSql, new { TenantId = tenantId, Id = id });
         if (payment is null)
         {
             throw new InvalidOperationException("Payment was not found after creation.");
@@ -243,25 +308,35 @@ FROM dbo.Payments pay
 INNER JOIN dbo.Patients p ON p.Id = pay.PatientId AND p.TenantId = pay.TenantId
 ";
 
-    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(System.Data.IDbConnection connection, Guid id, Guid? tenantId)
+    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(IDbConnection connection, string paymentSql, object parameters)
     {
-        const string paymentSql = PaymentSelect + @"
-WHERE pay.Id = @Id
-  AND (@TenantId IS NULL OR pay.TenantId = @TenantId);";
-
         const string itemsSql = @"
 SELECT * FROM dbo.PaymentItems
 WHERE PaymentId = @Id
 ORDER BY ServiceName;";
 
-        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, new { Id = id, TenantId = tenantId });
+        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, parameters);
         if (payment is null)
         {
             return null;
         }
 
-        var items = await connection.QueryAsync<PaymentItem>(itemsSql, new { Id = id });
+        var items = await connection.QueryAsync<PaymentItem>(itemsSql, new { Id = payment.Id });
         payment.Items = items.ToList();
         return payment;
+    }
+
+    private static void EnsureTenantId(Guid tenantId)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new InvalidOperationException("TenantId is required.");
+        }
+    }
+
+    private sealed class PaymentReferenceStatus
+    {
+        public int VisitExists { get; set; }
+        public int PatientExists { get; set; }
     }
 }
