@@ -12,6 +12,8 @@ using Clinic.Saas.Service.UseCases.OnlineBookings.Commands;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Queries;
 using Clinic.Saas.Service.UseCases.Onboarding.Commands;
 using Clinic.Saas.Service.UseCases.Onboarding.Queries;
+using Clinic.Saas.Service.UseCases.Operations.Commands;
+using Clinic.Saas.Service.UseCases.Operations.Queries;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
@@ -106,6 +108,11 @@ public static class DependencyInjection
 
         services.AddScoped<RegisterClinicCommand.Handler>();
         services.AddScoped<CheckSubdomainAvailabilityQuery.Handler>();
+
+        services.AddScoped<GetTenantStatusQuery.Handler>();
+        services.AddScoped<GetClinicSettingsQuery.Handler>();
+        services.AddScoped<UpdateClinicSettingsCommand.Handler>();
+        services.AddScoped<WriteAuditLogCommand.Handler>();
 
         services.AddScoped<CreateUserCommand.Handler>();
         services.AddScoped<UpdateUserCommand.Handler>();

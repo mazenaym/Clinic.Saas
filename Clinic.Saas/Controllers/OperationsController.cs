@@ -1,5 +1,4 @@
 using Clinic.Saas.Domain.Enums;
-using Clinic.Saas.Infrastructure.Data;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Admin.Queries;
@@ -10,6 +9,8 @@ using Clinic.Saas.Service.UseCases.ClinicalTemplates.Queries;
 using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Commands;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Queries;
+using Clinic.Saas.Service.UseCases.Operations.Commands;
+using Clinic.Saas.Service.UseCases.Operations.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
@@ -19,10 +20,8 @@ using Clinic.Saas.Service.UseCases.Users.Commands;
 using Clinic.Saas.Service.UseCases.Users.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
 using Clinic.Saas.Service.UseCases.Visits.Queries;
-using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text;
 using System.Text.Json;
 
 namespace Clinic.Saas.api.Controllers;
@@ -32,8 +31,11 @@ namespace Clinic.Saas.api.Controllers;
 [Authorize]
 public class OperationsController : ControllerBase
 {
-    private readonly DapperContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly GetTenantStatusQuery.Handler _tenantStatus;
+    private readonly GetClinicSettingsQuery.Handler _getClinicSettings;
+    private readonly UpdateClinicSettingsCommand.Handler _updateClinicSettings;
+    private readonly WriteAuditLogCommand.Handler _writeAuditLog;
     private readonly GetAppointmentRangeQuery.Handler _getAppointmentRange;
     private readonly GetAppointmentCancellationsQuery.Handler _getAppointmentCancellations;
     private readonly RescheduleAppointmentCommand.Handler _rescheduleAppointment;
@@ -70,8 +72,11 @@ public class OperationsController : ControllerBase
     private readonly SaveUserPreferencesCommand.Handler _saveUserPreferences;
 
     public OperationsController(
-        DapperContext db,
         ICurrentUserService currentUser,
+        GetTenantStatusQuery.Handler tenantStatus,
+        GetClinicSettingsQuery.Handler getClinicSettings,
+        UpdateClinicSettingsCommand.Handler updateClinicSettings,
+        WriteAuditLogCommand.Handler writeAuditLog,
         GetAppointmentRangeQuery.Handler getAppointmentRange,
         GetAppointmentCancellationsQuery.Handler getAppointmentCancellations,
         RescheduleAppointmentCommand.Handler rescheduleAppointment,
@@ -107,8 +112,11 @@ public class OperationsController : ControllerBase
         GetUserPreferencesQuery.Handler getUserPreferences,
         SaveUserPreferencesCommand.Handler saveUserPreferences)
     {
-        _db = db;
         _currentUser = currentUser;
+        _tenantStatus = tenantStatus;
+        _getClinicSettings = getClinicSettings;
+        _updateClinicSettings = updateClinicSettings;
+        _writeAuditLog = writeAuditLog;
         _getAppointmentRange = getAppointmentRange;
         _getAppointmentCancellations = getAppointmentCancellations;
         _rescheduleAppointment = rescheduleAppointment;
@@ -234,19 +242,12 @@ public class OperationsController : ControllerBase
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
 
-        using var connection = _db.CreateConnection();
-        var status = await connection.QueryFirstOrDefaultAsync<TenantSubscriptionStatusDto>(@"
-SELECT
-    COALESCE(t.SubscriptionState, N'Trial') AS State,
-    t.TrialEndsAt,
-    (SELECT TOP 1 EndDate FROM dbo.Subscriptions WHERE TenantId = t.Id AND Status IN (1,4) ORDER BY EndDate DESC) AS SubscriptionEndsAt,
-    COALESCE(t.MaxUsers, 2) AS MaxUsers,
-    COALESCE(t.MaxPatientsPerMonth, 200) AS MaxPatientsPerMonth
-FROM dbo.Tenants t
-WHERE t.Id = @TenantId;",
-            new { TenantId = tenantId.Value });
+        var result = await _tenantStatus.Handle(new GetTenantStatusQuery.Query
+        {
+            TenantId = tenantId.Value
+        });
 
-        return OkResponse(status);
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin")]
@@ -255,9 +256,13 @@ WHERE t.Id = @TenantId;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var settings = await EnsureSettings(connection, tenantId.Value);
-        return OkResponse(settings);
+
+        var result = await _getClinicSettings.Handle(new GetClinicSettingsQuery.Query
+        {
+            TenantId = tenantId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin")]
@@ -266,31 +271,15 @@ WHERE t.Id = @TenantId;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        await connection.ExecuteAsync(@"
-MERGE dbo.ClinicSettings AS target
-USING (SELECT @TenantId AS TenantId) AS source
-ON target.TenantId = source.TenantId
-WHEN MATCHED THEN UPDATE SET
-    WorkingDays = @WorkingDays,
-    OpenTime = @OpenTime,
-    CloseTime = @CloseTime,
-    SlotDurationMin = @SlotDurationMin,
-    ConsultFee = @ConsultFee,
-    SmsEnabled = @SmsEnabled,
-    WhatsappEnabled = @WhatsappEnabled,
-    EmailEnabled = @EmailEnabled,
-    [Language] = @Language,
-    TaxPct = @TaxPct,
-    UpdatedAt = SYSUTCDATETIME()
-WHEN NOT MATCHED THEN INSERT
-    (Id, TenantId, WorkingDays, OpenTime, CloseTime, SlotDurationMin, ConsultFee, SmsEnabled, WhatsappEnabled, EmailEnabled, [Language], TaxPct, UpdatedAt)
-VALUES
-    (NEWID(), @TenantId, @WorkingDays, @OpenTime, @CloseTime, @SlotDurationMin, @ConsultFee, @SmsEnabled, @WhatsappEnabled, @EmailEnabled, @Language, @TaxPct, SYSUTCDATETIME());",
-            new { TenantId = tenantId.Value, dto.WorkingDays, dto.OpenTime, dto.CloseTime, dto.SlotDurationMin, dto.ConsultFee, dto.SmsEnabled, dto.WhatsappEnabled, dto.EmailEnabled, dto.Language, dto.TaxPct });
+
+        var result = await _updateClinicSettings.Handle(new UpdateClinicSettingsCommand.Command
+        {
+            TenantId = tenantId.Value,
+            Settings = dto
+        });
 
         await Audit("Update", "ClinicSettings", tenantId.Value, dto);
-        return await GetSettings();
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("patients/{id:guid}/timeline")]
@@ -798,89 +787,26 @@ VALUES
 
     private Guid? RequireTenant() => _currentUser.TenantId;
 
-    private async Task<UpdateClinicSettingsDto> EnsureSettings(System.Data.IDbConnection connection, Guid tenantId)
-    {
-        var settings = await connection.QueryFirstOrDefaultAsync<UpdateClinicSettingsDto>(
-            "SELECT WorkingDays, OpenTime, CloseTime, SlotDurationMin, ConsultFee, SmsEnabled, WhatsappEnabled, EmailEnabled, [Language], TaxPct FROM dbo.ClinicSettings WHERE TenantId = @TenantId",
-            new { TenantId = tenantId });
-        if (settings is not null) return settings;
-        return new UpdateClinicSettingsDto();
-    }
-
     private async Task Audit(string action, string entityName, Guid? entityId, object? newValues)
     {
         try
         {
-            using var connection = _db.CreateConnection();
-            await connection.ExecuteAsync(@"
-INSERT INTO dbo.AuditLogs (TenantId, UserId, Action, EntityName, EntityId, NewValues, IpAddress, UserAgent, CreatedAt)
-VALUES (@TenantId, @UserId, @Action, @EntityName, @EntityId, @NewValues, @IpAddress, @UserAgent, SYSUTCDATETIME());",
-                new
-                {
-                    TenantId = _currentUser.TenantId,
-                    UserId = _currentUser.UserId,
-                    Action = action,
-                    EntityName = entityName,
-                    EntityId = entityId,
-                    NewValues = newValues is null ? null : JsonSerializer.Serialize(newValues),
-                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    UserAgent = Request.Headers.UserAgent.ToString()
-                });
+            await _writeAuditLog.Handle(new WriteAuditLogCommand.Command
+            {
+                TenantId = _currentUser.TenantId,
+                UserId = _currentUser.UserId,
+                Action = action,
+                EntityName = entityName,
+                EntityId = entityId,
+                NewValues = newValues is null ? null : JsonSerializer.Serialize(newValues),
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers.UserAgent.ToString()
+            });
         }
         catch
         {
             // Audit logging must not break the user operation.
         }
-    }
-
-    private IActionResult OkResponse<T>(T data, string message = "OK")
-    {
-        return StatusCode(StatusCodes.Status200OK, new BaseResponse<T>
-        {
-            Success = true,
-            Data = data,
-            Message = message,
-            StatusCode = StatusCodes.Status200OK
-        });
-    }
-
-    private IActionResult Error(string message, int statusCode)
-    {
-        return StatusCode(statusCode, new BaseResponse<object>
-        {
-            Success = false,
-            Message = message,
-            Errors = [message],
-            StatusCode = statusCode
-        });
-    }
-
-    private static string Csv(object? value)
-    {
-        var text = value?.ToString() ?? string.Empty;
-        return "\"" + text.Replace("\"", "\"\"") + "\"";
-    }
-
-    private static byte[] CreateSimplePdf(string text)
-    {
-        var escaped = text.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)").Replace("\r", "").Replace("\n", ") Tj T* (");
-        var stream = $"BT /F1 12 Tf 50 780 Td ({escaped}) Tj ET";
-        var pdf = $@"%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj
-4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
-5 0 obj << /Length {stream.Length} >> stream
-{stream}
-endstream endobj
-xref
-0 6
-0000000000 65535 f 
-trailer << /Root 1 0 R /Size 6 >>
-startxref
-0
-%%EOF";
-        return Encoding.ASCII.GetBytes(pdf);
     }
 
 }
