@@ -130,6 +130,18 @@ export interface Payment {
   rowVersion?: string;
 }
 
+export interface Procedure {
+  id: string;
+  categoryId?: string;
+  categoryName?: string;
+  name: string;
+  specialty?: string;
+  defaultPrice: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DailyRevenue {
   date: string;
   totalAppointments: number;

@@ -1,7 +1,7 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
-import { AdminClinic, AdminStats, ApiResponse, Appointment, AuditLog, AuthSession, ClinicSettings, DailyRevenue, Patient, PatientTimelineItem, Prescription, TenantSubscriptionStatus, User, Visit } from './models';
+import { AdminClinic, AdminStats, ApiResponse, Appointment, AuditLog, AuthSession, ClinicSettings, DailyRevenue, Patient, PatientTimelineItem, Prescription, Procedure, TenantSubscriptionStatus, User, Visit } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -186,6 +186,26 @@ export class ApiService {
 
   drugs(term = '') {
     return this.get<Record<string, unknown>[]>('/drugcatalog/drugs', { term });
+  }
+
+  procedures(includeInactive = false) {
+    return this.get<Procedure[]>('/procedures', { includeInactive: String(includeInactive) });
+  }
+
+  createProcedure(payload: Record<string, unknown>) {
+    return this.post<Procedure>('/procedures', payload);
+  }
+
+  updateProcedure(id: string, payload: Record<string, unknown>) {
+    return this.put<Procedure>(`/procedures/${id}`, payload);
+  }
+
+  activateProcedure(id: string) {
+    return this.post<boolean>(`/procedures/${id}/activate`, {});
+  }
+
+  deactivateProcedure(id: string) {
+    return this.post<boolean>(`/procedures/${id}/deactivate`, {});
   }
 
   createPayment(payload: Record<string, unknown>) {

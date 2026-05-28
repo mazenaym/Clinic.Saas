@@ -22,6 +22,8 @@ using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
+using Clinic.Saas.Service.UseCases.Procedures.Commands;
+using Clinic.Saas.Service.UseCases.Procedures.Queries;
 using Clinic.Saas.Service.UseCases.Users.Commands;
 using Clinic.Saas.Service.UseCases.Users.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
@@ -91,6 +93,11 @@ public static class DependencyInjection
         services.AddScoped<SendPrescriptionWhatsappCommand.Handler>();
         services.AddScoped<SearchDrugsQuery.Handler>();
         services.AddScoped<CheckDrugInteractionsQuery.Handler>();
+
+        services.AddScoped<ListProceduresQuery.Handler>();
+        services.AddScoped<CreateProcedureCommand.Handler>();
+        services.AddScoped<UpdateProcedureCommand.Handler>();
+        services.AddScoped<SetProcedureActiveCommand.Handler>();
 
         services.AddScoped<CreatePaymentCommand.Handler>();
         services.AddScoped<GetPaymentByIdQuery.Handler>();
