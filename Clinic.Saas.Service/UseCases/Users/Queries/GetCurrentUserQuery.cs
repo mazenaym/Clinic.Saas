@@ -8,6 +8,7 @@ public class GetCurrentUserQuery
 {
     public class Query
     {
+        public Guid TenantId { get; set; }
         public Guid UserId { get; set; }
     }
 
@@ -24,7 +25,7 @@ public class GetCurrentUserQuery
 
         public async Task<BaseResponse<UserDto>> Handle(Query query)
         {
-            var user = await _userRepository.GetByIdAsync(query.UserId);
+            var user = await _userRepository.GetByIdAsync(query.TenantId, query.UserId);
             if (user is null)
             {
                 return new BaseResponse<UserDto>

@@ -67,13 +67,14 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
-        if (!_currentUser.UserId.HasValue)
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue)
         {
             return Unauthorized();
         }
 
         var result = await _getCurrentUser.Handle(new GetCurrentUserQuery.Query
         {
+            TenantId = _currentUser.TenantId.Value,
             UserId = _currentUser.UserId.Value
         });
 

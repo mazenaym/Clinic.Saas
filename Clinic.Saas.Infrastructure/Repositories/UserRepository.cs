@@ -1,6 +1,7 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Infrastructure.Data;
+using Clinic.Saas.Service.Interfaces;
 using Dapper;
 
 namespace Clinic.Saas.Infrastructure.Repositories;
@@ -8,10 +9,12 @@ namespace Clinic.Saas.Infrastructure.Repositories;
 public class UserRepository : IUserRepository
 {
     private readonly DapperContext _context;
+    private readonly IDbConnectionFactory _connectionFactory;
 
-    public UserRepository(DapperContext context)
+    public UserRepository(DapperContext context, IDbConnectionFactory connectionFactory)
     {
         _context = context;
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<User> AddAsync(User entity)
@@ -20,6 +23,10 @@ public class UserRepository : IUserRepository
         {
             entity.Id = Guid.NewGuid();
         }
+
+        EnsureTenantId(entity.TenantId);
+        entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
+        entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
 
         const string sql = @"
 INSERT INTO dbo.Users
@@ -35,60 +42,37 @@ VALUES
     @LockedUntil, @IsActive, @CreatedAt, @UpdatedAt
 );
 
-SELECT * FROM dbo.Users WHERE Id = @Id;";
+SELECT * FROM dbo.Users WHERE TenantId = @TenantId AND Id = @Id;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QuerySingleAsync<User>(sql, entity);
     }
 
-    public async Task<User?> GetByIdAsync(Guid id)
-    {
-        const string sql = @"SELECT * FROM dbo.Users WHERE Id = @Id;";
-        using var connection = _context.CreateConnection();
-        return await connection.QueryFirstOrDefaultAsync<User>(sql, new { Id = id });
-    }
+    public Task<User?> GetByIdAsync(Guid id) =>
+        throw new NotSupportedException("Use GetByIdAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
-    public async Task<IEnumerable<User>> GetAllAsync()
+    public async Task<User?> GetByIdAsync(Guid tenantId, Guid id)
     {
-        const string sql = @"SELECT * FROM dbo.Users ORDER BY CreatedAt DESC;";
-        using var connection = _context.CreateConnection();
-        return await connection.QueryAsync<User>(sql);
-    }
+        EnsureTenantId(tenantId);
 
-    public async Task UpdateAsync(User entity)
-    {
         const string sql = @"
-UPDATE dbo.Users
-SET FullName = @FullName,
-    Email = @Email,
-    PasswordHash = @PasswordHash,
-    Role = @Role,
-    Phone = @Phone,
-    Specialty = @Specialty,
-    LicenseNumber = @LicenseNumber,
-    AvatarUrl = @AvatarUrl,
-    RefreshToken = @RefreshToken,
-    RefreshTokenExpiry = @RefreshTokenExpiry,
-    FailedLoginAttempts = @FailedLoginAttempts,
-    LockedUntil = @LockedUntil,
-    IsActive = @IsActive,
-    UpdatedAt = @UpdatedAt
-WHERE Id = @Id;";
+SELECT *
+FROM dbo.Users
+WHERE TenantId = @TenantId
+  AND Id = @Id;";
 
-        using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, entity);
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryFirstOrDefaultAsync<User>(sql, new { TenantId = tenantId, Id = id });
     }
 
-    public async Task DeleteAsync(Guid id)
-    {
-        const string sql = @"
-UPDATE dbo.Users
-SET IsActive = 0, UpdatedAt = SYSUTCDATETIME()
-WHERE Id = @Id;";
+    public Task<IEnumerable<User>> GetAllAsync() =>
+        throw new NotSupportedException("Use GetByTenantAsync(Guid tenantId) for tenant-owned data.");
 
-        using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new { Id = id });
-    }
+    public Task UpdateAsync(User entity) =>
+        throw new NotSupportedException("Use explicit tenant-scoped user update methods for tenant-owned data.");
+
+    public Task DeleteAsync(Guid id) =>
+        throw new NotSupportedException("Use explicit tenant-scoped user delete/deactivate methods for tenant-owned data.");
 
     public async Task<User?> GetByEmailAsync(Guid tenantId, string email)
     {
@@ -113,23 +97,27 @@ WHERE RefreshToken = @RefreshToken;";
 
     public async Task<IEnumerable<User>> GetByTenantAsync(Guid tenantId)
     {
+        EnsureTenantId(tenantId);
+
         const string sql = @"
 SELECT * FROM dbo.Users
 WHERE TenantId = @TenantId
 ORDER BY CreatedAt DESC;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QueryAsync<User>(sql, new { TenantId = tenantId });
     }
 
     public async Task<bool> ExistsByEmailAsync(Guid tenantId, string email)
     {
+        EnsureTenantId(tenantId);
+
         const string sql = @"
 SELECT COUNT(1) FROM dbo.Users
 WHERE TenantId = @TenantId
   AND LOWER(Email) = LOWER(@Email);";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Email = email });
         return count > 0;
     }
@@ -174,6 +162,8 @@ WHERE Id = @UserId;";
     }
     public async Task<User?> GetActiveByIdAsync(Guid tenantId, Guid userId)
     {
+        EnsureTenantId(tenantId);
+
         const string sql = @"
 SELECT *
 FROM dbo.Users
@@ -181,7 +171,7 @@ WHERE TenantId = @TenantId
   AND Id = @UserId
   AND IsActive = 1;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QueryFirstOrDefaultAsync<User>(sql, new
         {
             TenantId = tenantId,
@@ -191,6 +181,8 @@ WHERE TenantId = @TenantId
 
     public async Task<bool> UpdatePasswordAsync(Guid tenantId, Guid userId, string passwordHash)
     {
+        EnsureTenantId(tenantId);
+
         const string sql = @"
 UPDATE dbo.Users
 SET PasswordHash = @PasswordHash,
@@ -201,7 +193,7 @@ WHERE TenantId = @TenantId
   AND Id = @UserId
   AND IsActive = 1;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -210,5 +202,13 @@ WHERE TenantId = @TenantId
         });
 
         return rows > 0;
+    }
+
+    private static void EnsureTenantId(Guid tenantId)
+    {
+        if (tenantId == Guid.Empty)
+        {
+            throw new InvalidOperationException("TenantId is required.");
+        }
     }
 }

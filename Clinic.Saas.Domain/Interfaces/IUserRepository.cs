@@ -4,6 +4,7 @@ namespace Clinic.Saas.Domain.Interfaces;
 
 public interface IUserRepository : IBaseRepository<User>
 {
+    Task<User?> GetByIdAsync(Guid tenantId, Guid id);
     Task<User?> GetByEmailAsync(Guid tenantId, string email);
     Task<User?> GetByRefreshTokenAsync(string refreshToken);
     Task<IEnumerable<User>> GetByTenantAsync(Guid tenantId);
