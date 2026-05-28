@@ -8,6 +8,8 @@ using Clinic.Saas.Service.UseCases.Auth.Commands;
 using Clinic.Saas.Service.UseCases.ClinicalTemplates.Commands;
 using Clinic.Saas.Service.UseCases.ClinicalTemplates.Queries;
 using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
+using Clinic.Saas.Service.UseCases.Invoices.Commands;
+using Clinic.Saas.Service.UseCases.Invoices.Queries;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Commands;
 using Clinic.Saas.Service.UseCases.OnlineBookings.Queries;
 using Clinic.Saas.Service.UseCases.Onboarding.Commands;
@@ -108,6 +110,10 @@ public static class DependencyInjection
         services.AddScoped<GetDebtTrackingQuery.Handler>();
         services.AddScoped<GetMonthlyRevenueQuery.Handler>();
         services.AddScoped<GetDailyRevenueReportQuery.Handler>();
+
+        services.AddScoped<CreateInvoiceCommand.Handler>();
+        services.AddScoped<GetInvoiceByIdQuery.Handler>();
+        services.AddScoped<AddInvoicePaymentCommand.Handler>();
 
         services.AddScoped<LoginCommand.Handler>();
         services.AddScoped<RefreshTokenCommand.Handler>();

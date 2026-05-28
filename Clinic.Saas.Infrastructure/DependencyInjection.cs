@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IProcedureRepository, ProcedureRepository>();
         services.AddScoped<IClinicSettingsRepository, ClinicSettingsRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IPlatformAdminRepository, PlatformAdminRepository>();
