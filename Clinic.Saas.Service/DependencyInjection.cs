@@ -41,6 +41,10 @@ public static class DependencyInjection
         services.AddScoped<GetAdminDashboardQuery.Handler>();
         services.AddScoped<GetAdminClinicsQuery.Handler>();
         services.AddScoped<GetAdminClinicByIdQuery.Handler>();
+        services.AddScoped<GetClinicUsageMetricsQuery.Handler>();
+        services.AddScoped<GetSubscriptionRevenueReportQuery.Handler>();
+        services.AddScoped<GetExpiringSubscriptionsReportQuery.Handler>();
+        services.AddScoped<GetActivityLogQuery.Handler>();
         services.AddScoped<BootstrapSuperAdminCommand.Handler>();
         services.AddScoped<CreateClinicCommand.Handler>();
         services.AddScoped<UpdateClinicCommand.Handler>();

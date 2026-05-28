@@ -2,6 +2,7 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Infrastructure.Data;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.UseCases.Admin.Queries;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Clinic.Saas.Service.UseCases.ClinicalTemplates.Commands;
@@ -58,6 +59,10 @@ public class OperationsController : ControllerBase
     private readonly RejectOnlineBookingCommand.Handler _rejectOnlineBooking;
     private readonly GetClinicalTemplatesQuery.Handler _getClinicalTemplates;
     private readonly CreateClinicalTemplateCommand.Handler _createClinicalTemplate;
+    private readonly GetClinicUsageMetricsQuery.Handler _usageMetrics;
+    private readonly GetSubscriptionRevenueReportQuery.Handler _subscriptionRevenue;
+    private readonly GetExpiringSubscriptionsReportQuery.Handler _expiringSubscriptions;
+    private readonly GetActivityLogQuery.Handler _activityLog;
     private readonly UpdateUserCommand.Handler _updateUser;
     private readonly DeactivateUserCommand.Handler _deactivateUser;
     private readonly ResetUserPasswordCommand.Handler _resetUserPassword;
@@ -92,6 +97,10 @@ public class OperationsController : ControllerBase
         RejectOnlineBookingCommand.Handler rejectOnlineBooking,
         GetClinicalTemplatesQuery.Handler getClinicalTemplates,
         CreateClinicalTemplateCommand.Handler createClinicalTemplate,
+        GetClinicUsageMetricsQuery.Handler usageMetrics,
+        GetSubscriptionRevenueReportQuery.Handler subscriptionRevenue,
+        GetExpiringSubscriptionsReportQuery.Handler expiringSubscriptions,
+        GetActivityLogQuery.Handler activityLog,
         UpdateUserCommand.Handler updateUser,
         DeactivateUserCommand.Handler deactivateUser,
         ResetUserPasswordCommand.Handler resetUserPassword,
@@ -125,6 +134,10 @@ public class OperationsController : ControllerBase
         _rejectOnlineBooking = rejectOnlineBooking;
         _getClinicalTemplates = getClinicalTemplates;
         _createClinicalTemplate = createClinicalTemplate;
+        _usageMetrics = usageMetrics;
+        _subscriptionRevenue = subscriptionRevenue;
+        _expiringSubscriptions = expiringSubscriptions;
+        _activityLog = activityLog;
         _updateUser = updateUser;
         _deactivateUser = deactivateUser;
         _resetUserPassword = resetUserPassword;
@@ -723,57 +736,48 @@ VALUES
     [HttpGet("admin/usage")]
     public async Task<IActionResult> ClinicUsageMetrics()
     {
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT t.Id, t.Name, t.Subdomain,
-       (SELECT COUNT(1) FROM dbo.Users u WHERE u.TenantId = t.Id AND u.IsActive = 1) AS UsersCount,
-       (SELECT COUNT(1) FROM dbo.Patients p WHERE p.TenantId = t.Id AND p.IsDeleted = 0) AS PatientsCount,
-       (SELECT COUNT(1) FROM dbo.Appointments a WHERE a.TenantId = t.Id AND a.IsDeleted = 0) AS AppointmentsCount
-FROM dbo.Tenants t
-ORDER BY t.CreatedAt DESC;");
-        return OkResponse(rows);
+        // Compatibility forwarding route. New canonical endpoint: GET /api/admin/usage.
+        var result = await _usageMetrics.Handle();
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "SuperAdmin")]
     [HttpGet("admin/subscription-revenue")]
     public async Task<IActionResult> SubscriptionRevenue()
     {
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT YEAR(CreatedAt) AS [Year], MONTH(CreatedAt) AS [Month], SUM(AmountPaid) AS Revenue, COUNT(1) AS SubscriptionCount
-FROM dbo.Subscriptions
-GROUP BY YEAR(CreatedAt), MONTH(CreatedAt)
-ORDER BY [Year] DESC, [Month] DESC;");
-        return OkResponse(rows);
+        // Compatibility forwarding route. New canonical endpoint: GET /api/admin/subscription-revenue.
+        var result = await _subscriptionRevenue.Handle();
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "SuperAdmin")]
     [HttpGet("admin/expiring-subscriptions")]
     public async Task<IActionResult> ExpiringSubscriptions([FromQuery] int days = 14)
     {
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT t.Name, t.Subdomain, s.Plan, s.EndDate, s.Status
-FROM dbo.Subscriptions s
-INNER JOIN dbo.Tenants t ON t.Id = s.TenantId
-WHERE s.EndDate >= SYSUTCDATETIME() AND s.EndDate < DATEADD(day, @Days, SYSUTCDATETIME())
-ORDER BY s.EndDate;",
-            new { Days = days });
-        return OkResponse(rows);
+        // Compatibility forwarding route. New canonical endpoint: GET /api/admin/expiring-subscriptions.
+        var result = await _expiringSubscriptions.Handle(new GetExpiringSubscriptionsReportQuery.Query
+        {
+            Days = days
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]
     [HttpGet("admin/activity-log")]
     public async Task<IActionResult> ActivityLog([FromQuery] int take = 100)
     {
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync<AuditLogDto>(@"
-SELECT TOP (@Take) Id, TenantId, UserId, Action, EntityName, EntityId, NewValues, CreatedAt
-FROM dbo.AuditLogs
-WHERE (@TenantId IS NULL OR TenantId = @TenantId)
-ORDER BY CreatedAt DESC;",
-            new { Take = Math.Clamp(take, 1, 500), TenantId = _currentUser.Role == UserRole.SuperAdmin ? null : _currentUser.TenantId });
-        return OkResponse(rows);
+        // Compatibility forwarding route. New canonical endpoint: GET /api/admin/activity-log.
+        if (_currentUser.Role != UserRole.SuperAdmin && !_currentUser.TenantId.HasValue) return Unauthorized();
+
+        var result = await _activityLog.Handle(new GetActivityLogQuery.Query
+        {
+            Take = take,
+            IncludeAllTenants = _currentUser.Role == UserRole.SuperAdmin,
+            TenantId = _currentUser.TenantId
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     private async Task<IActionResult> AppointmentRange(DateTime from, DateTime to)
