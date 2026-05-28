@@ -59,6 +59,22 @@ public class RejectOnlineBookingDto
     public string RejectReason { get; set; } = string.Empty;
 }
 
+public class OnlineBookingOperationDto
+{
+    public Guid Id { get; set; }
+    public string PatientName { get; set; } = string.Empty;
+    public string PatientPhone { get; set; } = string.Empty;
+    public string? PatientEmail { get; set; }
+    public DateTime RequestedDate { get; set; }
+    public TimeSpan RequestedTime { get; set; }
+    public Guid? DoctorId { get; set; }
+    public string? Complaint { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string ConfirmCode { get; set; } = string.Empty;
+    public string? RejectReason { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
 public class UpdateVisitDto : CreateVisitDto
 {
 }

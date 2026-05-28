@@ -5,6 +5,8 @@ using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
+using Clinic.Saas.Service.UseCases.OnlineBookings.Commands;
+using Clinic.Saas.Service.UseCases.OnlineBookings.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
@@ -49,6 +51,9 @@ public class OperationsController : ControllerBase
     private readonly SendPrescriptionWhatsappCommand.Handler _sendPrescriptionWhatsapp;
     private readonly SearchDrugsQuery.Handler _searchDrugs;
     private readonly CheckDrugInteractionsQuery.Handler _checkDrugInteractions;
+    private readonly GetOnlineBookingsQuery.Handler _getOnlineBookings;
+    private readonly ApproveOnlineBookingCommand.Handler _approveOnlineBooking;
+    private readonly RejectOnlineBookingCommand.Handler _rejectOnlineBooking;
     private readonly UpdateUserCommand.Handler _updateUser;
     private readonly DeactivateUserCommand.Handler _deactivateUser;
     private readonly ResetUserPasswordCommand.Handler _resetUserPassword;
@@ -78,6 +83,9 @@ public class OperationsController : ControllerBase
         SendPrescriptionWhatsappCommand.Handler sendPrescriptionWhatsapp,
         SearchDrugsQuery.Handler searchDrugs,
         CheckDrugInteractionsQuery.Handler checkDrugInteractions,
+        GetOnlineBookingsQuery.Handler getOnlineBookings,
+        ApproveOnlineBookingCommand.Handler approveOnlineBooking,
+        RejectOnlineBookingCommand.Handler rejectOnlineBooking,
         UpdateUserCommand.Handler updateUser,
         DeactivateUserCommand.Handler deactivateUser,
         ResetUserPasswordCommand.Handler resetUserPassword,
@@ -106,6 +114,9 @@ public class OperationsController : ControllerBase
         _sendPrescriptionWhatsapp = sendPrescriptionWhatsapp;
         _searchDrugs = searchDrugs;
         _checkDrugInteractions = checkDrugInteractions;
+        _getOnlineBookings = getOnlineBookings;
+        _approveOnlineBooking = approveOnlineBooking;
+        _rejectOnlineBooking = rejectOnlineBooking;
         _updateUser = updateUser;
         _deactivateUser = deactivateUser;
         _resetUserPassword = resetUserPassword;
@@ -373,44 +384,46 @@ VALUES
     [HttpGet("online-bookings")]
     public async Task<IActionResult> OnlineBookings()
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT Id, PatientName, PatientPhone, PatientEmail, RequestedDate, RequestedTime, DoctorId, Complaint, Status, ConfirmCode, RejectReason, CreatedAt
-FROM dbo.OnlineBookings
-WHERE TenantId = @TenantId
-ORDER BY CreatedAt DESC;",
-            new { TenantId = tenantId.Value });
-        return OkResponse(rows);
+        // Compatibility forwarding route. New canonical endpoint: GET /api/online-bookings.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
+
+        var result = await _getOnlineBookings.Handle(new GetOnlineBookingsQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost("online-bookings/{id:guid}/approve")]
     public async Task<IActionResult> ApproveOnlineBooking(Guid id)
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.ExecuteAsync(
-            "UPDATE dbo.OnlineBookings SET Status = @Status WHERE TenantId = @TenantId AND Id = @Id",
-            new { TenantId = tenantId.Value, Id = id, Status = OnlineBookingStatus.Confirmed });
-        if (rows == 0) return Error("Online booking not found.", StatusCodes.Status404NotFound);
-        await Audit("Approve", "OnlineBooking", id, new { id });
-        return OkResponse(true, "Online booking approved.");
+        // Compatibility forwarding route. New canonical endpoint: POST /api/online-bookings/{id}/approve.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
+
+        var result = await _approveOnlineBooking.Handle(new ApproveOnlineBookingCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            BookingId = id
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost("online-bookings/{id:guid}/reject")]
     public async Task<IActionResult> RejectOnlineBooking(Guid id, [FromBody] RejectOnlineBookingDto dto)
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.ExecuteAsync(
-            "UPDATE dbo.OnlineBookings SET Status = @Status, RejectReason = @RejectReason WHERE TenantId = @TenantId AND Id = @Id",
-            new { TenantId = tenantId.Value, Id = id, Status = OnlineBookingStatus.Rejected, dto.RejectReason });
-        if (rows == 0) return Error("Online booking not found.", StatusCodes.Status404NotFound);
-        await Audit("Reject", "OnlineBooking", id, dto);
-        return OkResponse(true, "Online booking rejected.");
+        // Compatibility forwarding route. New canonical endpoint: POST /api/online-bookings/{id}/reject.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
+
+        var result = await _rejectOnlineBooking.Handle(new RejectOnlineBookingCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            BookingId = id,
+            Rejection = dto
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("visits/patient/{patientId:guid}")]
