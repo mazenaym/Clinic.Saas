@@ -169,6 +169,11 @@ public class OperationsController : ControllerBase
             User = dto
         });
 
+        if (result.Success)
+        {
+            await Audit("Update", "User", id, new { id });
+        }
+
         return StatusCode(result.StatusCode, result);
     }
 
@@ -184,6 +189,11 @@ public class OperationsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             UserId = id
         });
+
+        if (result.Success)
+        {
+            await Audit("Deactivate", "User", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -201,6 +211,11 @@ public class OperationsController : ControllerBase
             UserId = id,
             Password = dto
         });
+
+        if (result.Success)
+        {
+            await Audit("ResetPassword", "User", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -232,6 +247,11 @@ public class OperationsController : ControllerBase
             UserId = _currentUser.UserId.Value,
             Preferences = dto
         });
+
+        if (result.Success)
+        {
+            await Audit("UpdatePreferences", "User", _currentUser.UserId.Value, new { id = _currentUser.UserId.Value });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -281,7 +301,10 @@ public class OperationsController : ControllerBase
             Settings = dto
         });
 
-        await Audit("Update", "ClinicSettings", tenantId.Value, dto);
+        if (result.Success)
+        {
+            await Audit("Update", "ClinicSettings", tenantId.Value, new { id = tenantId.Value });
+        }
         return StatusCode(result.StatusCode, result);
     }
 
@@ -371,7 +394,7 @@ public class OperationsController : ControllerBase
 
         if (result.Success)
         {
-            await Audit("Reschedule", "Appointment", id, dto);
+            await Audit("Reschedule", "Appointment", id, new { id });
         }
 
         return StatusCode(result.StatusCode, result);
@@ -471,7 +494,7 @@ public class OperationsController : ControllerBase
 
         if (result.Success)
         {
-            await Audit("Update", "Visit", id, dto);
+            await Audit("Update", "Visit", id, new { id });
         }
 
         return StatusCode(result.StatusCode, result);
@@ -545,6 +568,8 @@ public class OperationsController : ControllerBase
         {
             return StatusCode(result.StatusCode, result);
         }
+
+        await Audit("AccessPdf", "Prescription", id, new { id });
 
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
@@ -643,7 +668,7 @@ public class OperationsController : ControllerBase
 
         if (result.Success)
         {
-            await Audit("Update", "Payment", id, dto);
+            await Audit("Update", "Payment", id, new { id });
         }
 
         return StatusCode(result.StatusCode, result);
@@ -665,7 +690,7 @@ public class OperationsController : ControllerBase
 
         if (result.Success)
         {
-            await Audit("Refund", "Payment", id, dto);
+            await Audit("Refund", "Payment", id, new { id });
         }
 
         return StatusCode(result.StatusCode, result);
@@ -688,6 +713,8 @@ public class OperationsController : ControllerBase
         {
             return StatusCode(result.StatusCode, result);
         }
+
+        await Audit("AccessReceipt", "Payment", id, new { id });
 
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }

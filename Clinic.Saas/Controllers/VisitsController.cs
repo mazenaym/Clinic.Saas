@@ -19,6 +19,7 @@ public class VisitsController : ControllerBase
     private readonly FinalizeVisitCommand.Handler _finalizeVisit;
     private readonly ICurrentUserService _currentUser;
     private readonly IClinicAuthorizationService _authorization;
+    private readonly IAuditService _auditService;
 
     public VisitsController(
         CreateVisitCommand.Handler createVisit,
@@ -27,7 +28,8 @@ public class VisitsController : ControllerBase
         UpdateVisitCommand.Handler updateVisit,
         FinalizeVisitCommand.Handler finalizeVisit,
         ICurrentUserService currentUser,
-        IClinicAuthorizationService authorization)
+        IClinicAuthorizationService authorization,
+        IAuditService auditService)
     {
         _createVisit = createVisit;
         _getVisit = getVisit;
@@ -36,6 +38,7 @@ public class VisitsController : ControllerBase
         _finalizeVisit = finalizeVisit;
         _currentUser = currentUser;
         _authorization = authorization;
+        _auditService = auditService;
     }
 
     [Authorize(Roles = "Admin,Doctor")]
@@ -116,6 +119,11 @@ public class VisitsController : ControllerBase
             Visit = dto
         });
 
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Update", "Visit", id, new { id });
+        }
+
         return StatusCode(result.StatusCode, result);
     }
 
@@ -135,6 +143,11 @@ public class VisitsController : ControllerBase
             FinalizedByUserId = _currentUser.UserId.Value,
             RowVersion = rowVersion
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Finalize", "Visit", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }

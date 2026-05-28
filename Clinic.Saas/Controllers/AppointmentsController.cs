@@ -21,6 +21,7 @@ public class AppointmentsController : ControllerBase
     private readonly UpdateAppointmentStatusCommand.Handler _updateStatus;
     private readonly ICurrentUserService _currentUser;
     private readonly IClinicAuthorizationService _authorization;
+    private readonly IAuditService _auditService;
 
     public AppointmentsController(
         CreateAppointmentCommand.Handler createAppointment,
@@ -31,7 +32,8 @@ public class AppointmentsController : ControllerBase
         RescheduleAppointmentCommand.Handler rescheduleAppointment,
         UpdateAppointmentStatusCommand.Handler updateStatus,
         ICurrentUserService currentUser,
-        IClinicAuthorizationService authorization)
+        IClinicAuthorizationService authorization,
+        IAuditService auditService)
     {
         _createAppointment = createAppointment;
         _getByDate = getByDate;
@@ -42,6 +44,7 @@ public class AppointmentsController : ControllerBase
         _updateStatus = updateStatus;
         _currentUser = currentUser;
         _authorization = authorization;
+        _auditService = auditService;
     }
 
     [Authorize(Roles = "Admin,Doctor,Reception")]
@@ -63,6 +66,11 @@ public class AppointmentsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Appointment = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Create", "Appointment", result.Data?.Id, new { result.Data?.Id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -146,6 +154,11 @@ public class AppointmentsController : ControllerBase
             Request = dto
         });
 
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Reschedule", "Appointment", id, new { id });
+        }
+
         return StatusCode(result.StatusCode, result);
     }
 
@@ -188,6 +201,11 @@ public class AppointmentsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Request = dto
         });
+        if (result.Success)
+        {
+            var action = dto.Status == Domain.Enums.AppointmentStatus.Cancelled ? "Cancel" : "UpdateStatus";
+            await this.AuditAsync(_auditService, _currentUser, action, "Appointment", id, new { id, status = dto.Status.ToString() });
+        }
         return StatusCode(result.StatusCode, result);
     }
 

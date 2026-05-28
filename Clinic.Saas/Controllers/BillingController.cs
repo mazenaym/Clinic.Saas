@@ -22,6 +22,7 @@ public class BillingController : ControllerBase
     private readonly GetMonthlyRevenueQuery.Handler _monthlyRevenue;
     private readonly GetDailyRevenueReportQuery.Handler _dailyRevenue;
     private readonly ICurrentUserService _currentUser;
+    private readonly IAuditService _auditService;
 
     public BillingController(
         CreatePaymentCommand.Handler createPayment,
@@ -33,7 +34,8 @@ public class BillingController : ControllerBase
         GetDebtTrackingQuery.Handler debtTracking,
         GetMonthlyRevenueQuery.Handler monthlyRevenue,
         GetDailyRevenueReportQuery.Handler dailyRevenue,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IAuditService auditService)
     {
         _createPayment = createPayment;
         _getPaymentById = getPaymentById;
@@ -45,6 +47,7 @@ public class BillingController : ControllerBase
         _monthlyRevenue = monthlyRevenue;
         _dailyRevenue = dailyRevenue;
         _currentUser = currentUser;
+        _auditService = auditService;
     }
 
     [Authorize(Roles = "Admin,Reception")]
@@ -61,6 +64,11 @@ public class BillingController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Payment = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Create", "Payment", result.Data?.Id, new { result.Data?.Id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -117,6 +125,11 @@ public class BillingController : ControllerBase
             Payment = dto
         });
 
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Update", "Payment", id, new { id });
+        }
+
         return StatusCode(result.StatusCode, result);
     }
 
@@ -135,6 +148,11 @@ public class BillingController : ControllerBase
             PaymentId = id,
             Refund = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Refund", "Payment", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -158,6 +176,8 @@ public class BillingController : ControllerBase
         {
             return StatusCode(result.StatusCode, result);
         }
+
+        await this.AuditAsync(_auditService, _currentUser, "AccessReceipt", "Payment", id, new { id });
 
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }

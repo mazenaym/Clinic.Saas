@@ -22,6 +22,7 @@ public class PatientsController : ControllerBase
     private readonly UpdatePatientCommand.Handler _updatePatient;
     private readonly DeletePatientCommand.Handler _deletePatient;
     private readonly ICurrentUserService _currentUser;
+    private readonly IAuditService _auditService;
 
     public PatientsController(
         CreatePatientCommand.Handler createPatient,
@@ -33,7 +34,8 @@ public class PatientsController : ControllerBase
         ExportPatientsQuery.Handler exportPatients,
         UpdatePatientCommand.Handler updatePatient,
         DeletePatientCommand.Handler deletePatient,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IAuditService auditService)
     {
         _createPatient = createPatient;
         _getPatient = getPatient;
@@ -45,6 +47,7 @@ public class PatientsController : ControllerBase
         _updatePatient = updatePatient;
         _deletePatient = deletePatient;
         _currentUser = currentUser;
+        _auditService = auditService;
     }
 
     [Authorize(Roles = "Admin,Doctor,Reception")]
@@ -62,6 +65,11 @@ public class PatientsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Patient = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Create", "Patient", result.Data?.Id, new { result.Data?.Id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -193,6 +201,10 @@ public class PatientsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Patient = dto
         });
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Update", "Patient", id, new { id });
+        }
         return StatusCode(result.StatusCode, result);
     }
 
@@ -211,6 +223,10 @@ public class PatientsController : ControllerBase
             Id = id,
             RowVersion = rowVersion
         });
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Delete", "Patient", id, new { id });
+        }
         return StatusCode(result.StatusCode, result);
     }
 }

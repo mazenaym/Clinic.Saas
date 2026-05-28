@@ -83,7 +83,7 @@ public class TenantController : ControllerBase
 
         if (result.Success)
         {
-            await Audit("Update", "ClinicSettings", _currentUser.TenantId.Value, dto);
+            await Audit("Update", "ClinicSettings", _currentUser.TenantId.Value, new { id = _currentUser.TenantId.Value });
         }
 
         return StatusCode(result.StatusCode, result);

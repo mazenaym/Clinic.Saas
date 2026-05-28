@@ -21,6 +21,7 @@ public class UsersController : ControllerBase
     private readonly GetUserPreferencesQuery.Handler _getUserPreferences;
     private readonly SaveUserPreferencesCommand.Handler _saveUserPreferences;
     private readonly ICurrentUserService _currentUser;
+    private readonly IAuditService _auditService;
 
     public UsersController(
         CreateUserCommand.Handler createUser,
@@ -31,7 +32,8 @@ public class UsersController : ControllerBase
         GetCurrentUserQuery.Handler getCurrentUser,
         GetUserPreferencesQuery.Handler getUserPreferences,
         SaveUserPreferencesCommand.Handler saveUserPreferences,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IAuditService auditService)
     {
         _createUser = createUser;
         _updateUser = updateUser;
@@ -42,6 +44,7 @@ public class UsersController : ControllerBase
         _getUserPreferences = getUserPreferences;
         _saveUserPreferences = saveUserPreferences;
         _currentUser = currentUser;
+        _auditService = auditService;
     }
 
     [Authorize(Roles = "Admin")]
@@ -59,6 +62,11 @@ public class UsersController : ControllerBase
             UserId = id,
             User = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Update", "User", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -78,6 +86,11 @@ public class UsersController : ControllerBase
             UserId = id
         });
 
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Deactivate", "User", id, new { id });
+        }
+
         return StatusCode(result.StatusCode, result);
     }
 
@@ -96,6 +109,11 @@ public class UsersController : ControllerBase
             UserId = id,
             Password = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "ResetPassword", "User", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -183,6 +201,11 @@ public class UsersController : ControllerBase
             UserId = _currentUser.UserId.Value,
             Preferences = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "UpdatePreferences", "User", _currentUser.UserId.Value, new { id = _currentUser.UserId.Value });
+        }
 
         return StatusCode(result.StatusCode, result);
     }

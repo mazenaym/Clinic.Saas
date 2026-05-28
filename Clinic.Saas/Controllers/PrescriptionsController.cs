@@ -18,6 +18,7 @@ public class PrescriptionsController : ControllerBase
     private readonly SendPrescriptionWhatsappCommand.Handler _sendWhatsapp;
     private readonly ICurrentUserService _currentUser;
     private readonly IClinicAuthorizationService _authorization;
+    private readonly IAuditService _auditService;
 
     public PrescriptionsController(
         CreatePrescriptionCommand.Handler createPrescription,
@@ -25,7 +26,8 @@ public class PrescriptionsController : ControllerBase
         GetPrescriptionPdfQuery.Handler getPrescriptionPdf,
         SendPrescriptionWhatsappCommand.Handler sendWhatsapp,
         ICurrentUserService currentUser,
-        IClinicAuthorizationService authorization)
+        IClinicAuthorizationService authorization,
+        IAuditService auditService)
     {
         _createPrescription = createPrescription;
         _getPrescription = getPrescription;
@@ -33,6 +35,7 @@ public class PrescriptionsController : ControllerBase
         _sendWhatsapp = sendWhatsapp;
         _currentUser = currentUser;
         _authorization = authorization;
+        _auditService = auditService;
     }
 
     [Authorize(Roles = "Admin,Doctor")]
@@ -54,6 +57,11 @@ public class PrescriptionsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Prescription = dto
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "Create", "Prescription", result.Data?.Id, new { result.Data?.Id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }
@@ -100,6 +108,8 @@ public class PrescriptionsController : ControllerBase
             return StatusCode(result.StatusCode, result);
         }
 
+        await this.AuditAsync(_auditService, _currentUser, "AccessPdf", "Prescription", id, new { id });
+
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
@@ -118,6 +128,11 @@ public class PrescriptionsController : ControllerBase
             PrescriptionId = id,
             RowVersion = rowVersion
         });
+
+        if (result.Success)
+        {
+            await this.AuditAsync(_auditService, _currentUser, "SendWhatsapp", "Prescription", id, new { id });
+        }
 
         return StatusCode(result.StatusCode, result);
     }

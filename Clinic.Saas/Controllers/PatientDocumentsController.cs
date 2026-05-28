@@ -15,17 +15,20 @@ namespace Clinic.Saas.api.Controllers
         private readonly GetPatientDocumentsQuery.Handler _getDocuments;
         private readonly DownloadPatientDocumentQuery.Handler _downloadDocument;
         private readonly ICurrentUserService _currentUser;
+        private readonly IAuditService _auditService;
 
         public PatientDocumentsController(
             UploadPatientDocumentCommand.Handler uploadDocument,
             GetPatientDocumentsQuery.Handler getDocuments,
             DownloadPatientDocumentQuery.Handler downloadDocument,
-            ICurrentUserService currentUser)
+            ICurrentUserService currentUser,
+            IAuditService auditService)
         {
             _uploadDocument = uploadDocument;
             _getDocuments = getDocuments;
             _downloadDocument = downloadDocument;
             _currentUser = currentUser;
+            _auditService = auditService;
         }
 
         [HttpPost]
@@ -67,6 +70,11 @@ namespace Clinic.Saas.api.Controllers
                 Description = description
             });
 
+            if (result.Success)
+            {
+                await this.AuditAsync(_auditService, _currentUser, "Upload", "PatientDocument", result.Data?.Id, new { result.Data?.Id, patientId });
+            }
+
             return StatusCode(result.StatusCode, result);
         }
         [HttpGet]
@@ -105,6 +113,8 @@ namespace Clinic.Saas.api.Controllers
             {
                 return StatusCode(result.StatusCode, result);
             }
+
+            await this.AuditAsync(_auditService, _currentUser, "Download", "PatientDocument", documentId, new { documentId, patientId });
 
             return File(
                 result.Data.FileStream,
