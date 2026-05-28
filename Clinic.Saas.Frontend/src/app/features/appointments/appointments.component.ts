@@ -79,20 +79,22 @@ export class AppointmentsComponent implements OnInit {
 
   async status(id: string, value: number) {
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.updateAppointmentStatus(id, value));
+      await firstValueFrom(this.api.updateAppointmentStatus(id, value, undefined, this.findAppointment(id)?.rowVersion));
       await this.load();
       await this.loadExtras();
     }, 'تم تحديث حالة الموعد');
   }
 
   pickReschedule(a: Appointment) {
-    this.reschedule = { id: a.id, appointmentDate: a.appointmentDate?.slice(0, 10) || this.date, startTime: a.startTime, endTime: a.endTime };
+    this.reschedule = { id: a.id, appointmentDate: a.appointmentDate?.slice(0, 10) || this.date, startTime: a.startTime, endTime: a.endTime, rowVersion: a.rowVersion };
   }
 
   async saveReschedule() {
     if (!this.reschedule['id']) return;
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.rescheduleAppointment(this.reschedule['id'], this.reschedule));
+      const id = this.reschedule['id'];
+      const rowVersion = this.reschedule['rowVersion'] || this.findAppointment(id)?.rowVersion;
+      await firstValueFrom(this.api.rescheduleAppointment(id, { ...this.reschedule, rowVersion }));
       await this.load();
       await this.loadExtras();
     }, 'تم تغيير الموعد');
@@ -111,5 +113,9 @@ export class AppointmentsComponent implements OnInit {
       await firstValueFrom(this.api.rejectOnlineBooking(id, rejectReason));
       await this.loadExtras();
     }, 'تم رفض طلب الحجز');
+  }
+
+  private findAppointment(id: string) {
+    return [...this.appointments(), ...this.rangeAppointments(), ...this.monthlyAppointments(), ...this.cancellations()].find((appointment) => appointment.id === id);
   }
 }

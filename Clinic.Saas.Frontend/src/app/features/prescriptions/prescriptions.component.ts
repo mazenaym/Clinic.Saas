@@ -70,10 +70,10 @@ export class PrescriptionsComponent implements OnInit {
   }
   pdfUrl() { return this.result() ? this.api.prescriptionPdfUrl(this.result()!.id) : '#'; }
   async sendWhatsapp() {
-    const id = this.result()?.id;
-    if (!id) return;
+    const prescription = this.result();
+    if (!prescription) return;
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.sendPrescriptionWhatsapp(id));
+      await firstValueFrom(this.api.sendPrescriptionWhatsapp(prescription.id, prescription.rowVersion));
       await this.loadPrescription();
     }, 'تم إرسال الروشتة واتساب');
   }

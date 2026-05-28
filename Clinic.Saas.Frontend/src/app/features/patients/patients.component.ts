@@ -48,8 +48,9 @@ export class PatientsComponent implements OnInit {
 
   async save() {
     await this.ui.run(async () => {
-      const id = this.selected()?.id;
-      if (id) await firstValueFrom(this.api.updatePatient(id, this.form));
+      const selected = this.selected();
+      const id = selected?.id;
+      if (id) await firstValueFrom(this.api.updatePatient(id, { ...this.form, rowVersion: selected?.rowVersion || this.form['rowVersion'] }));
       else await firstValueFrom(this.api.createPatient(this.form));
       this.reset();
       await this.load();
@@ -58,7 +59,8 @@ export class PatientsComponent implements OnInit {
 
   async remove(id: string) {
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.deletePatient(id));
+      const rowVersion = this.patients().find((patient) => patient.id === id)?.rowVersion;
+      await firstValueFrom(this.api.deletePatient(id, rowVersion));
       await this.load();
     }, 'تم حذف المريض');
   }

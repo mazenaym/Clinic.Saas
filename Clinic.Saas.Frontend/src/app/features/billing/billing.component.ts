@@ -61,7 +61,7 @@ export class BillingComponent implements OnInit {
       this.recalculate();
       const id = this.editingPaymentId();
       if (id) {
-        await firstValueFrom(this.api.updatePayment(id, this.form));
+        await firstValueFrom(this.api.updatePayment(id, { ...this.form, rowVersion: this.form['rowVersion'] || this.paymentRowVersion(id) }));
       } else {
         await firstValueFrom(this.api.createPayment(this.form));
       }
@@ -75,12 +75,14 @@ export class BillingComponent implements OnInit {
     if (!this.lookupPaymentId) return;
     const data = await firstValueFrom(this.api.payment(this.lookupPaymentId));
     this.selectedPayment.set(data);
-    const payment = (data['payment'] || {}) as Record<string, any>;
+    const payment = (data['payment'] || data || {}) as Record<string, any>;
+    const items = (data['items'] || payment['items']) as any[] | undefined;
     this.form = {
       ...this.emptyForm(),
       ...payment,
       paymentMethod: Number(payment['paymentMethod'] ?? 1),
-      items: (data['items'] as any[])?.map((item) => ({
+      rowVersion: payment['rowVersion'] || data['rowVersion'],
+      items: items?.map((item) => ({
         serviceName: item.serviceName,
         serviceType: Number(item.serviceType),
         quantity: item.quantity,
@@ -119,9 +121,17 @@ export class BillingComponent implements OnInit {
   async refund(id: string) {
     const reason = prompt('Refund reason') || '';
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.refundPayment(id, reason));
+      await firstValueFrom(this.api.refundPayment(id, reason, this.paymentRowVersion(id)));
       await this.loadExtras();
       await this.loadReport();
     }, 'تم رد الدفع');
+  }
+
+  private paymentRowVersion(id: string) {
+    const selected = this.selectedPayment();
+    if (selected?.['id'] === id) return selected['rowVersion'] as string | undefined;
+    const nested = selected?.['payment'] as Record<string, unknown> | undefined;
+    if (nested?.['id'] === id) return nested['rowVersion'] as string | undefined;
+    return this.patientPayments().find((payment) => payment['id'] === id)?.['rowVersion'] as string | undefined;
   }
 }

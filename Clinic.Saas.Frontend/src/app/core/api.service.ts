@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { AdminClinic, AdminStats, ApiResponse, Appointment, AuditLog, AuthSession, ClinicSettings, DailyRevenue, Patient, PatientTimelineItem, Prescription, TenantSubscriptionStatus, User, Visit } from './models';
@@ -72,8 +72,8 @@ export class ApiService {
     return this.put<Patient>(`/Patients/${id}`, payload);
   }
 
-  deletePatient(id: string) {
-    return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/Patients/${id}`).pipe(map((r) => r.data));
+  deletePatient(id: string, rowVersion?: string) {
+    return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/Patients/${id}`, { headers: this.ifMatch(rowVersion) }).pipe(map((r) => r.data));
   }
 
   patientTimeline(id: string) {
@@ -112,8 +112,8 @@ export class ApiService {
     return this.post<Appointment>('/Appointments', payload);
   }
 
-  updateAppointmentStatus(id: string, status: number, cancelReason?: string) {
-    return this.put<Appointment>(`/Appointments/${id}/status`, { status, cancelReason });
+  updateAppointmentStatus(id: string, status: number, cancelReason?: string, rowVersion?: string) {
+    return this.put<Appointment>(`/Appointments/${id}/status`, { status, cancelReason, rowVersion });
   }
 
   rescheduleAppointment(id: string, payload: Record<string, unknown>) {
@@ -152,8 +152,8 @@ export class ApiService {
     return this.get<Visit[]>(`/visits/patient/${patientId}`);
   }
 
-  finalizeVisit(id: string) {
-    return this.post<boolean>(`/visits/${id}/finalize`, {});
+  finalizeVisit(id: string, rowVersion?: string) {
+    return this.http.post<ApiResponse<boolean>>(`${this.baseUrl}/visits/${id}/finalize`, {}, { headers: this.ifMatch(rowVersion) }).pipe(map((r) => r.data));
   }
 
   clinicalTemplates() {
@@ -176,8 +176,8 @@ export class ApiService {
     return `${this.baseUrl}/prescriptions/${id}/pdf`;
   }
 
-  sendPrescriptionWhatsapp(id: string) {
-    return this.post<boolean>(`/prescriptions/${id}/send-whatsapp`, {});
+  sendPrescriptionWhatsapp(id: string, rowVersion?: string) {
+    return this.http.post<ApiResponse<boolean>>(`${this.baseUrl}/prescriptions/${id}/send-whatsapp`, {}, { headers: this.ifMatch(rowVersion) }).pipe(map((r) => r.data));
   }
 
   checkDrugInteractions(drugNames: string[]) {
@@ -208,8 +208,8 @@ export class ApiService {
     return this.put<boolean>(`/billing/payments/${id}`, payload);
   }
 
-  refundPayment(id: string, reason?: string) {
-    return this.post<boolean>(`/billing/payments/${id}/refund`, { reason });
+  refundPayment(id: string, reason?: string, rowVersion?: string) {
+    return this.post<boolean>(`/billing/payments/${id}/refund`, { reason, rowVersion });
   }
 
   receiptPdfUrl(id: string) {
@@ -278,6 +278,10 @@ export class ApiService {
 
   private put<T>(path: string, payload: unknown) {
     return this.http.put<ApiResponse<T>>(`${this.baseUrl}${path}`, payload).pipe(map((r) => r.data));
+  }
+
+  private ifMatch(rowVersion?: string) {
+    return rowVersion ? new HttpHeaders({ 'If-Match': rowVersion }) : undefined;
   }
 
   private params(params?: Record<string, string>) {

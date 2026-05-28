@@ -58,7 +58,7 @@ export class VisitsComponent implements OnInit {
     const visit = this.created();
     if (!visit) return;
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.updateVisit(visit.id, this.form));
+      await firstValueFrom(this.api.updateVisit(visit.id, { ...this.form, rowVersion: visit.rowVersion }));
       await this.loadVisit();
     }, 'تم تحديث الكشف');
   }
@@ -67,7 +67,7 @@ export class VisitsComponent implements OnInit {
     const visit = this.created();
     if (!visit) return;
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.finalizeVisit(visit.id));
+      await firstValueFrom(this.api.finalizeVisit(visit.id, visit.rowVersion));
       await this.loadVisit();
     }, 'تم إغلاق الكشف');
   }

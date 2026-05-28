@@ -58,6 +58,7 @@ export interface Patient {
   lastVisitDate?: string;
   totalPaid?: number;
   totalOutstanding?: number;
+  rowVersion?: string;
 }
 
 export interface Appointment {
@@ -73,6 +74,7 @@ export interface Appointment {
   doctorName: string;
   notes?: string;
   reminderSent: boolean;
+  rowVersion?: string;
 }
 
 export interface Visit {
@@ -88,6 +90,7 @@ export interface Visit {
   clinicalNotes?: string;
   prescriptions?: Prescription[];
   payment?: Payment;
+  rowVersion?: string;
 }
 
 export interface Prescription {
@@ -100,6 +103,7 @@ export interface Prescription {
   doctorName: string;
   patientName: string;
   items: PrescriptionItem[];
+  rowVersion?: string;
 }
 
 export interface PrescriptionItem {
@@ -123,6 +127,7 @@ export interface Payment {
   status: string;
   createdAt: string;
   patientName: string;
+  rowVersion?: string;
 }
 
 export interface DailyRevenue {

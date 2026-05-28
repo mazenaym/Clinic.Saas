@@ -24,6 +24,11 @@ export class UiService {
 
   private readError(error: any) {
     const body = error?.error;
+    if (error?.status === 409) {
+      const message = body?.detail || body?.message || body?.title || 'The record was changed by another user.';
+      return `${message} Refresh the data and try again.`;
+    }
+
     if (Array.isArray(body?.errors) && body.errors.length) {
       return body.errors.join(' - ');
     }
