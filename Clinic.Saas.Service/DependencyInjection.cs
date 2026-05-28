@@ -93,6 +93,9 @@ public static class DependencyInjection
         services.AddScoped<CheckSubdomainAvailabilityQuery.Handler>();
 
         services.AddScoped<CreateUserCommand.Handler>();
+        services.AddScoped<UpdateUserCommand.Handler>();
+        services.AddScoped<DeactivateUserCommand.Handler>();
+        services.AddScoped<ResetUserPasswordCommand.Handler>();
         services.AddScoped<GetTenantUsersQuery.Handler>();
         services.AddScoped<GetCurrentUserQuery.Handler>();
         services.AddScoped<GetUserPreferencesQuery.Handler>();

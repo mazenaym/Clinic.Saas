@@ -13,6 +13,9 @@ namespace Clinic.Saas.api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly CreateUserCommand.Handler _createUser;
+    private readonly UpdateUserCommand.Handler _updateUser;
+    private readonly DeactivateUserCommand.Handler _deactivateUser;
+    private readonly ResetUserPasswordCommand.Handler _resetUserPassword;
     private readonly GetTenantUsersQuery.Handler _getTenantUsers;
     private readonly GetCurrentUserQuery.Handler _getCurrentUser;
     private readonly GetUserPreferencesQuery.Handler _getUserPreferences;
@@ -21,6 +24,9 @@ public class UsersController : ControllerBase
 
     public UsersController(
         CreateUserCommand.Handler createUser,
+        UpdateUserCommand.Handler updateUser,
+        DeactivateUserCommand.Handler deactivateUser,
+        ResetUserPasswordCommand.Handler resetUserPassword,
         GetTenantUsersQuery.Handler getTenantUsers,
         GetCurrentUserQuery.Handler getCurrentUser,
         GetUserPreferencesQuery.Handler getUserPreferences,
@@ -28,11 +34,70 @@ public class UsersController : ControllerBase
         ICurrentUserService currentUser)
     {
         _createUser = createUser;
+        _updateUser = updateUser;
+        _deactivateUser = deactivateUser;
+        _resetUserPassword = resetUserPassword;
         _getTenantUsers = getTenantUsers;
         _getCurrentUser = getCurrentUser;
         _getUserPreferences = getUserPreferences;
         _saveUserPreferences = saveUserPreferences;
         _currentUser = currentUser;
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _updateUser.Handle(new UpdateUserCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = id,
+            User = dto
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:guid}/deactivate")]
+    public async Task<IActionResult> Deactivate(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _deactivateUser.Handle(new DeactivateUserCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = id
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:guid}/reset-password")]
+    public async Task<IActionResult> ResetPassword(Guid id, [FromBody] ResetPasswordDto dto)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _resetUserPassword.Handle(new ResetUserPasswordCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = id,
+            Password = dto
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin")]

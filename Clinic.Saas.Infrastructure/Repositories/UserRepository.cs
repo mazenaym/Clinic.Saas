@@ -1,4 +1,5 @@
 using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Infrastructure.Data;
 using Clinic.Saas.Service.Interfaces;
@@ -221,6 +222,126 @@ WHERE TenantId = @TenantId
             TenantId = tenantId,
             UserId = userId,
             AvatarUrl = avatarUrl
+        });
+
+        return rows > 0;
+    }
+
+    public async Task<bool> IsEmailTakenByAnotherUserAsync(Guid tenantId, Guid userId, string email)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT COUNT(1)
+FROM dbo.Users
+WHERE TenantId = @TenantId
+  AND Id <> @UserId
+  AND LOWER(Email) = LOWER(@Email);";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        var count = await connection.ExecuteScalarAsync<int>(sql, new
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Email = email
+        });
+
+        return count > 0;
+    }
+
+    public async Task<bool> UpdateAdminUserAsync(Guid tenantId, User user)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Users
+SET FullName = @FullName,
+    Email = @Email,
+    Role = @Role,
+    Phone = @Phone,
+    Specialty = @Specialty,
+    LicenseNumber = @LicenseNumber,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            UserId = user.Id,
+            user.FullName,
+            user.Email,
+            user.Role,
+            user.Phone,
+            user.Specialty,
+            user.LicenseNumber
+        });
+
+        return rows > 0;
+    }
+
+    public async Task<int> CountActiveAdminsAsync(Guid tenantId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT COUNT(1)
+FROM dbo.Users
+WHERE TenantId = @TenantId
+  AND Role = @AdminRole
+  AND IsActive = 1;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.ExecuteScalarAsync<int>(sql, new
+        {
+            TenantId = tenantId,
+            AdminRole = UserRole.Admin
+        });
+    }
+
+    public async Task<bool> DeactivateAsync(Guid tenantId, Guid userId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Users
+SET IsActive = 0,
+    RefreshToken = NULL,
+    RefreshTokenExpiry = NULL,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            UserId = userId
+        });
+
+        return rows > 0;
+    }
+
+    public async Task<bool> ResetPasswordAsync(Guid tenantId, Guid userId, string passwordHash)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Users
+SET PasswordHash = @PasswordHash,
+    RefreshToken = NULL,
+    RefreshTokenExpiry = NULL,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            PasswordHash = passwordHash
         });
 
         return rows > 0;

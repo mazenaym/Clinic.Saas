@@ -29,7 +29,6 @@ public class OperationsController : ControllerBase
 {
     private readonly DapperContext _db;
     private readonly ICurrentUserService _currentUser;
-    private readonly IPasswordService _passwordService;
     private readonly GetAppointmentRangeQuery.Handler _getAppointmentRange;
     private readonly GetAppointmentCancellationsQuery.Handler _getAppointmentCancellations;
     private readonly RescheduleAppointmentCommand.Handler _rescheduleAppointment;
@@ -50,13 +49,15 @@ public class OperationsController : ControllerBase
     private readonly SendPrescriptionWhatsappCommand.Handler _sendPrescriptionWhatsapp;
     private readonly SearchDrugsQuery.Handler _searchDrugs;
     private readonly CheckDrugInteractionsQuery.Handler _checkDrugInteractions;
+    private readonly UpdateUserCommand.Handler _updateUser;
+    private readonly DeactivateUserCommand.Handler _deactivateUser;
+    private readonly ResetUserPasswordCommand.Handler _resetUserPassword;
     private readonly GetUserPreferencesQuery.Handler _getUserPreferences;
     private readonly SaveUserPreferencesCommand.Handler _saveUserPreferences;
 
     public OperationsController(
         DapperContext db,
         ICurrentUserService currentUser,
-        IPasswordService passwordService,
         GetAppointmentRangeQuery.Handler getAppointmentRange,
         GetAppointmentCancellationsQuery.Handler getAppointmentCancellations,
         RescheduleAppointmentCommand.Handler rescheduleAppointment,
@@ -77,12 +78,14 @@ public class OperationsController : ControllerBase
         SendPrescriptionWhatsappCommand.Handler sendPrescriptionWhatsapp,
         SearchDrugsQuery.Handler searchDrugs,
         CheckDrugInteractionsQuery.Handler checkDrugInteractions,
+        UpdateUserCommand.Handler updateUser,
+        DeactivateUserCommand.Handler deactivateUser,
+        ResetUserPasswordCommand.Handler resetUserPassword,
         GetUserPreferencesQuery.Handler getUserPreferences,
         SaveUserPreferencesCommand.Handler saveUserPreferences)
     {
         _db = db;
         _currentUser = currentUser;
-        _passwordService = passwordService;
         _getAppointmentRange = getAppointmentRange;
         _getAppointmentCancellations = getAppointmentCancellations;
         _rescheduleAppointment = rescheduleAppointment;
@@ -103,6 +106,9 @@ public class OperationsController : ControllerBase
         _sendPrescriptionWhatsapp = sendPrescriptionWhatsapp;
         _searchDrugs = searchDrugs;
         _checkDrugInteractions = checkDrugInteractions;
+        _updateUser = updateUser;
+        _deactivateUser = deactivateUser;
+        _resetUserPassword = resetUserPassword;
         _getUserPreferences = getUserPreferences;
         _saveUserPreferences = saveUserPreferences;
     }
@@ -113,113 +119,50 @@ public class OperationsController : ControllerBase
     [HttpPut("users/{id:guid}")]
     public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
+        // Compatibility forwarding route. New canonical endpoint: PUT /api/users/{id}.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
 
-        using var connection = _db.CreateConnection();
-        var existing = await connection.QueryFirstOrDefaultAsync<UserListRow>(
-            "SELECT * FROM dbo.Users WHERE TenantId = @TenantId AND Id = @Id",
-            new { TenantId = tenantId.Value, Id = id });
-
-        if (existing is null)
+        var result = await _updateUser.Handle(new UpdateUserCommand.Command
         {
-            return Error("User not found.", StatusCodes.Status404NotFound);
-        }
+            TenantId = _currentUser.TenantId.Value,
+            UserId = id,
+            User = dto
+        });
 
-        var emailTaken = await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(1) FROM dbo.Users WHERE TenantId = @TenantId AND Id <> @Id AND LOWER(Email) = LOWER(@Email)",
-            new { TenantId = tenantId.Value, Id = id, dto.Email });
-        if (emailTaken > 0)
-        {
-            return Error("Email is already used in this clinic.", StatusCodes.Status409Conflict);
-        }
-
-        await connection.ExecuteAsync(@"
-UPDATE dbo.Users
-SET FullName = @FullName,
-    Email = @Email,
-    Role = @Role,
-    Phone = @Phone,
-    Specialty = @Specialty,
-    LicenseNumber = @LicenseNumber,
-    UpdatedAt = SYSUTCDATETIME()
-WHERE TenantId = @TenantId AND Id = @Id;",
-            new
-            {
-                TenantId = tenantId.Value,
-                Id = id,
-                dto.FullName,
-                dto.Email,
-                Role = dto.Role,
-                dto.Phone,
-                dto.Specialty,
-                dto.LicenseNumber
-            });
-
-        await Audit("Update", "User", id, dto);
-        return await UserById(connection, tenantId.Value, id);
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPost("users/{id:guid}/deactivate")]
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
+        // Compatibility forwarding route. New canonical endpoint: POST /api/users/{id}/deactivate.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
 
-        using var connection = _db.CreateConnection();
-        var user = await connection.QueryFirstOrDefaultAsync<UserListRow>(
-            "SELECT * FROM dbo.Users WHERE TenantId = @TenantId AND Id = @Id",
-            new { TenantId = tenantId.Value, Id = id });
-
-        if (user is null)
+        var result = await _deactivateUser.Handle(new DeactivateUserCommand.Command
         {
-            return Error("User not found.", StatusCodes.Status404NotFound);
-        }
+            TenantId = _currentUser.TenantId.Value,
+            UserId = id
+        });
 
-        if (user.Role == UserRole.Admin)
-        {
-            var activeAdmins = await connection.ExecuteScalarAsync<int>(
-                "SELECT COUNT(1) FROM dbo.Users WHERE TenantId = @TenantId AND Role = @AdminRole AND IsActive = 1",
-                new { TenantId = tenantId.Value, AdminRole = UserRole.Admin });
-            if (activeAdmins <= 1)
-            {
-                return Error("Cannot deactivate the last active admin in the clinic.", StatusCodes.Status409Conflict);
-            }
-        }
-
-        await connection.ExecuteAsync(
-            "UPDATE dbo.Users SET IsActive = 0, RefreshToken = NULL, RefreshTokenExpiry = NULL, UpdatedAt = SYSUTCDATETIME() WHERE TenantId = @TenantId AND Id = @Id",
-            new { TenantId = tenantId.Value, Id = id });
-
-        await Audit("Deactivate", "User", id, new { id });
-        return OkResponse(true, "User deactivated.");
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPost("users/{id:guid}/reset-password")]
     public async Task<IActionResult> ResetUserPassword(Guid id, [FromBody] ResetPasswordDto dto)
     {
-        var tenantId = RequireTenant();
-        if (tenantId is null) return Unauthorized();
+        // Compatibility forwarding route. New canonical endpoint: POST /api/users/{id}/reset-password.
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
 
-        using var connection = _db.CreateConnection();
-        var rows = await connection.ExecuteAsync(@"
-UPDATE dbo.Users
-SET PasswordHash = @Hash,
-    RefreshToken = NULL,
-    RefreshTokenExpiry = NULL,
-    UpdatedAt = SYSUTCDATETIME()
-WHERE TenantId = @TenantId AND Id = @Id;",
-            new { TenantId = tenantId.Value, Id = id, Hash = _passwordService.HashPassword(dto.NewPassword) });
-
-        if (rows == 0)
+        var result = await _resetUserPassword.Handle(new ResetUserPasswordCommand.Command
         {
-            return Error("User not found.", StatusCodes.Status404NotFound);
-        }
+            TenantId = _currentUser.TenantId.Value,
+            UserId = id,
+            Password = dto
+        });
 
-        await Audit("ResetPassword", "User", id, new { id });
-        return OkResponse(true, "Password reset successfully.");
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("users/me/preferences")]
@@ -861,12 +804,6 @@ VALUES (@TenantId, @UserId, @Action, @EntityName, @EntityId, @NewValues, @IpAddr
         }
     }
 
-    private async Task<IActionResult> UserById(System.Data.IDbConnection connection, Guid tenantId, Guid id)
-    {
-        var user = await connection.QueryFirstOrDefaultAsync<UserListRow>("SELECT * FROM dbo.Users WHERE TenantId = @TenantId AND Id = @Id", new { TenantId = tenantId, Id = id });
-        return user is null ? Error("User not found.", StatusCodes.Status404NotFound) : OkResponse(user);
-    }
-
     private IActionResult OkResponse<T>(T data, string message = "OK")
     {
         return StatusCode(StatusCodes.Status200OK, new BaseResponse<T>
@@ -917,22 +854,4 @@ startxref
         return Encoding.ASCII.GetBytes(pdf);
     }
 
-    private sealed class UserPasswordRow
-    {
-        public Guid Id { get; set; }
-        public string PasswordHash { get; set; } = string.Empty;
-    }
-
-    private sealed class UserListRow
-    {
-        public Guid Id { get; set; }
-        public Guid TenantId { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public UserRole Role { get; set; }
-        public string? Phone { get; set; }
-        public string? Specialty { get; set; }
-        public string? LicenseNumber { get; set; }
-        public bool IsActive { get; set; }
-    }
 }
