@@ -18,6 +18,7 @@ public class PatientsController : ControllerBase
     private readonly SearchPatientsQuery.Handler _searchPatients;
     private readonly GetPatientTimelineQuery.Handler _getTimeline;
     private readonly GetPatientChartQuery.Handler _getChart;
+    private readonly GetPatientFinancialLedgerQuery.Handler _getLedger;
     private readonly FindPatientDuplicatesQuery.Handler _findDuplicates;
     private readonly ExportPatientsQuery.Handler _exportPatients;
     private readonly UpdatePatientCommand.Handler _updatePatient;
@@ -32,6 +33,7 @@ public class PatientsController : ControllerBase
         SearchPatientsQuery.Handler searchPatients,
         GetPatientTimelineQuery.Handler getTimeline,
         GetPatientChartQuery.Handler getChart,
+        GetPatientFinancialLedgerQuery.Handler getLedger,
         FindPatientDuplicatesQuery.Handler findDuplicates,
         ExportPatientsQuery.Handler exportPatients,
         UpdatePatientCommand.Handler updatePatient,
@@ -45,6 +47,7 @@ public class PatientsController : ControllerBase
         _searchPatients = searchPatients;
         _getTimeline = getTimeline;
         _getChart = getChart;
+        _getLedger = getLedger;
         _findDuplicates = findDuplicates;
         _exportPatients = exportPatients;
         _updatePatient = updatePatient;
@@ -140,6 +143,24 @@ public class PatientsController : ControllerBase
         }
 
         var result = await _getChart.Handle(new GetPatientChartQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            PatientId = id
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("{id:guid}/ledger")]
+    public async Task<IActionResult> Ledger(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getLedger.Handle(new GetPatientFinancialLedgerQuery.Query
         {
             TenantId = _currentUser.TenantId.Value,
             PatientId = id

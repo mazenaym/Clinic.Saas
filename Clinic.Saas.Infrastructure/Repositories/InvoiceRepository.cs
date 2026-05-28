@@ -192,6 +192,77 @@ WHERE TenantId = @TenantId
         }
     }
 
+    public async Task<PatientFinancialLedgerData> GetPatientLedgerAsync(Guid tenantId, Guid patientId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT
+    COALESCE(SUM(GrandTotal), 0) AS TotalInvoiced,
+    COALESCE(SUM(PaidAmount), 0) AS TotalPaid,
+    COALESCE(SUM(RemainingAmount), 0) AS OutstandingBalance
+FROM dbo.Invoices
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+  AND Status <> @CancelledStatus;
+
+WITH LedgerRows AS
+(
+    SELECT
+        i.CreatedAt AS [Date],
+        CAST('invoice' AS nvarchar(20)) AS [Type],
+        i.InvoiceNumber AS ReferenceNumber,
+        CAST(N'Invoice' AS nvarchar(200)) AS [Description],
+        i.GrandTotal AS Debit,
+        CAST(0 AS decimal(18,2)) AS Credit,
+        CAST(0 AS int) AS SortOrder
+    FROM dbo.Invoices i
+    WHERE i.TenantId = @TenantId
+      AND i.PatientId = @PatientId
+      AND i.Status <> @CancelledStatus
+
+    UNION ALL
+
+    SELECT
+        ip.PaidAt AS [Date],
+        CAST('payment' AS nvarchar(20)) AS [Type],
+        i.InvoiceNumber AS ReferenceNumber,
+        CAST(COALESCE(ip.PaymentReference, N'Invoice payment') AS nvarchar(200)) AS [Description],
+        CAST(0 AS decimal(18,2)) AS Debit,
+        ip.Amount AS Credit,
+        CAST(1 AS int) AS SortOrder
+    FROM dbo.InvoicePayments ip
+    INNER JOIN dbo.Invoices i ON i.TenantId = ip.TenantId AND i.Id = ip.InvoiceId
+    WHERE ip.TenantId = @TenantId
+      AND i.PatientId = @PatientId
+      AND i.Status <> @CancelledStatus
+)
+SELECT
+    [Date],
+    [Type],
+    ReferenceNumber,
+    [Description],
+    Debit,
+    Credit,
+    SUM(Debit - Credit) OVER (ORDER BY [Date], SortOrder, ReferenceNumber ROWS UNBOUNDED PRECEDING) AS Balance
+FROM LedgerRows
+ORDER BY [Date], SortOrder, ReferenceNumber;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var multi = await connection.QueryMultipleAsync(sql, new
+        {
+            TenantId = tenantId,
+            PatientId = patientId,
+            CancelledStatus = InvoiceStatus.Cancelled
+        });
+
+        return new PatientFinancialLedgerData
+        {
+            Summary = await multi.ReadFirstOrDefaultAsync<PatientFinancialLedgerSummaryRow>() ?? new PatientFinancialLedgerSummaryRow(),
+            Entries = (await multi.ReadAsync<PatientFinancialLedgerEntryRow>()).ToList()
+        };
+    }
+
     public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
     {
         EnsureTenantId(tenantId);
