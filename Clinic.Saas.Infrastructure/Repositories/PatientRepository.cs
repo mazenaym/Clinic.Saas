@@ -1,6 +1,7 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Infrastructure.Data;
+using Clinic.Saas.Service.Interfaces;
 using Dapper;
 using System.Data;
 
@@ -8,14 +9,21 @@ namespace Clinic.Saas.Infrastructure.Repositories;
 
 public class PatientRepository : IPatientRepository
 {
-    private readonly DapperContext _context;
+    //private readonly DapperContext _context;
 
-    public PatientRepository(DapperContext context)
+    //public PatientRepository(DapperContext context)
+    //{
+    //    _context = context;
+    //}
+    private readonly IDbConnectionFactory _connectionFactory;
+
+    public PatientRepository(IDbConnectionFactory connectionFactory)
     {
-        _context = context;
+        _connectionFactory = connectionFactory;
     }
 
-    public Task<Patient?> GetByIdAsync(Guid id) => GetByIdInternalAsync(id);
+    public Task<Patient?> GetByIdAsync(Guid id) =>
+    throw new NotSupportedException("Use GetByIdAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
     public async Task<Patient?> GetByIdAsync(Guid tenantId, Guid id)
     {
@@ -25,13 +33,24 @@ WHERE TenantId = @TenantId
   AND Id = @Id
   AND IsDeleted = 0;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QueryFirstOrDefaultAsync<Patient>(sql, new { TenantId = tenantId, Id = id });
     }
 
-    public Task<IEnumerable<Patient>> GetAllAsync() => GetAllInternalAsync(null);
+    public Task<IEnumerable<Patient>> GetAllAsync() =>
+    throw new NotSupportedException("Use GetAllAsync(Guid tenantId) for tenant-owned data.");
 
-    public Task<IEnumerable<Patient>> GetAllAsync(Guid tenantId) => GetAllInternalAsync(tenantId);
+    public async Task<IEnumerable<Patient>> GetAllAsync(Guid tenantId)
+    {
+        const string sql = @"
+SELECT * FROM dbo.Patients
+WHERE TenantId = @TenantId
+  AND IsDeleted = 0
+ORDER BY CreatedAt DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.QueryAsync<Patient>(sql, new { TenantId = tenantId });
+    }
 
     public async Task<Patient> AddAsync(Patient entity)
     {
@@ -40,11 +59,16 @@ WHERE TenantId = @TenantId
             entity.Id = Guid.NewGuid();
         }
 
+        if (entity.TenantId == Guid.Empty)
+        {
+            throw new InvalidOperationException("TenantId is required.");
+        }
+
         entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
         entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
 
-        using var connection = _context.CreateConnection();
-        connection.Open();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -83,13 +107,13 @@ VALUES
         }
     }
 
-    public Task UpdateAsync(Patient entity) => UpdateInternalAsync(null, entity);
+    public Task UpdateAsync(Patient entity) =>
+    throw new NotSupportedException("Use UpdateAsync(Guid tenantId, Patient entity) for tenant-owned data.");
 
-    public Task UpdateAsync(Guid tenantId, Patient entity) => UpdateInternalAsync(tenantId, entity);
-
-    public Task DeleteAsync(Guid id) => DeleteInternalAsync(null, id);
-
-    public Task DeleteAsync(Guid tenantId, Guid id) => DeleteInternalAsync(tenantId, id);
+    
+ 
+    public Task DeleteAsync(Guid id) =>
+    throw new NotSupportedException("Use DeleteAsync(Guid tenantId, Guid id) for tenant-owned data.");
 
     public async Task<Patient?> GetByPhoneAsync(Guid tenantId, string phone)
     {
@@ -99,7 +123,7 @@ WHERE TenantId = @TenantId
   AND PhoneNumber = @Phone
   AND IsDeleted = 0;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QueryFirstOrDefaultAsync<Patient>(sql, new { TenantId = tenantId, Phone = phone });
     }
 
@@ -117,7 +141,7 @@ WHERE TenantId = @TenantId
   )
 ORDER BY FullName;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         return await connection.QueryAsync<Patient>(sql, new { TenantId = tenantId, Search = $"%{searchTerm}%" });
     }
 
@@ -129,15 +153,15 @@ WHERE TenantId = @TenantId
   AND PhoneNumber = @Phone
   AND IsDeleted = 0;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Phone = phone });
         return count > 0;
     }
 
     public async Task<string> GenerateNextPatientCodeAsync(Guid tenantId)
     {
-        using var connection = _context.CreateConnection();
-        connection.Open();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
         var code = await GenerateNextPatientCodeAsync(connection, transaction, tenantId);
         transaction.Commit();
@@ -156,26 +180,9 @@ WHERE TenantId = @TenantId
         return $"CLN-{nextNumber:D5}";
     }
 
-    private async Task<Patient?> GetByIdInternalAsync(Guid id)
-    {
-        const string sql = @"SELECT * FROM dbo.Patients WHERE Id = @Id AND IsDeleted = 0;";
-        using var connection = _context.CreateConnection();
-        return await connection.QueryFirstOrDefaultAsync<Patient>(sql, new { Id = id });
-    }
+    
 
-    private async Task<IEnumerable<Patient>> GetAllInternalAsync(Guid? tenantId)
-    {
-        const string sql = @"
-SELECT * FROM dbo.Patients
-WHERE IsDeleted = 0
-  AND (@TenantId IS NULL OR TenantId = @TenantId)
-ORDER BY CreatedAt DESC;";
-
-        using var connection = _context.CreateConnection();
-        return await connection.QueryAsync<Patient>(sql, new { TenantId = tenantId });
-    }
-
-    private async Task UpdateInternalAsync(Guid? tenantId, Patient entity)
+    public async Task UpdateAsync(Guid tenantId, Patient entity)
     {
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -198,13 +205,13 @@ SET FullName = @FullName,
     InsuranceNumber = @InsuranceNumber,
     UpdatedAt = @UpdatedAt
 WHERE Id = @Id
-  AND (@TenantIdFilter IS NULL OR TenantId = @TenantIdFilter);";
+  AND TenantId = @TenantId;";
 
-        using var connection = _context.CreateConnection();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
         await connection.ExecuteAsync(sql, new
         {
             entity.Id,
-            TenantIdFilter = tenantId,
+            TenantId = tenantId,
             entity.FullName,
             entity.PhoneNumber,
             entity.DateOfBirth,
@@ -224,15 +231,20 @@ WHERE Id = @Id
         });
     }
 
-    private async Task DeleteInternalAsync(Guid? tenantId, Guid id)
+    public async Task DeleteAsync(Guid tenantId, Guid id)
     {
         const string sql = @"
 UPDATE dbo.Patients
 SET IsDeleted = 1, UpdatedAt = SYSUTCDATETIME()
 WHERE Id = @Id
-  AND (@TenantId IS NULL OR TenantId = @TenantId);";
+  AND TenantId = @TenantId;";
 
-        using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            Id = id
+        });
     }
+
 }

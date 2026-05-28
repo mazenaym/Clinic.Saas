@@ -13,6 +13,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<DapperContext>();
+        services.AddScoped<IDbConnectionFactory, DapperConnectionFactory>();
         services.AddHttpContextAccessor();
 
         services.AddScoped<IPatientRepository, PatientRepository>();
@@ -30,6 +31,8 @@ public static class DependencyInjection
 
         services.AddScoped<IPatientDocumentRepository, PatientDocumentRepository>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
+
 
         return services;
     }
