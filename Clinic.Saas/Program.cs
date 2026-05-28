@@ -1,5 +1,6 @@
 using Clinic.Saas.Infrastructure;
 using Clinic.Saas.api.Middleware;
+using Clinic.Saas.api.ProblemDetails;
 using Clinic.Saas.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -8,7 +9,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<BaseResponseProblemDetailsFilter>();
+});
+builder.Services.AddClinicProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
 {
@@ -83,6 +88,8 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+app.UseClinicProblemDetails();
 
 app.UseSwagger();
 app.UseSwaggerUI();
