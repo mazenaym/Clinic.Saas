@@ -64,6 +64,13 @@ public static class DependencyInjection
         services.AddScoped<GetPrescriptionByIdQuery.Handler>();
 
         services.AddScoped<CreatePaymentCommand.Handler>();
+        services.AddScoped<GetPaymentByIdQuery.Handler>();
+        services.AddScoped<GetPatientPaymentsQuery.Handler>();
+        services.AddScoped<UpdatePaymentCommand.Handler>();
+        services.AddScoped<RefundPaymentCommand.Handler>();
+        services.AddScoped<GetReceiptPdfQuery.Handler>();
+        services.AddScoped<GetDebtTrackingQuery.Handler>();
+        services.AddScoped<GetMonthlyRevenueQuery.Handler>();
         services.AddScoped<GetDailyRevenueReportQuery.Handler>();
 
         services.AddScoped<LoginCommand.Handler>();

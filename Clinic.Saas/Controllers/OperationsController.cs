@@ -4,6 +4,8 @@ using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.UseCases.Payments.Commands;
+using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +25,13 @@ public class OperationsController : ControllerBase
     private readonly GetAppointmentRangeQuery.Handler _getAppointmentRange;
     private readonly GetAppointmentCancellationsQuery.Handler _getAppointmentCancellations;
     private readonly RescheduleAppointmentCommand.Handler _rescheduleAppointment;
+    private readonly GetPaymentByIdQuery.Handler _getPaymentById;
+    private readonly GetPatientPaymentsQuery.Handler _getPatientPayments;
+    private readonly UpdatePaymentCommand.Handler _updatePayment;
+    private readonly RefundPaymentCommand.Handler _refundPayment;
+    private readonly GetReceiptPdfQuery.Handler _receiptPdf;
+    private readonly GetDebtTrackingQuery.Handler _debtTracking;
+    private readonly GetMonthlyRevenueQuery.Handler _monthlyRevenue;
 
     public OperationsController(
         DapperContext db,
@@ -30,7 +39,14 @@ public class OperationsController : ControllerBase
         IPasswordService passwordService,
         GetAppointmentRangeQuery.Handler getAppointmentRange,
         GetAppointmentCancellationsQuery.Handler getAppointmentCancellations,
-        RescheduleAppointmentCommand.Handler rescheduleAppointment)
+        RescheduleAppointmentCommand.Handler rescheduleAppointment,
+        GetPaymentByIdQuery.Handler getPaymentById,
+        GetPatientPaymentsQuery.Handler getPatientPayments,
+        UpdatePaymentCommand.Handler updatePayment,
+        RefundPaymentCommand.Handler refundPayment,
+        GetReceiptPdfQuery.Handler receiptPdf,
+        GetDebtTrackingQuery.Handler debtTracking,
+        GetMonthlyRevenueQuery.Handler monthlyRevenue)
     {
         _db = db;
         _currentUser = currentUser;
@@ -38,6 +54,13 @@ public class OperationsController : ControllerBase
         _getAppointmentRange = getAppointmentRange;
         _getAppointmentCancellations = getAppointmentCancellations;
         _rescheduleAppointment = rescheduleAppointment;
+        _getPaymentById = getPaymentById;
+        _getPatientPayments = getPatientPayments;
+        _updatePayment = updatePayment;
+        _refundPayment = refundPayment;
+        _receiptPdf = receiptPdf;
+        _debtTracking = debtTracking;
+        _monthlyRevenue = monthlyRevenue;
     }
 
    
@@ -525,168 +548,131 @@ ORDER BY TradeName;",
     [HttpGet("billing/payments/{id:guid}")]
     public async Task<IActionResult> PaymentById(Guid id)
     {
+        // Compatibility route. New code should call GET /api/billing/payments/{id}.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var payment = await connection.QueryFirstOrDefaultAsync("SELECT * FROM dbo.Payments WHERE TenantId = @TenantId AND Id = @Id", new { TenantId = tenantId.Value, Id = id });
-        if (payment is null) return Error("Payment not found.", StatusCodes.Status404NotFound);
-        var items = await connection.QueryAsync("SELECT * FROM dbo.PaymentItems WHERE PaymentId = @Id", new { Id = id });
-        return OkResponse(new { payment, items });
+
+        var result = await _getPaymentById.Handle(new GetPaymentByIdQuery.Query
+        {
+            TenantId = tenantId.Value,
+            PaymentId = id
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("billing/patients/{patientId:guid}/payments")]
     public async Task<IActionResult> PatientPayments(Guid patientId)
     {
+        // Compatibility route. New code should call GET /api/billing/patients/{patientId}/payments.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync("SELECT * FROM dbo.Payments WHERE TenantId = @TenantId AND PatientId = @PatientId ORDER BY CreatedAt DESC", new { TenantId = tenantId.Value, PatientId = patientId });
-        return OkResponse(rows);
+
+        var result = await _getPatientPayments.Handle(new GetPatientPaymentsQuery.Query
+        {
+            TenantId = tenantId.Value,
+            PatientId = patientId
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "Admin,Reception")]
     [HttpPut("billing/payments/{id:guid}")]
     public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentDto dto)
     {
+        // Compatibility route. New code should call PUT /api/billing/payments/{id}.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
 
-        var netAmount = dto.TotalAmount + dto.TaxAmount - dto.DiscountAmount;
-        var status = dto.PaidAmount switch
+        var result = await _updatePayment.Handle(new UpdatePaymentCommand.Command
         {
-            <= 0 => PaymentStatus.Pending,
-            var paid when paid < netAmount => PaymentStatus.Partial,
-            _ => PaymentStatus.Paid
-        };
+            TenantId = tenantId.Value,
+            PaymentId = id,
+            Payment = dto
+        });
 
-        using var connection = _db.CreateConnection();
-        connection.Open();
-        using var tx = connection.BeginTransaction();
-
-        var rows = await connection.ExecuteAsync(@"
-UPDATE dbo.Payments
-SET VisitId = @VisitId,
-    PatientId = @PatientId,
-    TotalAmount = @TotalAmount,
-    DiscountAmount = @DiscountAmount,
-    DiscountPct = @DiscountPct,
-    TaxAmount = @TaxAmount,
-    PaidAmount = @PaidAmount,
-    RemainingAmount = @RemainingAmount,
-    PaymentMethod = @PaymentMethod,
-    [Status] = @Status,
-    InsuranceCompany = @InsuranceCompany,
-    InsuranceNumber = @InsuranceNumber,
-    Notes = @Notes,
-    UpdatedAt = SYSUTCDATETIME()
-WHERE TenantId = @TenantId AND Id = @Id;",
-            new
-            {
-                TenantId = tenantId.Value,
-                Id = id,
-                dto.VisitId,
-                dto.PatientId,
-                dto.TotalAmount,
-                dto.DiscountAmount,
-                dto.DiscountPct,
-                dto.TaxAmount,
-                dto.PaidAmount,
-                RemainingAmount = netAmount - dto.PaidAmount,
-                dto.PaymentMethod,
-                Status = status,
-                dto.InsuranceCompany,
-                dto.InsuranceNumber,
-                dto.Notes
-            },
-            tx);
-
-        if (rows == 0)
+        if (result.Success)
         {
-            tx.Rollback();
-            return Error("Payment not found.", StatusCodes.Status404NotFound);
+            await Audit("Update", "Payment", id, dto);
         }
 
-        await connection.ExecuteAsync("DELETE FROM dbo.PaymentItems WHERE PaymentId = @Id", new { Id = id }, tx);
-        foreach (var item in dto.Items)
-        {
-            await connection.ExecuteAsync(@"
-INSERT INTO dbo.PaymentItems (Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice)
-VALUES (NEWID(), @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice);",
-                new
-                {
-                    PaymentId = id,
-                    item.ServiceName,
-                    item.ServiceType,
-                    item.Quantity,
-                    item.UnitPrice,
-                    item.DiscountPct,
-                    TotalPrice = (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m))
-                },
-                tx);
-        }
-
-        tx.Commit();
-        await Audit("Update", "Payment", id, dto);
-        return OkResponse(true, "Payment updated.");
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost("billing/payments/{id:guid}/refund")]
     public async Task<IActionResult> RefundPayment(Guid id, [FromBody] RefundPaymentDto dto)
     {
+        // Compatibility route. New code should call POST /api/billing/payments/{id}/refund.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.ExecuteAsync("UPDATE dbo.Payments SET Status = @Status, RefundedAt = SYSUTCDATETIME(), Notes = CONCAT(COALESCE(Notes, ''), @Reason), UpdatedAt = SYSUTCDATETIME() WHERE TenantId = @TenantId AND Id = @Id", new { TenantId = tenantId.Value, Id = id, Status = PaymentStatus.Refunded, Reason = $" Refund: {dto.Reason}" });
-        if (rows == 0) return Error("Payment not found.", StatusCodes.Status404NotFound);
-        await Audit("Refund", "Payment", id, dto);
-        return OkResponse(true, "Payment refunded.");
+
+        var result = await _refundPayment.Handle(new RefundPaymentCommand.Command
+        {
+            TenantId = tenantId.Value,
+            PaymentId = id,
+            Refund = dto
+        });
+
+        if (result.Success)
+        {
+            await Audit("Refund", "Payment", id, dto);
+        }
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("billing/payments/{id:guid}/receipt")]
     public async Task<IActionResult> ReceiptPdf(Guid id)
     {
+        // Compatibility route. New code should call GET /api/billing/payments/{id}/receipt.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var payment = await connection.QueryFirstOrDefaultAsync("SELECT InvoiceNumber, TotalAmount, PaidAmount, RemainingAmount, CreatedAt FROM dbo.Payments WHERE TenantId = @TenantId AND Id = @Id", new { TenantId = tenantId.Value, Id = id });
-        if (payment is null) return Error("Payment not found.", StatusCodes.Status404NotFound);
-        var body = $"Receipt\nInvoice: {payment.InvoiceNumber}\nDate: {payment.CreatedAt:yyyy-MM-dd}\nTotal: {payment.TotalAmount}\nPaid: {payment.PaidAmount}\nRemaining: {payment.RemainingAmount}";
-        return File(CreateSimplePdf(body), "application/pdf", $"receipt-{payment.InvoiceNumber}.pdf");
+
+        var result = await _receiptPdf.Handle(new GetReceiptPdfQuery.Query
+        {
+            TenantId = tenantId.Value,
+            PaymentId = id
+        });
+
+        if (!result.Success || result.Data is null)
+        {
+            return StatusCode(result.StatusCode, result);
+        }
+
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [HttpGet("billing/debts")]
     public async Task<IActionResult> DebtTracking()
     {
+        // Compatibility route. New code should call GET /api/billing/debts.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT p.PatientId, pt.FullName, pt.PhoneNumber, SUM(p.RemainingAmount) AS TotalDebt
-FROM dbo.Payments p
-INNER JOIN dbo.Patients pt ON pt.Id = p.PatientId AND pt.TenantId = p.TenantId
-WHERE p.TenantId = @TenantId AND p.RemainingAmount > 0
-GROUP BY p.PatientId, pt.FullName, pt.PhoneNumber
-ORDER BY TotalDebt DESC;",
-            new { TenantId = tenantId.Value });
-        return OkResponse(rows);
+
+        var result = await _debtTracking.Handle(new GetDebtTrackingQuery.Query
+        {
+            TenantId = tenantId.Value
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("billing/reports/monthly-revenue")]
     public async Task<IActionResult> MonthlyRevenue([FromQuery] int year, [FromQuery] int month)
     {
+        // Compatibility route. New code should call GET /api/billing/reports/monthly-revenue.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        var start = new DateTime(year, month, 1);
-        var end = start.AddMonths(1);
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT CAST(CreatedAt AS date) AS [Date], SUM(PaidAmount) AS PaidAmount, SUM(RemainingAmount) AS RemainingAmount, COUNT(1) AS InvoiceCount
-FROM dbo.Payments
-WHERE TenantId = @TenantId AND CreatedAt >= @Start AND CreatedAt < @End
-GROUP BY CAST(CreatedAt AS date)
-ORDER BY [Date];",
-            new { TenantId = tenantId.Value, Start = start, End = end });
-        return OkResponse(rows);
+
+        var result = await _monthlyRevenue.Handle(new GetMonthlyRevenueQuery.Query
+        {
+            TenantId = tenantId.Value,
+            Year = year,
+            Month = month
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [Authorize(Roles = "SuperAdmin")]
