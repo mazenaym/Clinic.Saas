@@ -331,6 +331,9 @@ public class TenantIsolationUseCaseTests
         public Task<IEnumerable<PatientTimelineRow>> GetTimelineAsync(Guid tenantId, Guid patientId) =>
             Task.FromResult(Enumerable.Empty<PatientTimelineRow>());
 
+        public Task<PatientChartData> GetChartAsync(Guid tenantId, Guid patientId) =>
+            Task.FromResult(new PatientChartData());
+
         public Task<IEnumerable<PatientDuplicateRow>> FindDuplicatesAsync(Guid tenantId, string? phone, string? nationalId) =>
             Task.FromResult(Enumerable.Empty<PatientDuplicateRow>());
 

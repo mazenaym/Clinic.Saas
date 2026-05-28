@@ -17,6 +17,7 @@ public class PatientsController : ControllerBase
     private readonly GetAllPatientsQuery.Handler _getAllPatients;
     private readonly SearchPatientsQuery.Handler _searchPatients;
     private readonly GetPatientTimelineQuery.Handler _getTimeline;
+    private readonly GetPatientChartQuery.Handler _getChart;
     private readonly FindPatientDuplicatesQuery.Handler _findDuplicates;
     private readonly ExportPatientsQuery.Handler _exportPatients;
     private readonly UpdatePatientCommand.Handler _updatePatient;
@@ -30,6 +31,7 @@ public class PatientsController : ControllerBase
         GetAllPatientsQuery.Handler getAllPatients,
         SearchPatientsQuery.Handler searchPatients,
         GetPatientTimelineQuery.Handler getTimeline,
+        GetPatientChartQuery.Handler getChart,
         FindPatientDuplicatesQuery.Handler findDuplicates,
         ExportPatientsQuery.Handler exportPatients,
         UpdatePatientCommand.Handler updatePatient,
@@ -42,6 +44,7 @@ public class PatientsController : ControllerBase
         _getAllPatients = getAllPatients;
         _searchPatients = searchPatients;
         _getTimeline = getTimeline;
+        _getChart = getChart;
         _findDuplicates = findDuplicates;
         _exportPatients = exportPatients;
         _updatePatient = updatePatient;
@@ -122,6 +125,24 @@ public class PatientsController : ControllerBase
         {
             TenantId = _currentUser.TenantId.Value,
             SearchTerm = term ?? string.Empty
+        });
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("{id:guid}/chart")]
+    public async Task<IActionResult> Chart(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getChart.Handle(new GetPatientChartQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            PatientId = id
         });
 
         return StatusCode(result.StatusCode, result);

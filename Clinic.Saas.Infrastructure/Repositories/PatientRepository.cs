@@ -197,6 +197,171 @@ ORDER BY [Date] DESC;";
         });
     }
 
+    public async Task<PatientChartData> GetChartAsync(Guid tenantId, Guid patientId)
+    {
+        const string sql = @"
+SELECT
+    Id,
+    PatientCode,
+    FullName,
+    PhoneNumber,
+    DateOfBirth,
+    Gender,
+    BloodType,
+    Email,
+    Address,
+    InsuranceCompany,
+    DrugAllergies,
+    ChronicDiseases,
+    CreatedAt,
+    RowVersion
+FROM dbo.Patients
+WHERE TenantId = @TenantId
+  AND Id = @PatientId
+  AND IsDeleted = 0;
+
+SELECT TOP 5
+    v.Id,
+    v.VisitDate,
+    v.VisitType,
+    v.ChiefComplaint,
+    v.Diagnosis,
+    v.DiagnosisCode,
+    u.FullName AS DoctorName,
+    v.RowVersion
+FROM dbo.Visits v
+INNER JOIN dbo.Users u ON u.Id = v.DoctorId AND u.TenantId = v.TenantId
+WHERE v.TenantId = @TenantId
+  AND v.PatientId = @PatientId
+  AND v.IsDeleted = 0
+ORDER BY v.VisitDate DESC;
+
+SELECT TOP 5
+    pr.Id,
+    pr.CreatedAt,
+    u.FullName AS DoctorName,
+    COALESCE(items.ItemCount, 0) AS ItemCount,
+    items.ItemsSummary,
+    pr.SentViaWhatsapp,
+    pr.RowVersion
+FROM dbo.Prescriptions pr
+INNER JOIN dbo.Users u ON u.Id = pr.DoctorId AND u.TenantId = pr.TenantId
+OUTER APPLY
+(
+    SELECT COUNT(1) AS ItemCount,
+           STRING_AGG(CAST(pi.DrugName AS nvarchar(max)), N', ') AS ItemsSummary
+    FROM dbo.PrescriptionItems pi
+    WHERE pi.PrescriptionId = pr.Id
+) items
+WHERE pr.TenantId = @TenantId
+  AND pr.PatientId = @PatientId
+  AND pr.IsActive = 1
+ORDER BY pr.CreatedAt DESC;
+
+SELECT TOP 5
+    a.Id,
+    CAST(a.AppointmentDate AS datetime2) AS AppointmentDate,
+    a.StartTime,
+    a.EndTime,
+    a.Status,
+    a.Type,
+    u.FullName AS DoctorName,
+    a.Notes,
+    a.RowVersion
+FROM dbo.Appointments a
+INNER JOIN dbo.Users u ON u.Id = a.DoctorId AND u.TenantId = a.TenantId
+WHERE a.TenantId = @TenantId
+  AND a.PatientId = @PatientId
+  AND a.IsDeleted = 0
+ORDER BY a.AppointmentDate DESC, a.StartTime DESC;
+
+SELECT
+    COUNT(1) AS InvoiceCount,
+    COALESCE(SUM(PaidAmount), 0) AS TotalPaid,
+    COALESCE(SUM(RemainingAmount), 0) AS TotalOutstanding,
+    MAX(CreatedAt) AS LastPaymentAt
+FROM dbo.Payments
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId;
+
+SELECT TOP 10
+    Id,
+    VisitId,
+    FileName,
+    COALESCE(FileSizeKb, 0) AS FileSizeKb,
+    FileType,
+    DocumentType,
+    Description,
+    UploadedAt,
+    RowVersion
+FROM dbo.PatientDocuments
+WHERE TenantId = @TenantId
+  AND PatientId = @PatientId
+ORDER BY UploadedAt DESC;
+
+SELECT TOP 20 *
+FROM
+(
+    SELECT 'Appointment' AS [Type],
+           Id,
+           CAST(AppointmentDate AS datetime2) AS [Date],
+           CONCAT(N'Appointment ', CAST([Status] AS nvarchar(10))) AS Title,
+           Notes AS Details
+    FROM dbo.Appointments
+    WHERE TenantId = @TenantId
+      AND PatientId = @PatientId
+      AND IsDeleted = 0
+    UNION ALL
+    SELECT 'Visit',
+           Id,
+           VisitDate,
+           ChiefComplaint,
+           Diagnosis
+    FROM dbo.Visits
+    WHERE TenantId = @TenantId
+      AND PatientId = @PatientId
+      AND IsDeleted = 0
+    UNION ALL
+    SELECT 'Prescription',
+           Id,
+           CreatedAt,
+           N'Prescription',
+           NULL
+    FROM dbo.Prescriptions
+    WHERE TenantId = @TenantId
+      AND PatientId = @PatientId
+      AND IsActive = 1
+    UNION ALL
+    SELECT 'Payment',
+           Id,
+           CreatedAt,
+           N'Payment',
+           NULL
+    FROM dbo.Payments
+    WHERE TenantId = @TenantId
+      AND PatientId = @PatientId
+) timeline
+ORDER BY [Date] DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var multi = await connection.QueryMultipleAsync(sql, new
+        {
+            TenantId = tenantId,
+            PatientId = patientId
+        });
+
+        return new PatientChartData
+        {
+            Patient = await multi.ReadFirstOrDefaultAsync<PatientChartPatientRow>(),
+            RecentVisits = (await multi.ReadAsync<PatientChartVisitRow>()).ToList(),
+            RecentPrescriptions = (await multi.ReadAsync<PatientChartPrescriptionRow>()).ToList(),
+            RecentAppointments = (await multi.ReadAsync<PatientChartAppointmentRow>()).ToList(),
+            PaymentSummary = await multi.ReadFirstOrDefaultAsync<PatientChartPaymentSummaryRow>() ?? new PatientChartPaymentSummaryRow(),
+            Documents = (await multi.ReadAsync<PatientChartDocumentRow>()).ToList(),
+            Timeline = (await multi.ReadAsync<PatientTimelineRow>()).ToList()
+        };
+    }
+
     public async Task<IEnumerable<PatientDuplicateRow>> FindDuplicatesAsync(Guid tenantId, string? phone, string? nationalId)
     {
         const string sql = @"
