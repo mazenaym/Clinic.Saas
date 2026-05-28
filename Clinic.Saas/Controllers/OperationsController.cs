@@ -239,6 +239,7 @@ public class OperationsController : ControllerBase
     [HttpGet("tenant/status")]
     public async Task<IActionResult> TenantStatus()
     {
+        // Compatibility forwarding route. New canonical endpoint: GET /api/tenant/status.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
 
@@ -254,6 +255,7 @@ public class OperationsController : ControllerBase
     [HttpGet("tenant/settings")]
     public async Task<IActionResult> GetSettings()
     {
+        // Compatibility forwarding route. New canonical endpoint: GET /api/tenant/settings.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
 
@@ -269,6 +271,7 @@ public class OperationsController : ControllerBase
     [HttpPut("tenant/settings")]
     public async Task<IActionResult> UpdateSettings([FromBody] UpdateClinicSettingsDto dto)
     {
+        // Compatibility forwarding route. New canonical endpoint: PUT /api/tenant/settings.
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
 
