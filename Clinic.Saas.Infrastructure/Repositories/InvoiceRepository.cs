@@ -263,6 +263,117 @@ ORDER BY [Date], SortOrder, ReferenceNumber;";
         };
     }
 
+    public async Task<FinancialDuesReportData> GetFinancialDuesAsync(Guid tenantId, DateTime? from, DateTime? toExclusive, Guid? doctorId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+WITH FilteredInvoices AS
+(
+    SELECT
+        i.Id,
+        i.PatientId,
+        p.FullName AS PatientName,
+        p.PhoneNumber AS Phone,
+        i.GrandTotal,
+        i.PaidAmount,
+        i.RemainingAmount,
+        payments.LastPaymentDate
+    FROM dbo.Invoices i
+    INNER JOIN dbo.Patients p ON p.TenantId = i.TenantId AND p.Id = i.PatientId
+    LEFT JOIN dbo.Visits v ON v.TenantId = i.TenantId AND v.Id = i.VisitId
+    OUTER APPLY
+    (
+        SELECT MAX(ip.PaidAt) AS LastPaymentDate
+        FROM dbo.InvoicePayments ip
+        WHERE ip.TenantId = i.TenantId
+          AND ip.InvoiceId = i.Id
+    ) payments
+    WHERE i.TenantId = @TenantId
+      AND p.IsDeleted = 0
+      AND i.Status <> @CancelledStatus
+      AND (@From IS NULL OR i.CreatedAt >= @From)
+      AND (@ToExclusive IS NULL OR i.CreatedAt < @ToExclusive)
+      AND (@DoctorId IS NULL OR v.DoctorId = @DoctorId)
+),
+DebtRows AS
+(
+    SELECT
+        PatientId,
+        PatientName,
+        Phone,
+        SUM(GrandTotal) AS TotalAmount,
+        SUM(PaidAmount) AS PaidAmount,
+        SUM(RemainingAmount) AS OutstandingAmount,
+        MAX(LastPaymentDate) AS LastPaymentDate
+    FROM FilteredInvoices
+    GROUP BY PatientId, PatientName, Phone
+    HAVING SUM(RemainingAmount) > 0
+)
+SELECT
+    COALESCE(SUM(OutstandingAmount), 0) AS TotalOutstanding,
+    COALESCE(SUM(PaidAmount), 0) AS TotalPaid,
+    COUNT(1) AS PatientsWithDebtCount
+FROM DebtRows;
+
+WITH FilteredInvoices AS
+(
+    SELECT
+        i.Id,
+        i.PatientId,
+        p.FullName AS PatientName,
+        p.PhoneNumber AS Phone,
+        i.GrandTotal,
+        i.PaidAmount,
+        i.RemainingAmount,
+        payments.LastPaymentDate
+    FROM dbo.Invoices i
+    INNER JOIN dbo.Patients p ON p.TenantId = i.TenantId AND p.Id = i.PatientId
+    LEFT JOIN dbo.Visits v ON v.TenantId = i.TenantId AND v.Id = i.VisitId
+    OUTER APPLY
+    (
+        SELECT MAX(ip.PaidAt) AS LastPaymentDate
+        FROM dbo.InvoicePayments ip
+        WHERE ip.TenantId = i.TenantId
+          AND ip.InvoiceId = i.Id
+    ) payments
+    WHERE i.TenantId = @TenantId
+      AND p.IsDeleted = 0
+      AND i.Status <> @CancelledStatus
+      AND (@From IS NULL OR i.CreatedAt >= @From)
+      AND (@ToExclusive IS NULL OR i.CreatedAt < @ToExclusive)
+      AND (@DoctorId IS NULL OR v.DoctorId = @DoctorId)
+)
+SELECT
+    PatientId,
+    PatientName,
+    Phone,
+    SUM(GrandTotal) AS TotalAmount,
+    SUM(PaidAmount) AS PaidAmount,
+    SUM(RemainingAmount) AS OutstandingAmount,
+    MAX(LastPaymentDate) AS LastPaymentDate
+FROM FilteredInvoices
+GROUP BY PatientId, PatientName, Phone
+HAVING SUM(RemainingAmount) > 0
+ORDER BY OutstandingAmount DESC, PatientName;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var multi = await connection.QueryMultipleAsync(sql, new
+        {
+            TenantId = tenantId,
+            From = from,
+            ToExclusive = toExclusive,
+            DoctorId = doctorId,
+            CancelledStatus = InvoiceStatus.Cancelled
+        });
+
+        return new FinancialDuesReportData
+        {
+            Summary = await multi.ReadFirstOrDefaultAsync<FinancialDuesSummaryRow>() ?? new FinancialDuesSummaryRow(),
+            Patients = (await multi.ReadAsync<FinancialDuesPatientRow>()).ToList()
+        };
+    }
+
     public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
     {
         EnsureTenantId(tenantId);
