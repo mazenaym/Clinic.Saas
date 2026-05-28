@@ -35,7 +35,7 @@ public class OperationsController : ControllerBase
     private readonly GetTenantStatusQuery.Handler _tenantStatus;
     private readonly GetClinicSettingsQuery.Handler _getClinicSettings;
     private readonly UpdateClinicSettingsCommand.Handler _updateClinicSettings;
-    private readonly WriteAuditLogCommand.Handler _writeAuditLog;
+    private readonly IAuditService _auditService;
     private readonly GetAppointmentRangeQuery.Handler _getAppointmentRange;
     private readonly GetAppointmentCancellationsQuery.Handler _getAppointmentCancellations;
     private readonly RescheduleAppointmentCommand.Handler _rescheduleAppointment;
@@ -76,7 +76,7 @@ public class OperationsController : ControllerBase
         GetTenantStatusQuery.Handler tenantStatus,
         GetClinicSettingsQuery.Handler getClinicSettings,
         UpdateClinicSettingsCommand.Handler updateClinicSettings,
-        WriteAuditLogCommand.Handler writeAuditLog,
+        IAuditService auditService,
         GetAppointmentRangeQuery.Handler getAppointmentRange,
         GetAppointmentCancellationsQuery.Handler getAppointmentCancellations,
         RescheduleAppointmentCommand.Handler rescheduleAppointment,
@@ -116,7 +116,7 @@ public class OperationsController : ControllerBase
         _tenantStatus = tenantStatus;
         _getClinicSettings = getClinicSettings;
         _updateClinicSettings = updateClinicSettings;
-        _writeAuditLog = writeAuditLog;
+        _auditService = auditService;
         _getAppointmentRange = getAppointmentRange;
         _getAppointmentCancellations = getAppointmentCancellations;
         _rescheduleAppointment = rescheduleAppointment;
@@ -794,7 +794,7 @@ public class OperationsController : ControllerBase
     {
         try
         {
-            await _writeAuditLog.Handle(new WriteAuditLogCommand.Command
+            await _auditService.LogAsync(new AuditEntry
             {
                 TenantId = _currentUser.TenantId,
                 UserId = _currentUser.UserId,
@@ -803,7 +803,8 @@ public class OperationsController : ControllerBase
                 EntityId = entityId,
                 NewValues = newValues is null ? null : JsonSerializer.Serialize(newValues),
                 IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = Request.Headers.UserAgent.ToString()
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                CreatedAt = DateTime.UtcNow
             });
         }
         catch

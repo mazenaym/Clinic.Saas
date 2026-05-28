@@ -30,7 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IPlatformAdminRepository, PlatformAdminRepository>();
         services.AddScoped<IAdminReportRepository, AdminReportRepository>();
         services.AddScoped<IOperationsTenantRepository, OperationsTenantRepository>();
-        services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IAuditService, AuditService>();
 
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();

@@ -17,20 +17,20 @@ public class TenantController : ControllerBase
     private readonly GetTenantStatusQuery.Handler _tenantStatus;
     private readonly GetClinicSettingsQuery.Handler _getClinicSettings;
     private readonly UpdateClinicSettingsCommand.Handler _updateClinicSettings;
-    private readonly WriteAuditLogCommand.Handler _writeAuditLog;
+    private readonly IAuditService _auditService;
 
     public TenantController(
         ICurrentUserService currentUser,
         GetTenantStatusQuery.Handler tenantStatus,
         GetClinicSettingsQuery.Handler getClinicSettings,
         UpdateClinicSettingsCommand.Handler updateClinicSettings,
-        WriteAuditLogCommand.Handler writeAuditLog)
+        IAuditService auditService)
     {
         _currentUser = currentUser;
         _tenantStatus = tenantStatus;
         _getClinicSettings = getClinicSettings;
         _updateClinicSettings = updateClinicSettings;
-        _writeAuditLog = writeAuditLog;
+        _auditService = auditService;
     }
 
     [HttpGet("status")]
@@ -93,7 +93,7 @@ public class TenantController : ControllerBase
     {
         try
         {
-            await _writeAuditLog.Handle(new WriteAuditLogCommand.Command
+            await _auditService.LogAsync(new AuditEntry
             {
                 TenantId = _currentUser.TenantId,
                 UserId = _currentUser.UserId,
@@ -102,7 +102,8 @@ public class TenantController : ControllerBase
                 EntityId = entityId,
                 NewValues = newValues is null ? null : JsonSerializer.Serialize(newValues),
                 IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = Request.Headers.UserAgent.ToString()
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                CreatedAt = DateTime.UtcNow
             });
         }
         catch
