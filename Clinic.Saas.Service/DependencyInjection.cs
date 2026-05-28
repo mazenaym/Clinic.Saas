@@ -5,6 +5,7 @@ using Clinic.Saas.Service.UseCases.Admin.Queries;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
 using Clinic.Saas.Service.UseCases.Auth.Commands;
+using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
 using Clinic.Saas.Service.UseCases.Onboarding.Commands;
 using Clinic.Saas.Service.UseCases.Onboarding.Queries;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
@@ -68,6 +69,10 @@ public static class DependencyInjection
 
         services.AddScoped<CreatePrescriptionCommand.Handler>();
         services.AddScoped<GetPrescriptionByIdQuery.Handler>();
+        services.AddScoped<GetPrescriptionPdfQuery.Handler>();
+        services.AddScoped<SendPrescriptionWhatsappCommand.Handler>();
+        services.AddScoped<SearchDrugsQuery.Handler>();
+        services.AddScoped<CheckDrugInteractionsQuery.Handler>();
 
         services.AddScoped<CreatePaymentCommand.Handler>();
         services.AddScoped<GetPaymentByIdQuery.Handler>();

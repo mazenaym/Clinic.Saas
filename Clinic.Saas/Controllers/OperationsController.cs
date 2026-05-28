@@ -4,9 +4,12 @@ using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.UseCases.Appointments.Commands;
 using Clinic.Saas.Service.UseCases.Appointments.Queries;
+using Clinic.Saas.Service.UseCases.DrugCatalog.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
+using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
+using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
 using Clinic.Saas.Service.UseCases.Visits.Queries;
 using Dapper;
@@ -41,6 +44,10 @@ public class OperationsController : ControllerBase
     private readonly GetPatientVisitsQuery.Handler _getPatientVisits;
     private readonly UpdateVisitCommand.Handler _updateVisit;
     private readonly FinalizeVisitCommand.Handler _finalizeVisit;
+    private readonly GetPrescriptionPdfQuery.Handler _getPrescriptionPdf;
+    private readonly SendPrescriptionWhatsappCommand.Handler _sendPrescriptionWhatsapp;
+    private readonly SearchDrugsQuery.Handler _searchDrugs;
+    private readonly CheckDrugInteractionsQuery.Handler _checkDrugInteractions;
 
     public OperationsController(
         DapperContext db,
@@ -61,7 +68,11 @@ public class OperationsController : ControllerBase
         ExportPatientsQuery.Handler exportPatients,
         GetPatientVisitsQuery.Handler getPatientVisits,
         UpdateVisitCommand.Handler updateVisit,
-        FinalizeVisitCommand.Handler finalizeVisit)
+        FinalizeVisitCommand.Handler finalizeVisit,
+        GetPrescriptionPdfQuery.Handler getPrescriptionPdf,
+        SendPrescriptionWhatsappCommand.Handler sendPrescriptionWhatsapp,
+        SearchDrugsQuery.Handler searchDrugs,
+        CheckDrugInteractionsQuery.Handler checkDrugInteractions)
     {
         _db = db;
         _currentUser = currentUser;
@@ -82,6 +93,10 @@ public class OperationsController : ControllerBase
         _getPatientVisits = getPatientVisits;
         _updateVisit = updateVisit;
         _finalizeVisit = finalizeVisit;
+        _getPrescriptionPdf = getPrescriptionPdf;
+        _sendPrescriptionWhatsapp = sendPrescriptionWhatsapp;
+        _searchDrugs = searchDrugs;
+        _checkDrugInteractions = checkDrugInteractions;
     }
 
    
@@ -524,18 +539,20 @@ VALUES (@Id, @TenantId, @Name, @Specialty, @ChiefComplaint, @ClinicalNotes, @Dia
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var prescription = await connection.QueryFirstOrDefaultAsync(@"
-SELECT pr.Id, p.FullName AS PatientName, u.FullName AS DoctorName, pr.Notes, pr.CreatedAt
-FROM dbo.Prescriptions pr
-INNER JOIN dbo.Patients p ON p.Id = pr.PatientId AND p.TenantId = pr.TenantId
-INNER JOIN dbo.Users u ON u.Id = pr.DoctorId AND u.TenantId = pr.TenantId
-WHERE pr.TenantId = @TenantId AND pr.Id = @Id;",
-            new { TenantId = tenantId.Value, Id = id });
-        if (prescription is null) return Error("Prescription not found.", StatusCodes.Status404NotFound);
-        var items = await connection.QueryAsync("SELECT DrugName, Dosage, Frequency, Duration, Instructions FROM dbo.PrescriptionItems WHERE PrescriptionId = @Id ORDER BY SortOrder", new { Id = id });
-        var body = $"Prescription\nPatient: {prescription.PatientName}\nDoctor: {prescription.DoctorName}\nDate: {prescription.CreatedAt:yyyy-MM-dd}\n\n" + string.Join("\n", items.Select(i => $"- {i.DrugName} {i.Dosage} {i.Frequency} {i.Duration} {i.Instructions}"));
-        return File(CreateSimplePdf(body), "application/pdf", $"prescription-{id}.pdf");
+
+        // Compatibility route: prescription PDF logic lives in PrescriptionsController/GetPrescriptionPdfQuery.
+        var result = await _getPrescriptionPdf.Handle(new GetPrescriptionPdfQuery.Query
+        {
+            TenantId = tenantId.Value,
+            PrescriptionId = id
+        });
+
+        if (!result.Success || result.Data is null)
+        {
+            return StatusCode(result.StatusCode, result);
+        }
+
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
     [HttpPost("prescriptions/{id:guid}/send-whatsapp")]
@@ -543,38 +560,44 @@ WHERE pr.TenantId = @TenantId AND pr.Id = @Id;",
     {
         var tenantId = RequireTenant();
         if (tenantId is null) return Unauthorized();
-        using var connection = _db.CreateConnection();
-        var settings = await EnsureSettings(connection, tenantId.Value);
-        if (!settings.WhatsappEnabled)
+
+        // Compatibility route: send-whatsapp logic lives in PrescriptionsController/SendPrescriptionWhatsappCommand.
+        var result = await _sendPrescriptionWhatsapp.Handle(new SendPrescriptionWhatsappCommand.Command
         {
-            return Error("WhatsApp integration is disabled for this clinic.", StatusCodes.Status409Conflict);
+            TenantId = tenantId.Value,
+            PrescriptionId = id
+        });
+
+        if (result.Success)
+        {
+            await Audit("SendWhatsapp", "Prescription", id, new { id });
         }
 
-        await connection.ExecuteAsync("UPDATE dbo.Prescriptions SET SentViaWhatsapp = 1 WHERE TenantId = @TenantId AND Id = @Id", new { TenantId = tenantId.Value, Id = id });
-        await Audit("SendWhatsapp", "Prescription", id, new { id });
-        return OkResponse(true, "Prescription marked as sent via WhatsApp.");
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("drugs")]
     public async Task<IActionResult> DrugAutocomplete([FromQuery] string term = "")
     {
-        using var connection = _db.CreateConnection();
-        var rows = await connection.QueryAsync(@"
-SELECT TOP 20 Id, TradeName, GenericName, Strength, Form, Interactions
-FROM dbo.Drugs
-WHERE IsActive = 1 AND (@Term = '' OR TradeName LIKE @Search OR GenericName LIKE @Search)
-ORDER BY TradeName;",
-            new { Term = term ?? "", Search = $"%{term}%" });
-        return OkResponse(rows);
+        // Compatibility route: Drugs is a global catalog and search logic lives in DrugCatalogController/SearchDrugsQuery.
+        var result = await _searchDrugs.Handle(new SearchDrugsQuery.Query
+        {
+            Term = term
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost("prescriptions/check-interactions")]
     public async Task<IActionResult> CheckDrugInteractions([FromBody] string[] drugNames)
     {
-        using var connection = _db.CreateConnection();
-        var drugs = await connection.QueryAsync<(string TradeName, string? Interactions)>("SELECT TradeName, Interactions FROM dbo.Drugs WHERE IsActive = 1 AND TradeName IN @Names", new { Names = drugNames });
-        var warnings = drugs.Where(d => !string.IsNullOrWhiteSpace(d.Interactions)).Select(d => new { drug = d.TradeName, warning = d.Interactions });
-        return OkResponse(warnings);
+        // Compatibility route: Drugs is a global catalog and interaction logic lives in DrugCatalogController/CheckDrugInteractionsQuery.
+        var result = await _checkDrugInteractions.Handle(new CheckDrugInteractionsQuery.Query
+        {
+            DrugNames = drugNames
+        });
+
+        return StatusCode(result.StatusCode, result);
     }
 
     [HttpGet("billing/payments/{id:guid}")]

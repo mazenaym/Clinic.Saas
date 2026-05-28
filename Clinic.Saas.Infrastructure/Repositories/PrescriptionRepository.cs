@@ -218,6 +218,21 @@ ORDER BY pr.CreatedAt DESC;";
         return await connection.QueryAsync<Prescription>(sql, new { TenantId = tenantId, PatientId = patientId });
     }
 
+    public async Task<int> MarkSentViaWhatsappAsync(Guid tenantId, Guid id)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Prescriptions
+SET SentViaWhatsapp = 1
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND IsActive = 1;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        return await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+    }
+
     private const string PrescriptionSelect = @"
 SELECT
     pr.*,

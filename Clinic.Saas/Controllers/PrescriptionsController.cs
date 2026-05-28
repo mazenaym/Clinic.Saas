@@ -14,17 +14,23 @@ public class PrescriptionsController : ControllerBase
 {
     private readonly CreatePrescriptionCommand.Handler _createPrescription;
     private readonly GetPrescriptionByIdQuery.Handler _getPrescription;
+    private readonly GetPrescriptionPdfQuery.Handler _getPrescriptionPdf;
+    private readonly SendPrescriptionWhatsappCommand.Handler _sendWhatsapp;
     private readonly ICurrentUserService _currentUser;
     private readonly IClinicAuthorizationService _authorization;
 
     public PrescriptionsController(
         CreatePrescriptionCommand.Handler createPrescription,
         GetPrescriptionByIdQuery.Handler getPrescription,
+        GetPrescriptionPdfQuery.Handler getPrescriptionPdf,
+        SendPrescriptionWhatsappCommand.Handler sendWhatsapp,
         ICurrentUserService currentUser,
         IClinicAuthorizationService authorization)
     {
         _createPrescription = createPrescription;
         _getPrescription = getPrescription;
+        _getPrescriptionPdf = getPrescriptionPdf;
+        _sendWhatsapp = sendWhatsapp;
         _currentUser = currentUser;
         _authorization = authorization;
     }
@@ -71,6 +77,47 @@ public class PrescriptionsController : ControllerBase
             TenantId = _currentUser.TenantId.Value,
             Id = id
         });
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor")]
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> Pdf(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getPrescriptionPdf.Handle(new GetPrescriptionPdfQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            PrescriptionId = id
+        });
+
+        if (!result.Success || result.Data is null)
+        {
+            return StatusCode(result.StatusCode, result);
+        }
+
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
+    }
+
+    [Authorize(Roles = "Admin,Doctor")]
+    [HttpPost("{id:guid}/send-whatsapp")]
+    public async Task<IActionResult> SendWhatsapp(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sendWhatsapp.Handle(new SendPrescriptionWhatsappCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            PrescriptionId = id
+        });
+
         return StatusCode(result.StatusCode, result);
     }
 }
