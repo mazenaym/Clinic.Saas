@@ -18,6 +18,13 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Queries
 
         public class Handler
         {
+            private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+            {
+                "application/pdf",
+                "image/jpeg",
+                "image/png"
+            };
+
             private readonly IPatientDocumentRepository _documentRepository;
             private readonly IFileStorageService _fileStorage;
 
@@ -46,6 +53,17 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Queries
                     };
                 }
 
+                if (string.IsNullOrWhiteSpace(document.FileType) ||
+                    !AllowedContentTypes.Contains(document.FileType))
+                {
+                    return new BaseResponse<PatientDocumentDownloadDto>
+                    {
+                        Success = false,
+                        Message = "Document content type is not allowed.",
+                        StatusCode = 400
+                    };
+                }
+
                 var stream = await _fileStorage.OpenReadAsync(document.FileUrl);
                 if (stream is null)
                 {
@@ -64,11 +82,22 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Queries
                     Data = new PatientDocumentDownloadDto
                     {
                         FileStream = stream,
-                        FileName = document.FileName,
+                        FileName = SafeFileName(document.FileName),
                         FileType = document.FileType
                     },
                     StatusCode = 200
                 };
+            }
+
+            private static string SafeFileName(string fileName)
+            {
+                var safe = Path.GetFileName(fileName);
+                foreach (var invalidChar in Path.GetInvalidFileNameChars())
+                {
+                    safe = safe.Replace(invalidChar, '_');
+                }
+
+                return string.IsNullOrWhiteSpace(safe) ? "document" : safe;
             }
         }
     }

@@ -92,8 +92,11 @@ namespace Clinic.Saas.Service.Services
 
             var rootFullPath = Path.GetFullPath(uploadsRoot);
             var targetFullPath = Path.GetFullPath(fullPath);
+            var rootPrefix = rootFullPath.EndsWith(Path.DirectorySeparatorChar)
+                ? rootFullPath
+                : rootFullPath + Path.DirectorySeparatorChar;
 
-            if (!targetFullPath.StartsWith(rootFullPath, StringComparison.OrdinalIgnoreCase))
+            if (!targetFullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult<Stream?>(null);
             }
