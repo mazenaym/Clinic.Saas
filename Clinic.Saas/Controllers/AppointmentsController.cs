@@ -14,6 +14,7 @@ public class AppointmentsController : ControllerBase
 {
     private readonly CreateAppointmentCommand.Handler _createAppointment;
     private readonly GetAppointmentsByDateQuery.Handler _getByDate;
+    private readonly GetDoctorAppointmentScheduleQuery.Handler _getSchedule;
     private readonly GetAppointmentRangeQuery.Handler _getRange;
     private readonly GetAppointmentCancellationsQuery.Handler _getCancellations;
     private readonly GetAppointmentAvailabilityQuery.Handler _availability;
@@ -26,6 +27,7 @@ public class AppointmentsController : ControllerBase
     public AppointmentsController(
         CreateAppointmentCommand.Handler createAppointment,
         GetAppointmentsByDateQuery.Handler getByDate,
+        GetDoctorAppointmentScheduleQuery.Handler getSchedule,
         GetAppointmentRangeQuery.Handler getRange,
         GetAppointmentCancellationsQuery.Handler getCancellations,
         GetAppointmentAvailabilityQuery.Handler availability,
@@ -37,6 +39,7 @@ public class AppointmentsController : ControllerBase
     {
         _createAppointment = createAppointment;
         _getByDate = getByDate;
+        _getSchedule = getSchedule;
         _getRange = getRange;
         _getCancellations = getCancellations;
         _availability = availability;
@@ -71,6 +74,25 @@ public class AppointmentsController : ControllerBase
         {
             await this.AuditAsync(_auditService, _currentUser, "Create", "Appointment", result.Data?.Id, new { result.Data?.Id });
         }
+
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [HttpGet("schedule")]
+    public async Task<IActionResult> Schedule([FromQuery] DateTime date)
+    {
+        if (!_currentUser.TenantId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _getSchedule.Handle(new GetDoctorAppointmentScheduleQuery.Query
+        {
+            TenantId = _currentUser.TenantId.Value,
+            Date = date,
+            DoctorId = _currentUser.Role == Domain.Enums.UserRole.Doctor ? _currentUser.UserId : null
+        });
 
         return StatusCode(result.StatusCode, result);
     }
