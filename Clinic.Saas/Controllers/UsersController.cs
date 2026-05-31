@@ -1,5 +1,6 @@
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Security;
 using Clinic.Saas.Service.UseCases.Users.Commands;
 using Clinic.Saas.Service.UseCases.Users.Queries;
 using Microsoft.AspNetCore.Authorization;
@@ -47,7 +48,7 @@ public class UsersController : ControllerBase
         _auditService = auditService;
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
@@ -71,7 +72,7 @@ public class UsersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
     [HttpPost("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(Guid id)
     {
@@ -94,7 +95,7 @@ public class UsersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
     [HttpPost("{id:guid}/reset-password")]
     public async Task<IActionResult> ResetPassword(Guid id, [FromBody] ResetPasswordDto dto)
     {
@@ -118,7 +119,7 @@ public class UsersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
@@ -136,7 +137,7 @@ public class UsersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {

@@ -1,5 +1,6 @@
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Security;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
 using Microsoft.AspNetCore.Authorization;
@@ -56,7 +57,7 @@ public class PatientsController : ControllerBase
         _auditService = auditService;
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsEdit)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePatientDto dto)
     {
@@ -80,7 +81,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsView)]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -97,7 +98,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsView)]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -115,7 +116,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsView)]
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string term)
     {
@@ -133,7 +134,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsClinicalView)]
     [HttpGet("{id:guid}/chart")]
     public async Task<IActionResult> Chart(Guid id)
     {
@@ -151,7 +152,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.BillingView)]
     [HttpGet("{id:guid}/ledger")]
     public async Task<IActionResult> Ledger(Guid id)
     {
@@ -169,7 +170,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsClinicalView)]
     [HttpGet("{id:guid}/timeline")]
     public async Task<IActionResult> Timeline(Guid id)
     {
@@ -187,7 +188,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsView)]
     [HttpGet("duplicates")]
     public async Task<IActionResult> Duplicates([FromQuery] string? phone, [FromQuery] string? nationalId)
     {
@@ -206,7 +207,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.PatientsView)]
     [HttpGet("export")]
     public async Task<IActionResult> Export()
     {
@@ -228,7 +229,7 @@ public class PatientsController : ControllerBase
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsEdit)]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePatientDto dto)
     {
@@ -250,7 +251,7 @@ public class PatientsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.PatientsEdit)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id, [FromHeader(Name = "If-Match")] string? rowVersion)
     {

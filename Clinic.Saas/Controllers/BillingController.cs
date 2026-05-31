@@ -1,5 +1,6 @@
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Security;
 using Clinic.Saas.Service.UseCases.Payments.Commands;
 using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Microsoft.AspNetCore.Authorization;
@@ -50,7 +51,7 @@ public class BillingController : ControllerBase
         _auditService = auditService;
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingManage)]
     [HttpPost("payments")]
     public async Task<IActionResult> CreatePayment([FromBody] CreatePaymentDto dto)
     {
@@ -73,7 +74,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingView)]
     [HttpGet("payments/{id:guid}")]
     public async Task<IActionResult> GetPaymentById(Guid id)
     {
@@ -91,7 +92,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingView)]
     [HttpGet("patients/{patientId:guid}/payments")]
     public async Task<IActionResult> GetPatientPayments(Guid patientId)
     {
@@ -109,7 +110,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingManage)]
     [HttpPut("payments/{id:guid}")]
     public async Task<IActionResult> UpdatePayment(Guid id, [FromBody] UpdatePaymentDto dto)
     {
@@ -133,7 +134,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingManage)]
     [HttpPost("payments/{id:guid}/refund")]
     public async Task<IActionResult> RefundPayment(Guid id, [FromBody] RefundPaymentDto dto)
     {
@@ -157,7 +158,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingView)]
     [HttpGet("payments/{id:guid}/receipt")]
     public async Task<IActionResult> ReceiptPdf(Guid id)
     {
@@ -182,7 +183,7 @@ public class BillingController : ControllerBase
         return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 
-    [Authorize(Roles = "Admin,Reception")]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.BillingView)]
     [HttpGet("debts")]
     public async Task<IActionResult> DebtTracking()
     {
@@ -199,7 +200,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.ReportsFinancialView)]
     [HttpGet("reports/monthly-revenue")]
     public async Task<IActionResult> MonthlyRevenue([FromQuery] int year, [FromQuery] int month)
     {
@@ -218,7 +219,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin", Policy = Permissions.ReportsFinancialView)]
     [HttpGet("reports/daily-revenue")]
     public async Task<IActionResult> DailyRevenue([FromQuery] DateTime date)
     {

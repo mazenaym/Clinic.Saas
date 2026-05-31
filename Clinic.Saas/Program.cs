@@ -1,4 +1,5 @@
 using Clinic.Saas.Infrastructure;
+using Clinic.Saas.api.Authorization;
 using Clinic.Saas.api.Middleware;
 using Clinic.Saas.api.ProblemDetails;
 using Clinic.Saas.Service;
@@ -85,6 +86,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
     options.AddPolicy("DoctorOnly", policy => policy.RequireRole("Doctor"));
     options.AddPolicy("ReceptionOrAdmin", policy => policy.RequireRole("Reception", "Admin"));
+    options.AddClinicPermissionPolicies();
 });
 
 var app = builder.Build();
