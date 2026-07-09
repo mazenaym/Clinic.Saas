@@ -81,13 +81,13 @@ SELECT
 INSERT INTO dbo.Payments
 (
     Id, TenantId, VisitId, PatientId, InvoiceNumber, TotalAmount, DiscountAmount,
-    DiscountPct, TaxAmount, PaidAmount, PaymentMethod, Status,
+    DiscountPct, TaxAmount, PaidAmount, RemainingAmount, PaymentMethod, Status,
     InsuranceCompany, InsuranceNumber, ReceiptUrl, Notes, CreatedAt, UpdatedAt, CreatedBy
 )
 VALUES
 (
     @Id, @TenantId, @VisitId, @PatientId, @InvoiceNumber, @TotalAmount, @DiscountAmount,
-    @DiscountPct, @TaxAmount, @PaidAmount, @PaymentMethod, @Status,
+    @DiscountPct, @TaxAmount, @PaidAmount, @RemainingAmount, @PaymentMethod, @Status,
     @InsuranceCompany, @InsuranceNumber, @ReceiptUrl, @Notes, @CreatedAt, @UpdatedAt, @CreatedBy
 );";
 
@@ -103,6 +103,7 @@ VALUES
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
+                entity.RemainingAmount,
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -119,11 +120,11 @@ VALUES
                 const string itemSql = @"
 INSERT INTO dbo.PaymentItems
 (
-    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct
+    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice
 )
 VALUES
 (
-    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct
+    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice
 );";
 
                 foreach (var item in entity.Items)
@@ -143,7 +144,8 @@ VALUES
                         item.ServiceType,
                         item.Quantity,
                         item.UnitPrice,
-                        item.DiscountPct
+                        item.DiscountPct,
+                        item.TotalPrice
                     }, transaction);
                 }
             }
@@ -210,6 +212,7 @@ SET InvoiceNumber = @InvoiceNumber,
     DiscountPct = @DiscountPct,
     TaxAmount = @TaxAmount,
     PaidAmount = @PaidAmount,
+    RemainingAmount = @RemainingAmount,
     PaymentMethod = @PaymentMethod,
     Status = @Status,
     InsuranceCompany = @InsuranceCompany,
@@ -233,6 +236,7 @@ WHERE Id = @Id
             entity.DiscountPct,
             entity.TaxAmount,
             entity.PaidAmount,
+            entity.RemainingAmount,
             entity.PaymentMethod,
             entity.Status,
             entity.InsuranceCompany,
@@ -265,6 +269,7 @@ SET VisitId = @VisitId,
     DiscountPct = @DiscountPct,
     TaxAmount = @TaxAmount,
     PaidAmount = @PaidAmount,
+    RemainingAmount = @RemainingAmount,
     PaymentMethod = @PaymentMethod,
     [Status] = @Status,
     InsuranceCompany = @InsuranceCompany,
@@ -287,6 +292,7 @@ WHERE TenantId = @TenantId
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
+                entity.RemainingAmount,
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -319,11 +325,11 @@ WHERE pay.TenantId = @TenantId
                 const string insertItemSql = @"
 INSERT INTO dbo.PaymentItems
 (
-    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct
+    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice
 )
 VALUES
 (
-    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct
+    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice
 );";
 
                 foreach (var item in entity.Items)
@@ -342,7 +348,8 @@ VALUES
                         item.ServiceType,
                         item.Quantity,
                         item.UnitPrice,
-                        item.DiscountPct
+                        item.DiscountPct,
+                        item.TotalPrice
                     }, transaction);
                 }
             }

@@ -56,6 +56,7 @@ public class UpdatePaymentCommand
                 DiscountPct = command.Payment.DiscountPct,
                 TaxAmount = command.Payment.TaxAmount,
                 PaidAmount = command.Payment.PaidAmount,
+                RemainingAmount = netAmount - command.Payment.PaidAmount,
                 PaymentMethod = command.Payment.PaymentMethod,
                 Status = status,
                 InsuranceCompany = command.Payment.InsuranceCompany,
@@ -70,7 +71,8 @@ public class UpdatePaymentCommand
                     ServiceType = item.ServiceType,
                     Quantity = item.Quantity,
                     UnitPrice = item.UnitPrice,
-                    DiscountPct = item.DiscountPct
+                    DiscountPct = item.DiscountPct,
+                    TotalPrice = (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m))
                 }).ToList()
             };
 

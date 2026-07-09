@@ -14,4 +14,6 @@ public class SubscriptionPayment
     public string? ReferenceNumber { get; set; }
     public DateTime? PaidAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public string? Notes { get; set; }
+    public Guid? CreatedByUserId { get; set; }
 }
