@@ -68,7 +68,14 @@ export class PrescriptionsComponent implements OnInit {
   async loadPrescription() {
     this.result.set(await firstValueFrom(this.api.prescription(this.lookupId)));
   }
-  pdfUrl() { return this.result() ? this.api.prescriptionPdfUrl(this.result()!.id) : '#'; }
+  async downloadPdf() {
+    const prescription = this.result();
+    if (!prescription) return;
+    await this.ui.run(async () => {
+      const pdf = await firstValueFrom(this.api.prescriptionPdf(prescription.id));
+      this.downloadBlob(pdf, `prescription-${prescription.id}.pdf`);
+    }, 'تم تنزيل الروشتة');
+  }
   async sendWhatsapp() {
     const prescription = this.result();
     if (!prescription) return;
@@ -76,5 +83,16 @@ export class PrescriptionsComponent implements OnInit {
       await firstValueFrom(this.api.sendPrescriptionWhatsapp(prescription.id, prescription.rowVersion));
       await this.loadPrescription();
     }, 'تم إرسال الروشتة واتساب');
+  }
+
+  private downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 }

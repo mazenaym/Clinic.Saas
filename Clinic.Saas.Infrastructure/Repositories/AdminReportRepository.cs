@@ -45,7 +45,7 @@ ORDER BY [Year] DESC, [Month] DESC;";
     public async Task<IEnumerable<ExpiringSubscriptionDto>> GetExpiringSubscriptionsAsync(int days)
     {
         const string sql = @"
-SELECT t.Name, t.Subdomain, s.Plan, s.EndDate, s.Status
+SELECT t.Name, t.Subdomain, s.[Plan], s.EndDate, s.Status
 FROM dbo.Subscriptions s
 INNER JOIN dbo.Tenants t ON t.Id = s.TenantId
 WHERE s.EndDate >= SYSUTCDATETIME()

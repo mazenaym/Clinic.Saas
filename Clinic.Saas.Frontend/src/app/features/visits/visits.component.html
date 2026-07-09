@@ -1,58 +1,102 @@
 <section class="page">
-  <div class="page-head"><div><h2>الكشف والزيارات</h2><p>تسجيل الكشف، تحديثه، تطبيق القوالب، عرض التاريخ، وإغلاق الزيارة.</p></div></div>
+  <cf-page-header
+    title="الكشف والزيارات"
+    description="تسجيل زيارة جديدة، تطبيق القوالب، تحديث الكشف، ومراجعة تاريخ زيارات المريض."
+  />
+
   <div class="grid">
-    <section class="panel span-8">
-      <h3>كشف جديد / تحديث كشف</h3>
+    <section class="span-8">
       @if (!patients().length) {
-        <p class="inline-help">لا يوجد مرضى بعد.</p>
+        <cf-empty-state
+          title="لا يوجد مرضى بعد"
+          description="أضف مريضا أولا حتى تتمكن من تسجيل كشف جديد."
+          actionLabel="إضافة مريض"
+        />
         <a routerLink="/patients" class="button-link">إضافة مريض</a>
+      } @else {
+        <form class="visit-form" (ngSubmit)="create()">
+          <cf-card title="بيانات الزيارة" description="حدد المريض والطبيب ونوع الزيارة.">
+            <div class="form-grid">
+              <label>المريض<select name="patientId" [(ngModel)]="form['patientId']" (change)="loadHistory()">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+              <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
+              <label>نوع الزيارة<select name="visitType" [(ngModel)]="form['visitType']">@for (t of types; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
+              <label>موعد المتابعة<input name="followUpDate" type="date" [(ngModel)]="form['followUpDate']" /></label>
+              <label class="span-all">رقم الموعد المرتبط<input name="appointmentId" [(ngModel)]="form['appointmentId']" /></label>
+            </div>
+          </cf-card>
+
+          <cf-card title="الشكوى الرئيسية" description="اكتب سبب الزيارة كما يذكره المريض.">
+            <label>الشكوى الرئيسية<textarea name="chiefComplaint" [(ngModel)]="form['chiefComplaint']" required></textarea></label>
+          </cf-card>
+
+          <cf-card title="العلامات الحيوية" description="القياسات الأساسية قبل الفحص.">
+            <div class="form-grid">
+              <label>الضغط<input name="bloodPressure" [(ngModel)]="form['vitalSigns'].bloodPressure" placeholder="120/80" /></label>
+              <label>الحرارة<input name="temperature" type="number" [(ngModel)]="form['vitalSigns'].temperature" /></label>
+              <label>الوزن<input name="weight" type="number" [(ngModel)]="form['vitalSigns'].weight" /></label>
+              <label>الطول<input name="height" type="number" [(ngModel)]="form['vitalSigns'].height" /></label>
+              <label>النبض<input name="pulse" type="number" [(ngModel)]="form['vitalSigns'].pulse" /></label>
+              <label>SpO2<input name="spO2" type="number" [(ngModel)]="form['vitalSigns'].spO2" /></label>
+            </div>
+          </cf-card>
+
+          <cf-card title="الفحص والتشخيص" description="نتائج الفحص، التشخيص، وكود التشخيص إن وجد.">
+            <div class="form-grid">
+              <label class="span-all">الفحص الإكلينيكي<textarea name="clinicalNotes" [(ngModel)]="form['clinicalNotes']"></textarea></label>
+              <label>التشخيص<input name="diagnosis" [(ngModel)]="form['diagnosis']" /></label>
+              <label>كود التشخيص<input name="diagnosisCode" [(ngModel)]="form['diagnosisCode']" /></label>
+            </div>
+          </cf-card>
+
+          <cf-card title="القوالب السريرية" description="اختصر الكتابة بتطبيق قالب جاهز.">
+            <div class="actions">
+              @for (template of templates(); track template['id']) {
+                <button type="button" class="secondary" (click)="applyTemplate(template)">{{ template['name'] }}</button>
+              } @empty {
+                <span class="muted">لا توجد قوالب بعد.</span>
+              }
+            </div>
+          </cf-card>
+
+          <div class="actions">
+            <button [disabled]="ui.busy()">حفظ الكشف</button>
+            <button type="button" class="secondary" [disabled]="!created()" (click)="update()">تحديث الكشف</button>
+          </div>
+        </form>
       }
-      <form class="form-grid" (ngSubmit)="create()">
-        <label>المريض<select name="patientId" [(ngModel)]="form['patientId']" (change)="loadHistory()">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
-        <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
-        <label>نوع الزيارة<select name="visitType" [(ngModel)]="form['visitType']">@for (t of types; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
-        <label>موعد المتابعة<input name="followUpDate" type="date" [(ngModel)]="form['followUpDate']" /></label>
-        <label class="span-all">الشكوى الرئيسية<textarea name="chiefComplaint" [(ngModel)]="form['chiefComplaint']" required></textarea></label>
-        <label>الضغط<input name="bloodPressure" [(ngModel)]="form['vitalSigns'].bloodPressure" placeholder="120/80" /></label>
-        <label>الحرارة<input name="temperature" type="number" [(ngModel)]="form['vitalSigns'].temperature" /></label>
-        <label>الوزن<input name="weight" type="number" [(ngModel)]="form['vitalSigns'].weight" /></label>
-        <label>النبض<input name="pulse" type="number" [(ngModel)]="form['vitalSigns'].pulse" /></label>
-        <label class="span-all">الفحص الإكلينيكي<textarea name="clinicalNotes" [(ngModel)]="form['clinicalNotes']"></textarea></label>
-        <label>التشخيص<input name="diagnosis" [(ngModel)]="form['diagnosis']" /></label>
-        <label>كود التشخيص<input name="diagnosisCode" [(ngModel)]="form['diagnosisCode']" /></label>
-        <div class="actions span-all">
-          <button [disabled]="ui.busy()">حفظ الكشف</button>
-          <button type="button" class="secondary" [disabled]="!created()" (click)="update()">تحديث الكشف</button>
+    </section>
+
+    <aside class="span-4 side-stack">
+      <cf-card title="نتيجة الكشف" description="اعرض كشف محفوظ أو أغلق الزيارة بعد الانتهاء.">
+        <div class="actions">
+          <input placeholder="رقم الكشف" [(ngModel)]="lookupId" />
+          <button type="button" (click)="loadVisit()">عرض</button>
         </div>
-      </form>
 
-      <h3>Clinical Templates</h3>
-      <div class="actions">
-        @for (template of templates(); track template['id']) {
-          <button type="button" class="secondary" (click)="applyTemplate(template)">{{ template['name'] }}</button>
-        } @empty {
-          <span class="muted">لا توجد قوالب بعد.</span>
+        @if (created()) {
+          <div class="visit-result">
+            <p><strong>{{ created()?.patientName }}</strong><br><span class="muted">{{ created()?.doctorName }}</span></p>
+            <p class="copy-box">رقم الكشف: {{ created()?.id }}</p>
+            <p>{{ created()?.chiefComplaint }}</p>
+            <cf-badge [label]="created()?.diagnosis || 'بدون تشخيص'" variant="info" />
+            <button type="button" class="secondary" (click)="finalize()">إغلاق الزيارة</button>
+          </div>
+        } @else {
+          <cf-empty-state title="لم يتم تحميل كشف" description="بعد حفظ الكشف أو البحث بالرقم ستظهر النتيجة هنا." />
         }
-      </div>
-    </section>
+      </cf-card>
 
-    <section class="panel span-4">
-      <h3>نتيجة الكشف</h3>
-      <div class="actions"><input placeholder="رقم الكشف" [(ngModel)]="lookupId" /><button (click)="loadVisit()">عرض</button></div>
-      @if (created()) {
-        <p><strong>{{ created()?.patientName }}</strong><br><span class="muted">{{ created()?.doctorName }}</span></p>
-        <p class="copy-box">رقم الكشف: {{ created()?.id }}</p>
-        <p>{{ created()?.chiefComplaint }}</p>
-        <p><span class="badge">{{ created()?.diagnosis || 'بدون تشخيص' }}</span></p>
-        <button type="button" (click)="finalize()">Lock / Finalize</button>
-      }
-
-      <h3>تاريخ زيارات المريض</h3>
-      @for (visit of history(); track visit.id) {
-        <article class="card"><strong>{{ visit.visitDate }}</strong><p>{{ visit.chiefComplaint }}</p><span class="badge">{{ visit.diagnosis || '-' }}</span></article>
-      } @empty {
-        <p class="empty">اختر مريض لعرض التاريخ.</p>
-      }
-    </section>
+      <cf-card title="تاريخ زيارات المريض" description="آخر الزيارات للمريض المحدد.">
+        @for (visit of history(); track visit.id) {
+          <article class="card visit-history-item">
+            <strong>{{ visit.visitDate }}</strong>
+            <p>{{ visit.chiefComplaint }}</p>
+            <cf-badge [label]="visit.diagnosis || '-'" variant="neutral" />
+          </article>
+        } @empty {
+          <cf-empty-state title="لا يوجد تاريخ ظاهر" description="اختر مريضا لعرض زياراته السابقة." />
+        }
+      </cf-card>
+    </aside>
   </div>
 </section>

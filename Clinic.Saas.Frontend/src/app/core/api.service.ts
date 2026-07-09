@@ -1,7 +1,42 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
-import { AdminClinic, AdminStats, ApiResponse, Appointment, AuditLog, AuthSession, ClinicSettings, DailyRevenue, Patient, PatientTimelineItem, Prescription, Procedure, TenantSubscriptionStatus, User, Visit } from './models';
+import {
+  AddInvoicePaymentPayload,
+  AdminClinic,
+  AdminStats,
+  ApiResponse,
+  Appointment,
+  AppointmentAvailability,
+  AuditLog,
+  AuthSession,
+  ClinicSettings,
+  ClinicSubscription,
+  CreateClinicSubscriptionPayload,
+  CreateInvoicePayload,
+  DailyRevenue,
+  FinancialDuesReport,
+  Invoice,
+  OnlineBooking,
+  Patient,
+  PatientChart,
+  PatientDocument,
+  PatientDocumentUploadMetadata,
+  PatientDocumentUploadResult,
+  PatientFinancialLedger,
+  PatientTimelineItem,
+  Prescription,
+  Procedure,
+  PlatformDashboardSummary,
+  PlatformPlan,
+  PlatformReports,
+  PlatformSettings,
+  TenantSubscriptionStatus,
+  TenantSubscription,
+  User,
+  Visit,
+  enumValues,
+} from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -76,24 +111,57 @@ export class ApiService {
     return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/Patients/${id}`, { headers: this.ifMatch(rowVersion) }).pipe(map((r) => r.data));
   }
 
+  getPatientChart(patientId: string) {
+    return this.get<PatientChart>(`/Patients/${patientId}/chart`);
+  }
+
+  getPatientLedger(patientId: string) {
+    return this.get<PatientFinancialLedger>(`/Patients/${patientId}/ledger`);
+  }
+
+  getPatientTimeline(patientId: string) {
+    return this.get<PatientTimelineItem[]>(`/Patients/${patientId}/timeline`);
+  }
+
   patientTimeline(id: string) {
-    return this.get<PatientTimelineItem[]>(`/patients/${id}/timeline`);
+    return this.getPatientTimeline(id);
+  }
+
+  listPatientDocuments(patientId: string) {
+    return this.get<PatientDocument[]>('/PatientDocuments', { patientId });
+  }
+
+  uploadPatientDocument(patientId: string, file: File, metadata?: PatientDocumentUploadMetadata): ReturnType<ApiService['uploadPatientDocumentResult']>;
+
+  uploadPatientDocument(patientId: string, file: File, documentType?: number, description?: string): ReturnType<ApiService['uploadPatientDocumentResult']>;
+
+  uploadPatientDocument(patientId: string, file: File, metadataOrDocumentType: PatientDocumentUploadMetadata | number = 1, description = '') {
+    const metadata = typeof metadataOrDocumentType === 'number' ? { documentType: metadataOrDocumentType, description } : metadataOrDocumentType;
+    return this.uploadPatientDocumentResult(patientId, file, metadata);
+  }
+
+  viewPatientDocument(patientId: string, documentId: string) {
+    return this.blob(`/PatientDocuments/${documentId}/view`, { patientId });
+  }
+
+  downloadPatientDocument(patientId: string, documentId: string) {
+    return this.blob(`/PatientDocuments/${documentId}/download`, { patientId });
+  }
+
+  private uploadPatientDocumentResult(patientId: string, file: File, metadata: PatientDocumentUploadMetadata = {}) {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('documentType', String(metadata.documentType ?? 1));
+    form.append('description', metadata.description ?? '');
+    return this.http.post<ApiResponse<PatientDocumentUploadResult>>(`${this.baseUrl}/PatientDocuments`, form, { params: this.params({ patientId }) }).pipe(map((r) => r.data));
   }
 
   patientDuplicates(phone?: string, nationalId?: string) {
     return this.get<Patient[]>('/patients/duplicates', { phone: phone ?? '', nationalId: nationalId ?? '' });
   }
 
-  uploadPatientDocument(patientId: string, file: File, documentType = 1, description = '') {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('documentType', String(documentType));
-    form.append('description', description);
-    return this.http.post<ApiResponse<Record<string, unknown>>>(`${this.baseUrl}/PatientDocuments`, form, { params: this.params({ patientId }) }).pipe(map((r) => r.data));
-  }
-
-  exportPatientsUrl() {
-    return `${this.baseUrl}/patients/export`;
+  exportPatientsCsv() {
+    return this.blob('/patients/export');
   }
 
   appointments(date: string) {
@@ -106,6 +174,10 @@ export class ApiService {
 
   monthlyAppointments(year: number, month: number) {
     return this.get<Appointment[]>('/appointments/monthly', { year: String(year), month: String(month) });
+  }
+
+  getAppointmentAvailability(doctorId: string, date: string, duration?: number) {
+    return this.get<AppointmentAvailability>('/Appointments/availability', this.cleanParams({ doctorId, date, duration }));
   }
 
   createAppointment(payload: Record<string, unknown>) {
@@ -124,12 +196,16 @@ export class ApiService {
     return this.get<Appointment[]>('/appointments/cancellations', { from, to });
   }
 
+  getOnlineBookings(filters?: Record<string, string | number | boolean | undefined | null>) {
+    return this.get<OnlineBooking[]>('/online-bookings', this.cleanParams(filters));
+  }
+
   onlineBookings() {
     return this.get<Record<string, unknown>[]>('/online-bookings');
   }
 
-  approveOnlineBooking(id: string) {
-    return this.post<boolean>(`/online-bookings/${id}/approve`, {});
+  approveOnlineBooking(id: string, payload: Record<string, unknown> = {}) {
+    return this.post<boolean>(`/online-bookings/${id}/approve`, payload);
   }
 
   rejectOnlineBooking(id: string, rejectReason: string) {
@@ -172,8 +248,8 @@ export class ApiService {
     return this.get<Prescription>(`/Prescriptions/${id}`);
   }
 
-  prescriptionPdfUrl(id: string) {
-    return `${this.baseUrl}/prescriptions/${id}/pdf`;
+  prescriptionPdf(id: string) {
+    return this.blob(`/prescriptions/${id}/pdf`);
   }
 
   sendPrescriptionWhatsapp(id: string, rowVersion?: string) {
@@ -212,8 +288,24 @@ export class ApiService {
     return this.post('/Billing/payments', payload);
   }
 
+  getDailyRevenueReport(date: string) {
+    return this.dailyRevenue(date);
+  }
+
   dailyRevenue(date: string) {
     return this.get<DailyRevenue>('/Billing/reports/daily-revenue', { date });
+  }
+
+  createInvoice(payload: CreateInvoicePayload) {
+    return this.post<Invoice>('/invoices', payload);
+  }
+
+  getInvoiceById(id: string) {
+    return this.get<Invoice>(`/invoices/${id}`);
+  }
+
+  addInvoicePayment(invoiceId: string, payload: AddInvoicePaymentPayload) {
+    return this.post<Invoice>(`/invoices/${invoiceId}/payments`, payload);
   }
 
   payment(id: string) {
@@ -232,8 +324,8 @@ export class ApiService {
     return this.post<boolean>(`/billing/payments/${id}/refund`, { reason, rowVersion });
   }
 
-  receiptPdfUrl(id: string) {
-    return `${this.baseUrl}/billing/payments/${id}/receipt`;
+  receiptPdf(id: string) {
+    return this.blob(`/billing/payments/${id}/receipt`);
   }
 
   debts() {
@@ -242,6 +334,10 @@ export class ApiService {
 
   monthlyRevenue(year: number, month: number) {
     return this.get<Record<string, unknown>[]>('/billing/reports/monthly-revenue', { year: String(year), month: String(month) });
+  }
+
+  getFinancialDuesReport(filters: { from?: string; to?: string; doctorId?: string } = {}) {
+    return this.get<FinancialDuesReport>('/reports/financial-dues', this.cleanParams(filters));
   }
 
   tenantStatus() {
@@ -260,12 +356,173 @@ export class ApiService {
     return this.get<AdminStats>('/admin/dashboard');
   }
 
+  getPlatformDashboardSummary() {
+    return this.get<PlatformDashboardSummary>('/platform/dashboard/summary');
+  }
+
+  getClinics(filters: Record<string, string | number | boolean | undefined | null> = {}) {
+    return this.get<AdminClinic[]>('/platform/clinics', this.cleanParams(filters));
+  }
+
+  getClinicById(id: string) {
+    return this.get<AdminClinic>(`/platform/clinics/${id}`);
+  }
+
+  createPlatformClinic(payload: Record<string, unknown>) {
+    return this.post<AdminClinic>('/platform/clinics', payload);
+  }
+
+  updatePlatformClinic(id: string, payload: Record<string, unknown>) {
+    return this.put<AdminClinic>(`/platform/clinics/${id}`, payload);
+  }
+
+  suspendClinic(id: string, reason: string) {
+    return this.http.patch<ApiResponse<boolean>>(`${this.baseUrl}/platform/clinics/${id}/suspend`, { reason }).pipe(map((r) => r.data));
+  }
+
+  reactivateClinic(id: string) {
+    return this.http.patch<ApiResponse<boolean>>(`${this.baseUrl}/platform/clinics/${id}/reactivate`, {}).pipe(map((r) => r.data));
+  }
+
+  getPlans(includeInactive = true) {
+    return this.getPlatformPlans(includeInactive);
+  }
+
+  getPlatformPlans(includeInactive = true) {
+    return this.get<PlatformPlan[]>('/platform/plans', { includeInactive: String(includeInactive) });
+  }
+
+  getPlatformPlan(id: string) {
+    return this.get<PlatformPlan>(`/platform/plans/${id}`);
+  }
+
+  createPlan(payload: Record<string, unknown>) {
+    return this.createPlatformPlan(payload);
+  }
+
+  createPlatformPlan(payload: Record<string, unknown>) {
+    return this.post<PlatformPlan>('/platform/plans', payload);
+  }
+
+  updatePlan(id: string, payload: Record<string, unknown>) {
+    return this.updatePlatformPlan(id, payload);
+  }
+
+  updatePlatformPlan(id: string, payload: Record<string, unknown>) {
+    return this.put<PlatformPlan>(`/platform/plans/${id}`, payload);
+  }
+
+  deletePlatformPlan(id: string) {
+    return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/platform/plans/${id}`).pipe(map((r) => r.data));
+  }
+
+  updatePlatformPlanStatus(id: string, isActive: boolean) {
+    return this.http.patch<ApiResponse<boolean>>(`${this.baseUrl}/platform/plans/${id}/status`, { isActive }).pipe(map((r) => r.data));
+  }
+
+  deactivatePlan(id: string) {
+    return this.updatePlatformPlanStatus(id, false);
+  }
+
+  activatePlan(id: string) {
+    return this.updatePlatformPlanStatus(id, true);
+  }
+
+  getSubscriptions(filters: Record<string, string | number | boolean | undefined | null> = {}) {
+    return this.get<TenantSubscription[]>('/platform/subscriptions', this.cleanParams(filters));
+  }
+
+  renewSubscription(tenantId: string, payload: Record<string, unknown>) {
+    const actualPaidAmount = payload['actualPaidAmount'];
+    return this.post<TenantSubscription>(`/platform/clinics/${tenantId}/subscription/renew`, {
+      tenantId,
+      planId: payload['planId'],
+      customEndDateUtc: payload['customEndDateUtc'] ?? payload['customEndsAtUtc'] ?? null,
+      actualPaidAmount: actualPaidAmount === undefined || actualPaidAmount === null || actualPaidAmount === '' ? null : Number(actualPaidAmount),
+      paymentDateUtc: payload['paymentDateUtc'] ?? null,
+      paymentMethod: payload['paymentMethod'] || null,
+      notes: payload['notes'] || null,
+    });
+  }
+
+  changePlan(tenantId: string, payload: Record<string, unknown>) {
+    return this.renewSubscription(tenantId, payload);
+  }
+
+  getExpiringSoonSubscriptions(days = 7) {
+    return this.get<Record<string, unknown>[]>('/admin/expiring-subscriptions', { days: String(days) }).pipe(map((rows) => rows.map((row, index) => ({
+      id: String(row['subscriptionId'] ?? `${row['subdomain'] ?? 'subscription'}-${index}`),
+      tenantId: String(row['tenantId'] ?? ''),
+      planId: String(row['plan'] ?? ''),
+      planName: String(row['plan'] ?? ''),
+      planCode: String(row['plan'] ?? ''),
+      status: Number(row['status'] ?? 0),
+      startsAtUtc: '',
+      endsAtUtc: String(row['endDate'] ?? ''),
+      autoRenew: false,
+      gracePeriodDays: 0,
+      daysRemaining: row['endDate'] ? Math.ceil((new Date(String(row['endDate'])).getTime() - Date.now()) / 86_400_000) : 0,
+      isInGracePeriod: false,
+    } satisfies TenantSubscription))));
+  }
+
+  runSubscriptionExpiryCheck() {
+    return this.post<{ checked: number; markedPastDue: number; markedExpired: number; skipped: number; errors: number }>('/platform/subscriptions/check-expiry', {});
+  }
+
+  getPlatformAuditLogs(filters: Record<string, string | number | boolean | undefined | null> = {}) {
+    return this.get<AuditLog[]>('/platform/audit-logs', this.cleanParams(filters));
+  }
+
+  getPlatformReports(filters: Record<string, string | number | boolean | undefined | null> = {}) {
+    return this.get<PlatformReports>('/platform/reports/platform', this.cleanParams(filters));
+  }
+
+  getPlatformSettings() {
+    return this.get<PlatformSettings>('/platform/settings/platform');
+  }
+
+  updatePlatformSettings(payload: PlatformSettings) {
+    return this.put<PlatformSettings>('/platform/settings/platform', payload as unknown as Record<string, unknown>);
+  }
+
   adminClinics() {
     return this.get<AdminClinic[]>('/admin/clinics');
   }
 
   createClinic(payload: Record<string, unknown>) {
     return this.post<AdminClinic>('/admin/clinics', payload);
+  }
+
+  getClinicDetails(id: string) {
+    return this.get<AdminClinic>(`/admin/clinics/${id}`);
+  }
+
+  updateClinic(id: string, payload: Record<string, unknown>) {
+    return this.put<AdminClinic>(`/admin/clinics/${id}`, payload);
+  }
+
+  getClinicSubscriptions(id: string) {
+    return this.getClinicDetails(id).pipe(
+      map((clinic) =>
+        clinic.subscriptionId && clinic.subscriptionStartDate && clinic.subscriptionEndDate
+          ? [
+              {
+                id: clinic.subscriptionId,
+                plan: clinic.plan,
+                startDate: clinic.subscriptionStartDate,
+                endDate: clinic.subscriptionEndDate,
+                amountPaid: clinic.subscriptionAmountPaid ?? 0,
+                status: clinic.subscriptionStatus ?? 0,
+              } satisfies ClinicSubscription,
+            ]
+          : [],
+      ),
+    );
+  }
+
+  addClinicSubscription(id: string, payload: CreateClinicSubscriptionPayload) {
+    return this.post<ClinicSubscription>(`/admin/clinics/${id}/subscriptions`, payload);
   }
 
   setClinicStatus(id: string, isActive: boolean) {
@@ -298,6 +555,19 @@ export class ApiService {
 
   private put<T>(path: string, payload: unknown) {
     return this.http.put<ApiResponse<T>>(`${this.baseUrl}${path}`, payload).pipe(map((r) => r.data));
+  }
+
+  private blob(path: string, params?: Record<string, string>) {
+    return this.http.get(`${this.baseUrl}${path}`, { params: this.params(params), responseType: 'blob' });
+  }
+
+  private cleanParams(params?: Record<string, string | number | boolean | undefined | null>) {
+    return Object.entries(params ?? {}).reduce<Record<string, string>>((result, [key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        result[key] = String(value);
+      }
+      return result;
+    }, {});
   }
 
   private ifMatch(rowVersion?: string) {

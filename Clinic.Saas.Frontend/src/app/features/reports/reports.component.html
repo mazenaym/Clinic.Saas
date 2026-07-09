@@ -1,0 +1,99 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>التقارير المالية</h2>
+      <p>الإيرادات، المستحقات، أرصدة المرضى غير المسددة، وإجراءات المتابعة.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="secondary" disabled [title]="exportMessage">تصدير</button>
+      <button type="button" (click)="loadReports()" [disabled]="loading()">تحديث</button>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h3>الفلاتر</h3>
+    <form class="form-grid">
+      <label>من<input name="from" type="date" [(ngModel)]="filters.from" /></label>
+      <label>إلى<input name="to" type="date" [(ngModel)]="filters.to" /></label>
+      <label>الدكتور<select name="doctorId" [(ngModel)]="filters.doctorId"><option value="">كل الأطباء</option>@for (doctor of doctors(); track doctor.id) { <option [value]="doctor.id">{{ doctor.fullName }}</option> }</select></label>
+      <label>المريض<select name="patientId" [(ngModel)]="filters.patientId"><option value="">كل المرضى</option>@for (patient of patients(); track patient.id) { <option [value]="patient.id">{{ patient.fullName }}</option> }</select></label>
+      <label>الحالة<select name="status" [(ngModel)]="filters.status"><option value="outstanding">مستحق فقط</option><option value="paid">مدفوع فقط</option><option value="all">الكل</option></select></label>
+      <div class="actions span-all"><button type="button" (click)="loadReports()" [disabled]="loading()">تطبيق الفلاتر</button></div>
+    </form>
+  </section>
+
+  @if (loading()) {
+    <section class="panel"><p class="inline-help">جاري تحميل تقرير المستحقات المالية...</p></section>
+  }
+  @if (error()) {
+    <section class="panel"><p class="inline-help">{{ error() }}</p></section>
+  }
+
+  <div class="grid">
+    <article class="metric card span-3">
+      <span>إيراد اليوم</span>
+      <strong>{{ dailyRevenue()?.netRevenue || 0 | number:'1.0-2' }}</strong>
+    </article>
+    <article class="metric card span-3">
+      <span>إيراد الشهر</span>
+      <strong>{{ monthlyRevenueTotal() | number:'1.0-2' }}</strong>
+    </article>
+    <article class="metric card span-3">
+      <span>المستحقات</span>
+      <strong>{{ outstandingDues() | number:'1.0-2' }}</strong>
+    </article>
+    <article class="metric card span-3">
+      <span>فواتير غير مسددة</span>
+      <strong>{{ unpaidInvoices() }}</strong>
+    </article>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h3>المستحقات المالية</h3>
+        <p>تقسيم أعمار الديون غير متاح في الاستجابة الحالية.</p>
+      </div>
+      <span class="badge">{{ filteredPatients().length }} مريض</span>
+    </div>
+    <div class="grid">
+      <article class="metric card span-4"><span>إجمالي المستحق</span><strong>{{ duesReport()?.summary?.totalOutstanding || 0 | number:'1.0-2' }}</strong></article>
+      <article class="metric card span-4"><span>إجمالي المدفوع</span><strong>{{ duesReport()?.summary?.totalPaid || 0 | number:'1.0-2' }}</strong></article>
+      <article class="metric card span-4"><span>مرضى لديهم رصيد</span><strong>{{ duesReport()?.summary?.patientsWithDebtCount || 0 }}</strong></article>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>اسم المريض</th>
+            <th>الهاتف</th>
+            <th>إجمالي الفواتير</th>
+            <th>المدفوع</th>
+            <th>المتبقي</th>
+            <th>آخر دفعة</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (patient of filteredPatients(); track patient.patientId) {
+            <tr>
+              <td><strong>{{ patient.patientName }}</strong></td>
+              <td>{{ patient.phone || '-' }}</td>
+              <td>{{ patient.totalAmount | number:'1.0-2' }}</td>
+              <td>{{ patient.paidAmount | number:'1.0-2' }}</td>
+              <td><span class="badge">{{ patient.outstandingAmount | number:'1.0-2' }}</span></td>
+              <td>{{ patient.lastPaymentDate || '-' }}</td>
+              <td class="actions">
+                <a class="button-link secondary-link" [routerLink]="patientChartLink(patient)" [queryParams]="{ tab: 'ledger' }">فتح ملف المريض</a>
+                <a class="button-link" [routerLink]="invoiceLink(patient)" [queryParams]="{ patientId: patient.patientId }">إضافة دفعة</a>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="empty">لا يوجد مرضى مطابقون للفلاتر المحددة.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>

@@ -13,5 +13,9 @@ namespace Clinic.Saas.Service.DTOs
         public string? Phone { get; set; }
         public string? Specialty { get; set; }
         public bool IsActive { get; set; }
+        public string? SubscriptionStatus { get; set; }
+        public DateTime? SubscriptionEndsAtUtc { get; set; }
+        public bool IsInGracePeriod { get; set; }
+        public int DaysRemaining { get; set; }
     }
 }

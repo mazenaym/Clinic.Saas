@@ -11,7 +11,14 @@ public class TenantAccessMiddleware
         "/api/auth",
         "/api/onboarding",
         "/api/admin",
+        "/api/platform",
         "/swagger"
+    ];
+
+    private static readonly PathString[] LimitedAllowedPrefixes =
+    [
+        "/api/users/me",
+        "/api/tenant/status"
     ];
 
     private readonly RequestDelegate _next;
@@ -23,7 +30,7 @@ public class TenantAccessMiddleware
 
     public async Task InvokeAsync(HttpContext context, DapperContext db)
     {
-        if (context.User.Identity?.IsAuthenticated != true || IsExcluded(context.Request.Path))
+        if (context.User.Identity?.IsAuthenticated != true || IsExcluded(context.Request.Path) || IsSuperAdmin(context))
         {
             await _next(context);
             return;
@@ -37,18 +44,21 @@ public class TenantAccessMiddleware
         }
 
         const string sql = @"
-SELECT TOP 1
+SELECT TOP (1)
     t.IsActive,
-    COALESCE(t.SubscriptionState, N'Trial') AS State,
+    COALESCE(t.SubscriptionState, CASE WHEN t.IsActive = 1 THEN N'Active' ELSE N'Disabled' END) AS State,
     t.TrialEndsAt,
-    (
-        SELECT TOP 1 s.EndDate
-        FROM dbo.Subscriptions s
-        WHERE s.TenantId = t.Id
-          AND s.Status IN (1, 4)
-        ORDER BY s.EndDate DESC
-    ) AS SubscriptionEndsAt
+    s.Status AS SubscriptionStatus,
+    s.EndsAtUtc AS SubscriptionEndsAt,
+    s.GracePeriodDays
 FROM dbo.Tenants t
+OUTER APPLY
+(
+    SELECT TOP (1) latest.Status, latest.EndsAtUtc, latest.GracePeriodDays
+    FROM dbo.TenantSubscriptions latest
+    WHERE latest.TenantId = t.Id
+    ORDER BY latest.EndsAtUtc DESC, latest.CreatedAtUtc DESC
+) s
 WHERE t.Id = @TenantId;";
 
         using var connection = db.CreateConnection();
@@ -60,16 +70,18 @@ WHERE t.Id = @TenantId;";
             !status.IsActive ||
             status.State.Equals("Suspended", StringComparison.OrdinalIgnoreCase) ||
             status.State.Equals("Expired", StringComparison.OrdinalIgnoreCase) ||
-            (status.State.Equals("Trial", StringComparison.OrdinalIgnoreCase) && status.TrialEndsAt.HasValue && status.TrialEndsAt.Value < now) ||
-            (status.State.Equals("Active", StringComparison.OrdinalIgnoreCase) && status.SubscriptionEndsAt.HasValue && status.SubscriptionEndsAt.Value < now);
+            status.SubscriptionStatus is 2 or 3 or 6 ||
+            (status.SubscriptionEndsAt.HasValue &&
+             status.SubscriptionEndsAt.Value < now &&
+             now > status.SubscriptionEndsAt.Value.AddDays(status.GracePeriodDays));
 
-        if (denied)
+        if (denied && !IsLimitedAllowed(context.Request.Path))
         {
             context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
             await context.Response.WriteAsJsonAsync(new
             {
                 success = false,
-                message = "Clinic subscription is not active.",
+                message = "Clinic subscription has expired. Please contact platform admin.",
                 statusCode = StatusCodes.Status402PaymentRequired
             });
             return;
@@ -83,11 +95,23 @@ WHERE t.Id = @TenantId;";
         return ExcludedPrefixes.Any(prefix => path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase));
     }
 
+    private static bool IsLimitedAllowed(PathString path)
+    {
+        return LimitedAllowedPrefixes.Any(prefix => path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsSuperAdmin(HttpContext context)
+    {
+        return context.User.IsInRole("SuperAdmin");
+    }
+
     private sealed class TenantAccessStatus
     {
         public bool IsActive { get; set; }
         public string State { get; set; } = "Trial";
         public DateTime? TrialEndsAt { get; set; }
+        public short? SubscriptionStatus { get; set; }
         public DateTime? SubscriptionEndsAt { get; set; }
+        public int GracePeriodDays { get; set; }
     }
 }

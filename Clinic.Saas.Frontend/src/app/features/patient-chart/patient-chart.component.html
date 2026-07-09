@@ -1,0 +1,346 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>ملف المريض الطبي</h2>
+      <p>التاريخ الطبي، الزيارات، الروشتات، المواعيد، المستندات، والملخص المالي.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link secondary-link" routerLink="/patients">المرضى</a>
+      @if (patient()) {
+        @if (canSeeClinical()) {
+          <a class="button-link" routerLink="/visits" [queryParams]="{ patientId: patient()!.id }">زيارة جديدة</a>
+          <a class="button-link secondary-link" routerLink="/prescriptions" [queryParams]="{ patientId: patient()!.id }">روشتة جديدة</a>
+        }
+        @if (canSeeBilling()) {
+          <a class="button-link secondary-link" routerLink="/billing/invoices" [queryParams]="{ patientId: patient()!.id }">فاتورة جديدة</a>
+        }
+        <a class="button-link secondary-link" routerLink="/appointments" [queryParams]="{ patientId: patient()!.id }">حجز موعد</a>
+        @if (canUploadDocuments()) {
+          <label class="button-link secondary-link">
+            رفع مستند
+            <input type="file" hidden accept=".pdf,image/*,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" (change)="uploadDocument($event)" [disabled]="uploading()" />
+          </label>
+        }
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <section class="panel">
+      <p class="empty">جاري تحميل ملف المريض...</p>
+    </section>
+  } @else if (error()) {
+    <section class="panel">
+      <strong class="empty-title">الملف غير متاح</strong>
+      <p class="empty-text">{{ error() }}</p>
+      <div class="actions"><button type="button" (click)="load()">إعادة المحاولة</button></div>
+    </section>
+  } @else if (patient()) {
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>{{ patient()!.fullName }}</h3>
+          <p>{{ patient()!.patientCode }} · {{ patient()!.phoneNumber }} · {{ patient()!.gender }}</p>
+        </div>
+        <span class="badge">{{ patient()!.bloodType || 'لا توجد فصيلة دم' }}</span>
+      </div>
+
+      <div class="grid">
+        <article class="stat-card span-3">
+          <span>العمر</span>
+          <strong>{{ patient()!.age || '-' }}</strong>
+        </article>
+        <article class="stat-card span-3">
+          <span>إجمالي الزيارات</span>
+          <strong>{{ patient()!.totalVisits || chart()?.recentVisits?.length || 0 }}</strong>
+        </article>
+        <article class="stat-card span-3">
+          <span>إجمالي المدفوع</span>
+          <strong>{{ (ledger()?.summary?.totalPaid ?? patient()!.totalPaid ?? 0) | number:'1.0-2' }}</strong>
+        </article>
+        <article class="stat-card span-3">
+          <span>المتبقي</span>
+          <strong>{{ (ledger()?.summary?.outstandingBalance ?? patient()!.totalOutstanding ?? 0) | number:'1.0-2' }}</strong>
+        </article>
+      </div>
+
+      <nav class="tabs" aria-label="Patient chart sections">
+        @for (tab of visibleTabs(); track tab.key) {
+          <button type="button" [class.secondary]="activeTab() !== tab.key" (click)="activeTab.set(tab.key)">{{ tab.label }}</button>
+        }
+      </nav>
+    </section>
+
+    @if (activeTab() === 'overview') {
+      <div class="grid">
+        <section class="panel span-6">
+          <h3>ملخص المريض</h3>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr><th>الإيميل</th><td>{{ patient()!.email || '-' }}</td></tr>
+                <tr><th>العنوان</th><td>{{ patient()!.address || '-' }}</td></tr>
+                <tr><th>التأمين</th><td>{{ patient()!.insuranceCompany || '-' }}</td></tr>
+                <tr><th>تاريخ الإنشاء</th><td>{{ patient()!.createdAt | date:'mediumDate' }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel span-6">
+          <h3>تنبيهات طبية</h3>
+          @if (canSeeClinical()) {
+            <article class="card">
+              <p><strong>حساسية الأدوية</strong></p>
+              <p>{{ chart()?.medicalWarnings?.drugAllergies || patient()!.drugAllergies || 'لا توجد حساسية مسجلة.' }}</p>
+            </article>
+            <article class="card">
+              <p><strong>التاريخ المرضي</strong></p>
+              <p>{{ patient()!.medicalHistory || chart()?.medicalWarnings?.chronicDiseases || patient()!.chronicDiseases || 'لا يوجد تاريخ مرضي مسجل.' }}</p>
+            </article>
+          } @else {
+            <p class="empty">البيانات الطبية متاحة للطبيب والمدير فقط.</p>
+          }
+        </section>
+
+        <section class="panel span-6">
+          <h3>آخر المواعيد</h3>
+          @if (canSeeClinical()) {
+            @for (appointment of chart()?.recentAppointments ?? []; track appointment.id) {
+              <article class="card">
+                <strong>{{ appointment.type }} · {{ appointment.status }}</strong>
+                <p>{{ appointment.doctorName }} · {{ appointment.appointmentDate | date:'mediumDate' }} {{ appointment.startTime }}</p>
+              </article>
+            } @empty {
+              <p class="empty">لا توجد مواعيد.</p>
+            }
+          } @else {
+            <p class="empty">المواعيد داخل الملف متاحة للطبيب والمدير فقط.</p>
+          }
+        </section>
+
+        <section class="panel span-6">
+          <h3>ملخص المدفوعات</h3>
+          @if (canSeeBilling()) {
+            @if (billingError()) { <p class="inline-help">{{ billingError() }}</p> }
+            <div class="grid">
+              <article class="metric span-4"><span>مفوتر</span><strong>{{ ledger()?.summary?.totalInvoiced || 0 | number:'1.0-2' }}</strong></article>
+              <article class="metric span-4"><span>مدفوع</span><strong>{{ ledger()?.summary?.totalPaid || 0 | number:'1.0-2' }}</strong></article>
+              <article class="metric span-4"><span>مستحق</span><strong>{{ ledger()?.summary?.outstandingBalance || 0 | number:'1.0-2' }}</strong></article>
+            </div>
+          } @else {
+            <p class="empty">بيانات الفوترة متاحة للاستقبال والمدير فقط.</p>
+          }
+        </section>
+      </div>
+    }
+
+    @if (activeTab() === 'visits') {
+      <section class="panel">
+        <h3>خط زمني للزيارات</h3>
+        @if (clinicalError()) { <p class="inline-help">{{ clinicalError() }}</p> }
+        @if (canSeeClinical()) {
+          @for (visit of chart()?.recentVisits ?? []; track visit.id) {
+            <article class="card">
+              <strong>{{ visit.visitDate | date:'mediumDate' }} · {{ visit.visitType }}</strong>
+              <p>{{ visit.chiefComplaint }}</p>
+              <p class="muted">{{ visit.diagnosis || 'لا يوجد تشخيص مسجل' }} · {{ visit.doctorName }}</p>
+            </article>
+          } @empty {
+            @for (item of timeline(); track item.type + item.id) {
+              <article class="card">
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.details || item.type }}</p>
+                <span class="muted">{{ item.date | date:'medium' }}</span>
+              </article>
+            } @empty {
+              <p class="empty">لا توجد زيارات مسجلة.</p>
+            }
+          }
+        } @else {
+          <p class="empty">الزيارات متاحة للطبيب والمدير فقط.</p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'prescriptions') {
+      <section class="panel">
+        <h3>الروشتات</h3>
+        @if (canSeeClinical()) {
+          @for (prescription of chart()?.recentPrescriptions ?? []; track prescription.id) {
+            <article class="card">
+              <strong>{{ prescription.createdAt | date:'mediumDate' }} · {{ prescription.doctorName }}</strong>
+              <p>{{ prescription.itemsSummary || prescription.itemCount + ' بند' }}</p>
+              <span class="badge">{{ prescription.sentViaWhatsapp ? 'تم الإرسال عبر WhatsApp' : 'لم يتم الإرسال' }}</span>
+            </article>
+          } @empty {
+            <p class="empty">لا توجد روشتات مسجلة.</p>
+          }
+        } @else {
+          <p class="empty">الروشتات متاحة للطبيب والمدير فقط.</p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'appointments') {
+      <section class="panel">
+        <h3>المواعيد</h3>
+        @if (canSeeClinical()) {
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>التاريخ</th><th>الوقت</th><th>الدكتور</th><th>النوع</th><th>الحالة</th></tr></thead>
+              <tbody>
+                @for (appointment of chart()?.recentAppointments ?? []; track appointment.id) {
+                  <tr>
+                    <td>{{ appointment.appointmentDate | date:'mediumDate' }}</td>
+                    <td>{{ appointment.startTime }} - {{ appointment.endTime }}</td>
+                    <td>{{ appointment.doctorName }}</td>
+                    <td>{{ appointment.type }}</td>
+                    <td><span class="badge">{{ appointment.status }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="empty">لا توجد مواعيد مسجلة.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty">المواعيد متاحة للطبيب والمدير فقط.</p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'ledger') {
+      <section class="panel">
+        <h3>الحسابات</h3>
+        @if (canSeeBilling()) {
+          @if (billingError()) { <p class="inline-help">{{ billingError() }}</p> }
+          <div class="grid">
+            <article class="metric card span-4"><span>إجمالي الفواتير</span><strong>{{ ledger()?.summary?.totalInvoiced || 0 | number:'1.0-2' }}</strong></article>
+            <article class="metric card span-4"><span>إجمالي المدفوع</span><strong>{{ ledger()?.summary?.totalPaid || 0 | number:'1.0-2' }}</strong></article>
+            <article class="metric card span-4"><span>الرصيد المتبقي</span><strong>{{ ledger()?.summary?.outstandingBalance || 0 | number:'1.0-2' }}</strong></article>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>التاريخ</th><th>النوع</th><th>المرجع</th><th>الوصف</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+              <tbody>
+                @for (entry of ledger()?.entries ?? []; track entry.date + entry.referenceNumber + entry.type) {
+                  <tr>
+                    <td>{{ entry.date | date:'mediumDate' }}</td>
+                    <td>{{ entry.type }}</td>
+                    <td>{{ entry.referenceNumber }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td>{{ entry.debit | number:'1.0-2' }}</td>
+                    <td>{{ entry.credit | number:'1.0-2' }}</td>
+                    <td>{{ entry.balance | number:'1.0-2' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="empty">لا توجد حركات حسابية مسجلة.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty">بيانات الحسابات متاحة للاستقبال والمدير فقط.</p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'documents') {
+      <section class="panel">
+        <div class="panel-header">
+          <h3>المستندات</h3>
+          <button type="button" class="secondary" (click)="load()" [disabled]="documentsLoading() || uploading()">تحديث</button>
+        </div>
+        @if (canUploadDocuments()) {
+          <div class="form-grid">
+            <label>النوع / التصنيف<select name="documentType" [(ngModel)]="documentUploadForm.documentType">@for (type of documentTypes; track type.value) { <option [ngValue]="type.value">{{ type.label }}</option> }</select></label>
+            <label class="span-all">ملاحظات<textarea name="documentDescription" [(ngModel)]="documentUploadForm.description"></textarea></label>
+            <label class="button-link secondary-link span-all">
+              {{ uploading() ? 'جاري الرفع...' : 'رفع مستند' }}
+              <input type="file" hidden accept=".pdf,image/*,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" (change)="uploadDocument($event)" [disabled]="uploading()" />
+            </label>
+          </div>
+        }
+        @if (documentsError()) { <p class="inline-help">{{ documentsError() }}</p> }
+        @if (documentsLoading()) { <p class="inline-help">جاري تحميل المستندات...</p> }
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>الملف</th><th>التصنيف</th><th>النوع</th><th>رفع بواسطة</th><th>وقت الرفع</th><th>الحجم</th><th></th></tr></thead>
+            <tbody>
+              @for (document of documents(); track document.id) {
+                <tr>
+                  <td><strong>{{ document.fileName }}</strong><br><span class="muted">{{ document.description || '-' }}</span></td>
+                  <td>{{ documentTypeLabel(document.documentType) }}</td>
+                  <td>{{ documentKind(document) }}</td>
+                  <td>{{ uploadedBy(document) }}</td>
+                  <td>{{ document.uploadedAt | date:'medium' }}</td>
+                  <td>{{ document.fileSizeKb }} KB</td>
+                  <td class="actions">
+                    <button type="button" class="secondary" (click)="openDocument(document)">فتح</button>
+                    <button type="button" (click)="downloadDocument(document)">تحميل</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="empty">لا توجد مستندات مرفوعة.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @if (activeTab() === 'invoices') {
+      <section class="panel">
+        <div class="panel-header">
+          <h3>الفواتير</h3>
+          @if (canSeeBilling() && patient()) {
+            <a class="button-link" routerLink="/billing/invoices" [queryParams]="{ patientId: patient()!.id }">فاتورة جديدة</a>
+          }
+        </div>
+        @if (canSeeBilling()) {
+          <p class="muted">صفوف الفواتير مبنية من دفتر الحسابات إلى حين توفر قائمة فواتير مباشرة للمريض.</p>
+          <div class="grid">
+            <article class="metric card span-4"><span>إجمالي الفواتير</span><strong>{{ ledger()?.summary?.totalInvoiced || 0 | number:'1.0-2' }}</strong></article>
+            <article class="metric card span-4"><span>إجمالي المدفوع</span><strong>{{ ledger()?.summary?.totalPaid || 0 | number:'1.0-2' }}</strong></article>
+            <article class="metric card span-4"><span>المتبقي</span><strong>{{ ledger()?.summary?.outstandingBalance || 0 | number:'1.0-2' }}</strong></article>
+          </div>
+          <h3>حركات الفواتير</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>التاريخ</th><th>المرجع</th><th>الوصف</th><th>الحالة</th><th>المبلغ</th></tr></thead>
+              <tbody>
+                @for (entry of invoiceTransactions(); track entry.date + entry.referenceNumber) {
+                  <tr>
+                    <td>{{ entry.date | date:'mediumDate' }}</td>
+                    <td>{{ entry.referenceNumber }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td><span class="badge">{{ entry.balance <= 0 ? 'مدفوعة' : entry.credit > 0 ? 'جزئية' : 'غير مدفوعة' }}</span></td>
+                    <td>{{ entry.debit | number:'1.0-2' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="empty">لا توجد حركات فواتير مسجلة.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <h3>حركات الدفعات</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>التاريخ</th><th>المرجع</th><th>الوصف</th><th>المبلغ</th><th>الرصيد</th></tr></thead>
+              <tbody>
+                @for (entry of paymentTransactions(); track entry.date + entry.referenceNumber) {
+                  <tr><td>{{ entry.date | date:'mediumDate' }}</td><td>{{ entry.referenceNumber }}</td><td>{{ entry.description }}</td><td>{{ entry.credit | number:'1.0-2' }}</td><td>{{ entry.balance | number:'1.0-2' }}</td></tr>
+                } @empty {
+                  <tr><td colspan="5" class="empty">لا توجد حركات دفعات مسجلة.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty">الفواتير متاحة للاستقبال والمدير فقط.</p>
+        }
+      </section>
+    }
+  }
+</section>

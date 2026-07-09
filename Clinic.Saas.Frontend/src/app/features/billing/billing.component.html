@@ -51,7 +51,7 @@
       <h4>مدفوعات المريض</h4>
       <table><thead><tr><th>الفاتورة</th><th>الإجمالي</th><th>المدفوع</th><th>إجراءات</th></tr></thead><tbody>
         @for (payment of patientPayments(); track payment['id']) {
-          <tr><td>{{ payment['invoiceNumber'] }}</td><td>{{ payment['totalAmount'] }}</td><td>{{ payment['paidAmount'] }}</td><td class="actions"><a class="button-link" [href]="receiptUrl(payment['id'] + '')" target="_blank">Receipt</a><button type="button" class="danger" (click)="refund(payment['id'] + '')">Refund</button></td></tr>
+          <tr><td>{{ payment['invoiceNumber'] }}</td><td>{{ payment['totalAmount'] }}</td><td>{{ payment['paidAmount'] }}</td><td class="actions"><button type="button" (click)="downloadReceipt(payment['id'] + '')">تحميل الإيصال</button><button type="button" class="danger" (click)="refund(payment['id'] + '')">Refund</button></td></tr>
         }
       </tbody></table>
     }

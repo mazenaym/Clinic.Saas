@@ -1,8 +1,11 @@
 using Clinic.Saas.Infrastructure;
+using Clinic.Saas.Infrastructure.Hangfire;
 using Clinic.Saas.api.Authorization;
 using Clinic.Saas.api.Middleware;
 using Clinic.Saas.api.ProblemDetails;
 using Clinic.Saas.Service;
+using Clinic.Saas.Service.Jobs;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -59,6 +62,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddInfrastructure();
 builder.Services.AddApplication();
+builder.Services.AddClinicHangfire(builder.Configuration);
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var key = jwtSection["Key"] ?? throw new InvalidOperationException("Jwt:Key is missing from configuration.");
@@ -106,7 +110,20 @@ app.UseCors("ClinicSaasCors");
 app.UseAuthentication();
 app.UseMiddleware<TenantAccessMiddleware>();
 app.UseAuthorization();
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = [new HangfireSuperAdminAuthorizationFilter()]
+});
 
 app.MapControllers();
+
+RecurringJob.AddOrUpdate<SubscriptionExpiryRecurringJob>(
+    "subscription-expiry-check",
+    job => job.RunAsync(),
+    "5 0 * * *",
+    new RecurringJobOptions
+    {
+        TimeZone = TimeZoneInfo.Utc
+    });
 
 app.Run();

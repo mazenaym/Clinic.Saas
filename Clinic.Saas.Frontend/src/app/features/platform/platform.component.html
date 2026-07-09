@@ -1,0 +1,295 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>{{ title() }}</h2>
+      <p>إدارة دورة حياة العيادات والاشتراكات من واجهة واحدة مخصصة للمنصة.</p>
+    </div>
+  </div>
+
+  @if (section() === 'dashboard') {
+    <div class="grid">
+      <article class="metric card span-3"><span>إجمالي العيادات</span><strong>{{ summary()?.totalClinics || 0 }}</strong></article>
+      <article class="metric card span-3"><span>العيادات النشطة</span><strong>{{ summary()?.activeClinics || 0 }}</strong></article>
+      <article class="metric card span-3"><span>العيادات التجريبية</span><strong>{{ summary()?.trialClinics || 0 }}</strong></article>
+      <article class="metric card span-3"><span>العيادات الموقوفة</span><strong>{{ summary()?.suspendedClinics || 0 }}</strong></article>
+      <article class="metric card span-3"><span>الاشتراكات المنتهية</span><strong>{{ summary()?.expiredSubscriptionsCount || 0 }}</strong></article>
+      <article class="metric card span-3"><span>قربت تنتهي</span><strong>{{ summary()?.expiringSoonCount || 0 }}</strong></article>
+      <article class="metric card span-3"><span>إيراد الشهر</span><strong>{{ summary()?.monthlySubscriptionRevenue || 0 | number:'1.0-0' }}</strong></article>
+      <article class="metric card span-3"><span>إيراد السنة</span><strong>{{ summary()?.annualSubscriptionRevenue || 0 | number:'1.0-0' }}</strong></article>
+    </div>
+  }
+
+  @if (section() === 'clinics' || section() === 'dashboard') {
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>العيادات</h3>
+          <p>بحث وتصفية ومتابعة حالة الاشتراك لكل عيادة.</p>
+        </div>
+        <input placeholder="بحث" [(ngModel)]="filter['search']" (keyup.enter)="load()" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>العيادة</th><th>Subdomain</th><th>الحالة</th><th>المستخدمون</th><th>المرضى</th><th>الاشتراك</th><th>ينتهي في</th><th></th></tr></thead>
+          <tbody>
+            @for (clinic of clinics(); track clinic.id) {
+              <tr>
+                <td><strong>{{ clinic.name }}</strong><br><span class="muted">{{ clinic.email }}</span></td>
+                <td>{{ clinic.subdomain }}</td>
+                <td><span class="badge">{{ clinic.isActive ? 'نشطة' : 'موقوفة' }}</span></td>
+                <td>{{ clinic.usersCount }}</td>
+                <td>{{ clinic.patientsCount }}</td>
+                <td>{{ statusLabel(clinic.subscriptionStatus) }}</td>
+                <td>{{ clinic.subscriptionEndDate | date:'mediumDate' }}</td>
+                <td class="actions">
+                  <a class="button-link secondary-link" [routerLink]="['/platform/clinics', clinic.id]">التفاصيل</a>
+                  <button class="secondary" type="button" (click)="clinic.isActive ? suspend(clinic) : reactivate(clinic)">{{ clinic.isActive ? 'إيقاف' : 'تفعيل' }}</button>
+                  <button type="button" (click)="prepareRenewal(clinic.id)">تجديد</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="empty">لا توجد عيادات.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (section() === 'subscriptions') {
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>تجديد اشتراك</h3>
+          <p>اختر العيادة والخطة، أو اترك تاريخ النهاية فارغا لاستخدام مدة الخطة.</p>
+        </div>
+      </div>
+      <form class="form-grid" (ngSubmit)="renew()">
+        <label>العيادة
+          <select name="tenantId" [(ngModel)]="renewForm['tenantId']">
+            <option value="">اختر عيادة</option>
+            @for (clinic of clinics(); track clinic.id) {
+              <option [value]="clinic.id">{{ clinic.name }} - {{ clinic.email || clinic.subdomain }}</option>
+            }
+          </select>
+        </label>
+        <label>الخطة
+          <select name="planId" [(ngModel)]="renewForm['planId']" (ngModelChange)="onRenewPlanChange()">
+            <option value="">اختر خطة</option>
+            @for (plan of plans(); track plan.id) {
+              <option [value]="plan.id">{{ plan.name }} - {{ plan.durationDays }} يوم</option>
+            }
+          </select>
+        </label>
+        <label>المبلغ المدفوع<input name="actualPaidAmount" type="number" min="0" step="0.01" [(ngModel)]="renewForm['actualPaidAmount']" /></label>
+        <label>تاريخ الدفع<input name="paymentDateUtc" type="date" [(ngModel)]="renewForm['paymentDateUtc']" /></label>
+        <label>طريقة الدفع<input name="paymentMethod" maxlength="100" [(ngModel)]="renewForm['paymentMethod']" /></label>
+        <label>نهاية مخصصة<input name="customEndDateUtc" type="date" [(ngModel)]="renewForm['customEndDateUtc']" /></label>
+        <label>ملاحظات<input name="notes" [(ngModel)]="renewForm['notes']" /></label>
+        <button [disabled]="ui.busy()">تجديد</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>الاشتراكات</h3>
+          <p>كل الاشتراكات مع الحالات وفترات السماح.</p>
+        </div>
+        <button class="secondary" type="button" (click)="load()">تحديث</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>العيادة</th><th>الخطة</th><th>الحالة</th><th>البداية</th><th>النهاية</th><th>الأيام</th><th>المبلغ المدفوع</th><th>سماح</th><th>ملاحظات</th></tr></thead>
+          <tbody>
+            @for (subscription of subscriptions(); track subscription.id) {
+              <tr>
+                <td>{{ clinicLabel(subscription.tenantId) }}</td>
+                <td>{{ subscription.planName }}</td>
+                <td>{{ statusLabel(subscription.status) }}</td>
+                <td>{{ subscription.startsAtUtc | date:'mediumDate' }}</td>
+                <td>{{ subscription.endsAtUtc | date:'mediumDate' }}</td>
+                <td>{{ subscription.daysRemaining }}</td>
+                <td>{{ subscription.actualPaidAmount ?? 0 | number:'1.0-2' }}</td>
+                <td>{{ subscription.isInGracePeriod ? 'نعم' : 'لا' }}</td>
+                <td>{{ subscription.notes || '-' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="9" class="empty">لا توجد اشتراكات.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (section() === 'reports') {
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>تقرير الإيرادات</h3>
+          <p>أرقام مبنية على مبالغ الاشتراكات المدفوعة فعليا.</p>
+        </div>
+        <button class="secondary" type="button" (click)="loadReports()">تحديث</button>
+      </div>
+      <form class="form-grid" (ngSubmit)="loadReports()">
+        <label>من<input name="reportFrom" type="date" [(ngModel)]="reportFilter['from']" /></label>
+        <label>إلى<input name="reportTo" type="date" [(ngModel)]="reportFilter['to']" /></label>
+        <label>العيادة
+          <select name="reportTenantId" [(ngModel)]="reportFilter['tenantId']">
+            <option value="">كل العيادات</option>
+            @for (clinic of clinics(); track clinic.id) {
+              <option [value]="clinic.id">{{ clinic.name }}</option>
+            }
+          </select>
+        </label>
+        <label>الخطة
+          <select name="reportPlanId" [(ngModel)]="reportFilter['planId']">
+            <option value="">كل الخطط</option>
+            @for (plan of plans(); track plan.id) {
+              <option [value]="plan.id">{{ plan.name }}</option>
+            }
+          </select>
+        </label>
+        <button class="span-all" [disabled]="ui.busy()">تطبيق الفلاتر</button>
+      </form>
+    </section>
+
+    <div class="grid">
+      <article class="metric card span-3"><span>إيراد الشهر</span><strong>{{ reports()?.revenue?.currentMonthRevenue || 0 | number:'1.0-2' }}</strong></article>
+      <article class="metric card span-3"><span>إيراد السنة</span><strong>{{ reports()?.revenue?.currentYearRevenue || 0 | number:'1.0-2' }}</strong></article>
+      <article class="metric card span-3"><span>إجمالي المحصل</span><strong>{{ reports()?.revenue?.totalCollected || 0 | number:'1.0-2' }}</strong></article>
+      <article class="metric card span-3"><span>متوسط الدفعة</span><strong>{{ reports()?.revenue?.averagePayment || 0 | number:'1.0-2' }}</strong></article>
+      <article class="metric card span-3"><span>عدد الدفعات</span><strong>{{ reports()?.revenue?.paymentCount || 0 }}</strong></article>
+      <article class="metric card span-3"><span>نشط</span><strong>{{ reports()?.subscriptions?.active || 0 }}</strong></article>
+      <article class="metric card span-3"><span>تجريبي</span><strong>{{ reports()?.subscriptions?.trial || 0 }}</strong></article>
+      <article class="metric card span-3"><span>قربت تنتهي</span><strong>{{ reports()?.subscriptions?.expiringSoon || 0 }}</strong></article>
+    </div>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>آخر دفعات الاشتراكات</h3>
+          <p>قراءة فقط بدون أي نماذج تجديد.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>العيادة</th><th>الخطة</th><th>المبلغ</th><th>تاريخ الدفع</th><th>طريقة الدفع</th><th>ملاحظات</th></tr></thead>
+          <tbody>
+            @for (payment of reports()?.recentPayments || []; track payment.id) {
+              <tr>
+                <td>{{ payment.clinicName }}</td>
+                <td>{{ payment.planName }}</td>
+                <td>{{ payment.amount | number:'1.0-2' }} {{ payment.currency }}</td>
+                <td>{{ payment.paymentDateUtc | date:'mediumDate' }}</td>
+                <td>{{ payment.paymentMethod || '-' }}</td>
+                <td>{{ payment.notes || '-' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty">لا توجد دفعات اشتراكات.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (section() === 'plans') {
+    <div class="grid">
+      <section class="panel span-4">
+        <h3>{{ editingPlanId() ? 'تعديل خطة' : 'خطة جديدة' }}</h3>
+        <form class="form-grid" (ngSubmit)="savePlan()">
+          <label>الاسم<input name="name" [(ngModel)]="planForm['name']" /></label>
+          <label>Code<input name="code" [(ngModel)]="planForm['code']" /></label>
+          <label>السعر<input name="price" type="number" [(ngModel)]="planForm['price']" /></label>
+          <label>المدة بالأيام<input name="durationDays" type="number" [(ngModel)]="planForm['durationDays']" /></label>
+          <label>المستخدمون<input name="maxUsers" type="number" [(ngModel)]="planForm['maxUsers']" /></label>
+          <label>المرضى<input name="maxPatients" type="number" [(ngModel)]="planForm['maxPatients']" /></label>
+          <label>الأطباء<input name="maxDoctors" type="number" [(ngModel)]="planForm['maxDoctors']" /></label>
+          <label class="span-all">Features JSON<textarea name="featuresJson" [(ngModel)]="planForm['featuresJson']"></textarea></label>
+          <div class="actions span-all">
+            <button [disabled]="ui.busy()">{{ editingPlanId() ? 'تحديث' : 'حفظ' }}</button>
+            @if (editingPlanId()) {
+              <button class="secondary" type="button" (click)="cancelPlanEdit()">إلغاء</button>
+            }
+          </div>
+        </form>
+      </section>
+      <section class="panel span-8 plans-table-panel">
+        <h3>الخطط</h3>
+        <div class="table-wrap">
+          <table class="plans-table">
+            <thead><tr><th>الخطة</th><th>Code</th><th>السعر</th><th>المدة</th><th>الحدود</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+            <tbody>
+              @if (plansLoading()) {
+                <tr><td colspan="7" class="empty">Loading...</td></tr>
+              }
+              @for (plan of plans(); track plan.id) {
+                <tr>
+                  <td><strong>{{ plan.name }}</strong></td>
+                  <td><code>{{ plan.code }}</code></td>
+                  <td>{{ plan.price | number:'1.0-0' }} {{ plan.currency }}</td>
+                  <td>{{ plan.durationDays }}</td>
+                  <td>{{ plan.maxUsers || '-' }} / {{ plan.maxPatients || '-' }} / {{ plan.maxDoctors || '-' }}</td>
+                  <td><span class="badge" [class.status-success]="plan.isActive" [class.status-muted]="!plan.isActive">{{ plan.isActive ? 'نشطة' : 'غير نشطة' }}</span></td>
+                  <td>
+                    <div class="actions table-actions">
+                      <button class="secondary" type="button" (click)="editPlan(plan)">تعديل</button>
+                      <button class="secondary" type="button" (click)="togglePlan(plan)">{{ plan.isActive ? 'تعطيل' : 'تفعيل' }}</button>
+                      <button class="danger" type="button" (click)="deletePlan(plan)">حذف</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                @if (!plansLoading()) {
+                  <tr><td colspan="7" class="empty">لا توجد خطط.</td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (section() === 'audit-logs') {
+    <section class="panel">
+      <h3>سجل العمليات</h3>
+      <table>
+        <thead><tr><th>الإجراء</th><th>العنصر</th><th>التاريخ</th><th>القيم</th></tr></thead>
+        <tbody>
+          @for (row of auditLogs(); track row['id']) {
+            <tr><td>{{ row['action'] }}</td><td>{{ row['entityName'] }}</td><td>{{ row['createdAt'] }}</td><td>{{ row['newValues'] }}</td></tr>
+          } @empty {
+            <tr><td colspan="4" class="empty">لا توجد عمليات.</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+
+  @if (section() === 'settings') {
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>إعدادات المنصة</h3>
+          <p>إعدادات الاشتراك والدفع الأساسية للمنصة.</p>
+        </div>
+        <button class="secondary" type="button" (click)="loadSettings()">تحديث</button>
+      </div>
+      <form class="form-grid" (ngSubmit)="saveSettings()">
+        <label>مدة التجربة بالأيام<input name="trialDurationDays" type="number" min="0" [(ngModel)]="settingsForm.trialDurationDays" /></label>
+        <label>تنبيه قرب الانتهاء بالأيام<input name="expiringSoonThresholdDays" type="number" min="0" [(ngModel)]="settingsForm.expiringSoonThresholdDays" /></label>
+        <label>فترة السماح الافتراضية<input name="defaultGracePeriodDays" type="number" min="0" [(ngModel)]="settingsForm.defaultGracePeriodDays" /></label>
+        <label>كود العملة<input name="currencyCode" maxlength="10" [(ngModel)]="settingsForm.currencyCode" /></label>
+        <label>بريد الدعم<input name="platformSupportEmail" type="email" [(ngModel)]="settingsForm.platformSupportEmail" /></label>
+        <label>هاتف الدعم<input name="platformSupportPhone" [(ngModel)]="settingsForm.platformSupportPhone" /></label>
+        <label>نسبة الضريبة<input name="taxPercentage" type="number" min="0" step="0.01" [(ngModel)]="settingsForm.taxPercentage" /></label>
+        <label class="checkbox-line"><input name="autoSuspendExpiredClinics" type="checkbox" [(ngModel)]="settingsForm.autoSuspendExpiredClinics" /> إيقاف العيادات المنتهية تلقائيا</label>
+        <label class="span-all">طرق الدفع المتاحة<textarea name="paymentMethodsEnabled" [(ngModel)]="settingsForm.paymentMethodsEnabled"></textarea></label>
+        <button class="span-all" [disabled]="ui.busy()">حفظ الإعدادات</button>
+      </form>
+    </section>
+  }
+</section>

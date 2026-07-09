@@ -30,9 +30,15 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IPlatformAdminRepository, PlatformAdminRepository>();
+        services.AddScoped<IPlatformPlanRepository, PlatformPlanRepository>();
         services.AddScoped<IAdminReportRepository, AdminReportRepository>();
         services.AddScoped<IOperationsTenantRepository, OperationsTenantRepository>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<IPlanService, PlatformPlanService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IPlatformDashboardService, PlatformDashboardService>();
+        services.AddScoped<IEmailSender, NoopEmailSender>();
+        services.AddScoped<IWhatsAppSender, NoopWhatsAppSender>();
 
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();

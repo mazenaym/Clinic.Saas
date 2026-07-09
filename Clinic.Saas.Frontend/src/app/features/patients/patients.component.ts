@@ -4,10 +4,12 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Patient, PatientTimelineItem, enumValues } from '../../core/models';
 import { UiService } from '../../core/ui.service';
+import { CfCardComponent, CfEmptyStateComponent, CfPageHeaderComponent } from '../../shared/ui';
+import { PatientsTableComponent } from './patients-table.component';
 
 @Component({
   selector: 'app-patients',
-  imports: [FormsModule],
+  imports: [FormsModule, CfPageHeaderComponent, CfCardComponent, CfEmptyStateComponent, PatientsTableComponent],
   templateUrl: './patients.component.html',
 })
 export class PatientsComponent implements OnInit {
@@ -21,12 +23,21 @@ export class PatientsComponent implements OnInit {
   readonly showMore = signal(false);
   readonly genders = enumValues.gender;
   search = '';
-  form: Record<string, any> = { fullName: '', phoneNumber: '', nationalId: '', gender: 1, bloodType: '', dateOfBirth: '', email: '', address: '', medicalHistory: '', drugAllergies: '', chronicDiseases: '' };
+  form: Record<string, any> = this.emptyForm();
 
   ngOnInit() { this.load(); }
 
   async load() {
     this.patients.set(await firstValueFrom(this.api.patients(this.search)));
+  }
+
+  createNew() {
+    this.selected.set(null);
+    this.timeline.set([]);
+    this.duplicates.set([]);
+    this.showMore.set(false);
+    this.form = this.emptyForm();
+    this.showForm.set(true);
   }
 
   edit(patient: Patient) {
@@ -43,7 +54,7 @@ export class PatientsComponent implements OnInit {
     this.duplicates.set([]);
     this.showForm.set(false);
     this.showMore.set(false);
-    this.form = { fullName: '', phoneNumber: '', nationalId: '', gender: 1, bloodType: '', dateOfBirth: '', email: '', address: '', medicalHistory: '', drugAllergies: '', chronicDiseases: '' };
+    this.form = this.emptyForm();
   }
 
   async save() {
@@ -57,10 +68,9 @@ export class PatientsComponent implements OnInit {
     }, 'تم حفظ بيانات المريض');
   }
 
-  async remove(id: string) {
+  async removePatient(patient: Patient) {
     await this.ui.run(async () => {
-      const rowVersion = this.patients().find((patient) => patient.id === id)?.rowVersion;
-      await firstValueFrom(this.api.deletePatient(id, rowVersion));
+      await firstValueFrom(this.api.deletePatient(patient.id, patient.rowVersion));
       await this.load();
     }, 'تم حذف المريض');
   }
@@ -74,8 +84,11 @@ export class PatientsComponent implements OnInit {
     this.duplicates.set(await firstValueFrom(this.api.patientDuplicates(this.form['phoneNumber'], this.form['nationalId'])).catch(() => []));
   }
 
-  exportPatients() {
-    window.open(this.api.exportPatientsUrl(), '_blank');
+  async exportPatients() {
+    await this.ui.run(async () => {
+      const csv = await firstValueFrom(this.api.exportPatientsCsv());
+      this.downloadBlob(csv, 'patients.csv');
+    }, 'تم تنزيل ملف المرضى');
   }
 
   async uploadDocument(event: Event) {
@@ -119,5 +132,32 @@ export class PatientsComponent implements OnInit {
       input.value = '';
       await this.load();
     }, `تم استيراد ${rows.length} مريض`);
+  }
+
+  private emptyForm() {
+    return {
+      fullName: '',
+      phoneNumber: '',
+      nationalId: '',
+      gender: 1,
+      bloodType: '',
+      dateOfBirth: '',
+      email: '',
+      address: '',
+      medicalHistory: '',
+      drugAllergies: '',
+      chronicDiseases: '',
+    };
+  }
+
+  private downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 }

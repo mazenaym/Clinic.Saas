@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { User, enumValues } from '../../core/models';
 import { UiService } from '../../core/ui.service';
+import { CfConfirmDialogService } from '../../shared/ui';
 
 @Component({
   selector: 'app-users',
@@ -12,6 +13,7 @@ import { UiService } from '../../core/ui.service';
 })
 export class UsersComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly dialog = inject(CfConfirmDialogService);
   readonly ui = inject(UiService);
   readonly users = signal<User[]>([]);
   readonly editing = signal<User | null>(null);
@@ -63,7 +65,13 @@ export class UsersComponent implements OnInit {
   }
 
   async resetPassword(user: User) {
-    const newPassword = prompt('New password');
+    const newPassword = await this.dialog.prompt({
+      title: 'إعادة تعيين كلمة المرور',
+      message: `اكتب كلمة المرور الجديدة للمستخدم ${user.fullName}.`,
+      inputLabel: 'كلمة المرور الجديدة',
+      inputType: 'password',
+      confirmLabel: 'تعيين كلمة المرور',
+    });
     if (!newPassword) return;
     await this.ui.run(async () => {
       await firstValueFrom(this.api.resetUserPassword(user.id, newPassword));

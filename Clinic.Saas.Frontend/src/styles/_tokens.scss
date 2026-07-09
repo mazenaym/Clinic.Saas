@@ -1,0 +1,58 @@
+:root {
+  color-scheme: light;
+
+  --cf-color-primary: #0F6E56;
+  --cf-color-primary-soft: #E1F5EE;
+  --cf-color-ink: #14262B;
+  --cf-color-muted: #607278;
+  --cf-color-surface: #FFFFFF;
+  --cf-color-page: #F6F8F7;
+  --cf-color-border: #DCE8E4;
+  --cf-color-success: #12623A;
+  --cf-color-success-bg: #EAF3DE;
+  --cf-color-warning: #A15C08;
+  --cf-color-warning-bg: #FAEEDA;
+  --cf-color-danger: #B43C2F;
+  --cf-color-danger-bg: #FCEBEB;
+  --cf-color-info: #185FA5;
+  --cf-color-info-bg: #E6F1FB;
+  --cf-color-neutral: #53666B;
+  --cf-color-neutral-bg: #EEF3F2;
+
+  --cf-font-family: "Cairo", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --cf-font-12: 12px;
+  --cf-font-13: 13px;
+  --cf-font-14: 14px;
+  --cf-font-16: 16px;
+  --cf-font-18: 18px;
+  --cf-font-22: 22px;
+  --cf-font-24: 24px;
+  --cf-weight-regular: 400;
+  --cf-weight-medium: 500;
+
+  --cf-space-1: 4px;
+  --cf-space-2: 8px;
+  --cf-space-3: 12px;
+  --cf-space-4: 16px;
+  --cf-space-5: 20px;
+  --cf-space-6: 24px;
+  --cf-space-8: 32px;
+
+  --cf-radius-control: 8px;
+  --cf-radius-card: 12px;
+  --cf-border: 0.5px solid var(--cf-color-border);
+  --cf-focus-ring: 0 0 0 3px rgba(15, 110, 86, .16);
+
+  --color-ink: var(--cf-color-ink);
+  --color-muted: var(--cf-color-muted);
+  --color-soft: var(--cf-color-primary-soft);
+  --color-line: var(--cf-color-border);
+  --color-page: var(--cf-color-page);
+  --color-surface: var(--cf-color-surface);
+  --color-teal: var(--cf-color-primary);
+  --color-teal-dark: #12363D;
+  --color-green: var(--cf-color-success);
+  --color-warning: var(--cf-color-warning);
+  --color-danger: var(--cf-color-danger);
+  --shadow-soft: none;
+}

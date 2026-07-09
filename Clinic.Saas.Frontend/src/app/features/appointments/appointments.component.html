@@ -1,81 +1,161 @@
 <section class="page">
-  <div class="page-head">
-    <div>
-      <h2>المواعيد</h2>
-      <p>حجز يومي مع weekly view، إعادة جدولة، طلبات أونلاين، وتقرير الإلغاءات.</p>
+  <cf-page-header
+    title="المواعيد"
+    description="إدارة مواعيد اليوم، الحجز الجديد، إعادة الجدولة، وطلبات الحجز الأونلاين."
+  />
+
+  <cf-card>
+    <div class="toolbar">
+      <label>تاريخ العرض<input type="date" [(ngModel)]="date" /></label>
+      <button type="button" (click)="load(); loadExtras()">عرض اليوم</button>
     </div>
-    <div class="actions"><input type="date" [(ngModel)]="date" /><button (click)="load(); loadExtras()">عرض</button></div>
+  </cf-card>
+
+  <div class="grid">
+    <cf-metric-card class="span-3" label="مواعيد اليوم" [value]="appointments().length" />
+    <cf-metric-card class="span-3" label="طلبات أونلاين معلقة" [value]="pendingOnlineBookings()" />
+    <cf-metric-card class="span-3" label="مواعيد الأسبوع" [value]="rangeAppointments().length" />
+    <cf-metric-card class="span-3" label="إلغاءات الشهر" [value]="cancellations().length" />
+  </div>
+
+  <div class="grid appointment-layout">
+    <section class="span-8">
+      <cf-card title="مواعيد اليوم" description="قائمة العمل اليومية حسب الوقت والحالة.">
+        @if (appointments().length) {
+          <div class="appointment-list">
+            @for (appointment of appointments(); track appointment.id) {
+              <article class="appointment-row">
+                <div>
+                  <strong>{{ appointment.startTime }} - {{ appointment.endTime }}</strong>
+                  <span>{{ appointment.patientName }} · {{ appointment.patientPhone }}</span>
+                </div>
+                <div>
+                  <span class="muted">{{ appointment.doctorName }} · {{ appointment.type }}</span>
+                  <cf-badge [label]="appointment.status" [variant]="statusVariant(appointment.status)" />
+                </div>
+                <div class="actions">
+                  <button type="button" class="secondary" (click)="pickReschedule(appointment)">إعادة جدولة</button>
+                  <select [ngModel]="statusValue(appointment.status)" (ngModelChange)="status(appointment.id, +$event)">
+                    @for (st of statuses; track st.value) {
+                      <option [value]="st.value">{{ st.label }}</option>
+                    }
+                  </select>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <cf-empty-state
+            title="لا توجد مواعيد في هذا اليوم"
+            description="اختر التاريخ أو احجز موعدا جديدا من الكارد الجانبي."
+          />
+        }
+      </cf-card>
+    </section>
+
+    <aside class="span-4 side-stack">
+      <cf-card title="حجز موعد جديد" description="اختر المريض والطبيب ثم أحد المواعيد المتاحة.">
+        @if (!patients().length) {
+          <p class="inline-help">لا يوجد مرضى بعد.</p>
+          <a routerLink="/patients" class="button-link">إضافة مريض</a>
+        } @else if (!doctors().length) {
+          <p class="inline-help">لا يوجد أطباء.</p>
+          <a routerLink="/users" class="button-link">إضافة دكتور</a>
+        } @else {
+          <form class="form-grid compact-form" (ngSubmit)="create()">
+            <label class="span-all">المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+            <label class="span-all">الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']" (ngModelChange)="appointmentCriteriaChanged()">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
+            <label class="span-all">التاريخ<input name="appointmentDate" type="date" [(ngModel)]="form['appointmentDate']" (ngModelChange)="appointmentCriteriaChanged()" /></label>
+            <label>البداية<input name="startTime" type="time" step="1" [(ngModel)]="form['startTime']" readonly /></label>
+            <label>النهاية<input name="endTime" type="time" step="1" [(ngModel)]="form['endTime']" readonly /></label>
+
+            <div class="span-all">
+              <div class="panel-header">
+                <h3>المواعيد المتاحة</h3>
+                <button type="button" class="secondary" (click)="refreshAvailability()" [disabled]="availabilityLoading() || !form['doctorId'] || !form['appointmentDate']">تحديث</button>
+              </div>
+              @if (!form['doctorId'] || !form['appointmentDate']) {
+                <p class="inline-help">اختر الدكتور والتاريخ أولا.</p>
+              } @else if (availabilityLoading()) {
+                <p class="inline-help">جاري تحميل المواعيد المتاحة...</p>
+              } @else if (availabilityError()) {
+                <p class="inline-help">{{ availabilityError() }}</p>
+              } @else if (availabilityLoaded() && !availabilitySlots().length) {
+                <p class="empty">لا توجد مواعيد متاحة لهذا الدكتور في التاريخ المحدد.</p>
+              } @else {
+                <div class="slot-list">
+                  @for (slot of availabilitySlots(); track slot.startTime + slot.endTime) {
+                    <button type="button" [class.secondary]="!isPickedSlot(slot)" (click)="pickSlot(slot)">
+                      {{ slot.displayText || (slot.startTime + ' - ' + slot.endTime) }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <label>النوع<select name="type" [(ngModel)]="form['type']">@for (t of types; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
+            <label>المصدر<select name="source" [(ngModel)]="form['source']">@for (s of sources; track s.value) { <option [ngValue]="s.value">{{ s.label }}</option> }</select></label>
+            <label class="span-all">ملاحظات<textarea name="notes" [(ngModel)]="form['notes']"></textarea></label>
+            <button class="span-all" [disabled]="!canCreateAppointment()">حجز الموعد</button>
+          </form>
+        }
+      </cf-card>
+
+      <cf-card title="إعادة جدولة" description="اضغط إعادة جدولة من موعد اليوم لملء البيانات هنا.">
+        <form class="form-grid compact-form" (ngSubmit)="saveReschedule()">
+          <label class="span-all">رقم الموعد<input name="resId" [(ngModel)]="reschedule['id']" /></label>
+          <label class="span-all">التاريخ<input name="resDate" type="date" [(ngModel)]="reschedule['appointmentDate']" /></label>
+          <label>البداية<input name="resStart" type="time" step="1" [(ngModel)]="reschedule['startTime']" /></label>
+          <label>النهاية<input name="resEnd" type="time" step="1" [(ngModel)]="reschedule['endTime']" /></label>
+          <button class="span-all" [disabled]="!reschedule['id']">حفظ الجدولة</button>
+        </form>
+      </cf-card>
+    </aside>
   </div>
 
   <div class="grid">
-    <section class="panel span-4">
-      <h3>موعد جديد</h3>
-      @if (!patients().length) {
-        <p class="inline-help">لا يوجد مرضى بعد.</p><a routerLink="/patients" class="button-link">إضافة مريض</a>
-      } @else if (!doctors().length) {
-        <p class="inline-help">لا يوجد أطباء.</p><a routerLink="/users" class="button-link">إضافة دكتور</a>
+    <cf-card class="span-6" title="طلبات الحجز الأونلاين" description="راجع الطلبات القادمة من بوابة الحجز.">
+      @if (onlineBookings().length) {
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>الهاتف</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
+            <tbody>
+              @for (booking of onlineBookings(); track booking['id']) {
+                <tr>
+                  <td>{{ booking['patientName'] }}</td>
+                  <td>{{ booking['patientPhone'] }}</td>
+                  <td>{{ booking['requestedDate'] }} {{ booking['requestedTime'] }}</td>
+                  <td class="actions">
+                    <button type="button" (click)="approveBooking(asString(booking['id']))">قبول</button>
+                    <button type="button" class="danger" (click)="rejectBooking(asString(booking['id']))">رفض</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       } @else {
-        <form class="form-grid" (ngSubmit)="create()">
-          <label>المريض<select name="patientId" [(ngModel)]="form['patientId']">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
-          <label>الدكتور<select name="doctorId" [(ngModel)]="form['doctorId']">@for (d of doctors(); track d.id) { <option [value]="d.id">{{ d.fullName }}</option> }</select></label>
-          <label>البداية<input name="startTime" type="time" step="1" [(ngModel)]="form['startTime']" /></label>
-          <label>النهاية<input name="endTime" type="time" step="1" [(ngModel)]="form['endTime']" /></label>
-          <label>النوع<select name="type" [(ngModel)]="form['type']">@for (t of types; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
-          <label>المصدر<select name="source" [(ngModel)]="form['source']">@for (s of sources; track s.value) { <option [ngValue]="s.value">{{ s.label }}</option> }</select></label>
-          <label class="span-all">ملاحظات<textarea name="notes" [(ngModel)]="form['notes']"></textarea></label>
-          <div class="actions span-all"><button [disabled]="ui.busy()">حجز الموعد</button></div>
-        </form>
+        <cf-empty-state title="لا توجد طلبات حجز" description="ستظهر طلبات الحجز الأونلاين هنا عند وصولها." />
       }
+    </cf-card>
 
-      <h3>إعادة جدولة</h3>
-      <form class="form-grid" (ngSubmit)="saveReschedule()">
-        <label class="span-all">Appointment ID<input name="resId" [(ngModel)]="reschedule['id']" /></label>
-        <label>التاريخ<input name="resDate" type="date" [(ngModel)]="reschedule['appointmentDate']" /></label>
-        <label>البداية<input name="resStart" type="time" step="1" [(ngModel)]="reschedule['startTime']" /></label>
-        <label>النهاية<input name="resEnd" type="time" step="1" [(ngModel)]="reschedule['endTime']" /></label>
-        <button class="span-all">حفظ الجدولة</button>
-      </form>
-    </section>
-
-    <section class="panel span-8">
-      <h3>مواعيد اليوم</h3>
+    <cf-card class="span-6" title="نظرة أسبوعية وشهرية" description="ملخص سريع للمواعيد القادمة.">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>الوقت</th><th>المريض</th><th>الدكتور</th><th>النوع</th><th>الحالة</th><th></th></tr></thead>
+          <thead><tr><th>النطاق</th><th>التاريخ</th><th>المريض</th><th>الدكتور</th><th>الحالة</th></tr></thead>
           <tbody>
-            @for (a of appointments(); track a.id) {
-              <tr>
-                <td>{{ a.startTime }} - {{ a.endTime }}</td><td>{{ a.patientName }}<br><span class="muted">{{ a.patientPhone }}</span></td><td>{{ a.doctorName }}</td><td>{{ a.type }}</td><td><span class="badge">{{ a.status }}</span></td>
-                <td class="actions"><button class="secondary" (click)="pickReschedule(a)">جدولة</button><select [ngModel]="statusValue(a.status)" (ngModelChange)="status(a.id, +$event)">@for (st of statuses; track st.value) { <option [value]="st.value">{{ st.label }}</option> }</select></td>
-              </tr>
-            } @empty { <tr><td colspan="6" class="empty">لا توجد مواعيد.</td></tr> }
+            @for (appointment of rangeAppointments().slice(0, 5); track appointment.id) {
+              <tr><td>الأسبوع</td><td>{{ appointment.appointmentDate }}</td><td>{{ appointment.patientName }}</td><td>{{ appointment.doctorName }}</td><td><cf-badge [label]="appointment.status" [variant]="statusVariant(appointment.status)" /></td></tr>
+            }
+            @for (appointment of monthlyAppointments().slice(0, 5); track appointment.id) {
+              <tr><td>الشهر</td><td>{{ appointment.appointmentDate }}</td><td>{{ appointment.patientName }}</td><td>{{ appointment.doctorName }}</td><td><cf-badge [label]="appointment.status" [variant]="statusVariant(appointment.status)" /></td></tr>
+            }
+            @empty {
+              <tr><td colspan="5" class="empty">لا توجد مواعيد في النطاقات الحالية.</td></tr>
+            }
           </tbody>
         </table>
       </div>
-    </section>
-
-    <section class="panel span-6">
-      <h3>الأسبوع الحالي</h3>
-      <table><thead><tr><th>التاريخ</th><th>المريض</th><th>الدكتور</th><th>الوقت</th></tr></thead><tbody>
-        @for (a of rangeAppointments(); track a.id) { <tr><td>{{ a.appointmentDate }}</td><td>{{ a.patientName }}</td><td>{{ a.doctorName }}</td><td>{{ a.startTime }}</td></tr> }
-      </tbody></table>
-    </section>
-
-    <section class="panel span-6">
-      <h3>الشهر الحالي</h3>
-      <table><thead><tr><th>التاريخ</th><th>المريض</th><th>الدكتور</th><th>الحالة</th></tr></thead><tbody>
-        @for (a of monthlyAppointments(); track a.id) { <tr><td>{{ a.appointmentDate }}</td><td>{{ a.patientName }}</td><td>{{ a.doctorName }}</td><td>{{ a.status }}</td></tr> }
-        @empty { <tr><td colspan="4" class="empty">لا توجد مواعيد شهرية.</td></tr> }
-      </tbody></table>
-    </section>
-
-    <section class="panel span-6">
-      <h3>طلبات الحجز الأونلاين</h3>
-      <table><thead><tr><th>الاسم</th><th>الهاتف</th><th>التاريخ</th><th></th></tr></thead><tbody>
-        @for (b of onlineBookings(); track b['id']) {
-          <tr><td>{{ b['patientName'] }}</td><td>{{ b['patientPhone'] }}</td><td>{{ b['requestedDate'] }} {{ b['requestedTime'] }}</td><td class="actions"><button (click)="approveBooking(asString(b['id']))">قبول</button><button class="danger" (click)="rejectBooking(asString(b['id']))">رفض</button></td></tr>
-        } @empty { <tr><td colspan="4" class="empty">لا توجد طلبات.</td></tr> }
-      </tbody></table>
-    </section>
+    </cf-card>
   </div>
 </section>

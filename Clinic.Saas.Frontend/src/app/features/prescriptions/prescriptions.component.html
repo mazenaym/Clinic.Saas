@@ -63,7 +63,7 @@
         <p><strong>{{ result()?.patientName }}</strong><br><span class="muted">{{ result()?.doctorName }}</span></p>
         @for (item of result()?.items || []; track item.id) { <p><span class="badge">{{ item.drugName }}</span><br>{{ item.dosage }} - {{ item.frequency }} - {{ item.duration }}</p> }
         <div class="actions">
-          <a class="button-link" [href]="pdfUrl()" target="_blank">PDF / Print</a>
+          <button type="button" (click)="downloadPdf()">PDF / Print</button>
           <button type="button" class="secondary" (click)="sendWhatsapp()">WhatsApp</button>
         </div>
       }

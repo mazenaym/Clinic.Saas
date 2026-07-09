@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AdminClinic, AdminStats, enumValues } from '../../core/models';
@@ -8,7 +9,7 @@ import { UiService } from '../../core/ui.service';
 
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, RouterLink],
   templateUrl: './admin.component.html',
 })
 export class AdminComponent implements OnInit {
@@ -21,6 +22,17 @@ export class AdminComponent implements OnInit {
   readonly expiring = signal<Record<string, unknown>[]>([]);
   readonly activity = signal<Record<string, unknown>[]>([]);
   readonly plans = enumValues.plans;
+  readonly suspendedClinics = computed(() => this.stats()?.inactiveClinics ?? this.clinics().filter((clinic) => !clinic.isActive).length);
+  readonly expiringSoonCount = computed(() => this.expiring().length);
+  readonly recentClinics = computed(() => {
+    const fromStats = this.stats()?.recentClinics ?? [];
+    return (fromStats.length ? fromStats : this.clinics()).slice(0, 5);
+  });
+  readonly monthlySubscriptionRevenue = computed(() => {
+    const monthlyRevenue = this.stats()?.monthlyRevenue;
+    if (typeof monthlyRevenue === 'number') return monthlyRevenue;
+    return this.revenue().reduce((sum, row) => sum + Number(row['revenue'] ?? 0), 0);
+  });
   form: Record<string, any> = {
     name: '', subdomain: '', email: '', phone: '', plan: 1, timeZone: 'Africa/Cairo', currency: 'EGP',
     ownerFullName: '', ownerEmail: '', ownerPassword: '', ownerPhone: '', subscriptionAmountPaid: 0,

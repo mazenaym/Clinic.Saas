@@ -1,16 +1,19 @@
 :host {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 276px minmax(0, 1fr);
   min-height: 100vh;
   background: #f5f7f6;
   overflow-x: hidden;
 }
 
 .sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  padding: 24px 20px;
   background: #0e2a2f;
   color: #f7fbf8;
-  padding: 22px;
-  min-width: 0;
 }
 
 .brand,
@@ -21,18 +24,20 @@
 }
 
 .brand {
-  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
   border-radius: 8px;
   background: #42b883;
   color: #082024;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 small,
@@ -40,11 +45,12 @@ small,
   display: block;
   color: #78919a;
   font-size: 12px;
+  line-height: 1.6;
 }
 
 nav {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -55,12 +61,13 @@ nav {
 nav a {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
+  gap: 11px;
+  min-height: 44px;
   padding: 0 12px;
   border-radius: 8px;
   color: #dce8e6;
   text-decoration: none;
+  font-weight: 700;
 }
 
 nav a.active,
@@ -69,16 +76,24 @@ nav a:hover {
   color: #ffffff;
 }
 
-nav span {
-  width: 24px;
-  text-align: center;
+nav a.active {
+  box-shadow: inset -4px 0 0 #42b883;
+}
+
+.nav-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(126, 224, 176, .1);
   color: #7ee0b0;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .workspace {
   min-width: 0;
-  padding: 24px;
+  padding: 26px;
   overflow-x: hidden;
 }
 
@@ -87,42 +102,50 @@ nav span {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 h1 {
   margin: 4px 0 0;
+  color: #10292f;
   font-size: 24px;
+  letter-spacing: 0;
 }
 
 .user-pill {
-  background: #ffffff;
+  justify-content: space-between;
+  min-width: min(420px, 100%);
+  padding: 10px 10px 10px 12px;
   border: 1px solid #dfe8e4;
   border-radius: 8px;
-  padding: 8px 10px 8px 8px;
+  background: #ffffff;
+}
+
+.user-pill span {
+  display: block;
+  font-weight: 800;
 }
 
 .user-pill button {
-  border: 0;
-  border-radius: 7px;
-  background: #eaf3ef;
-  color: #173238;
-  padding: 8px 10px;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
 .toast {
-  margin: 0 0 14px;
+  max-width: 680px;
+  margin: 0 0 14px auto;
   padding: 12px 14px;
   border-radius: 8px;
+  line-height: 1.7;
 }
 
 .success {
+  border: 1px solid #cfeadd;
   background: #e7f7ef;
   color: #12623a;
 }
 
 .error {
+  border: 1px solid #f4cbc6;
   background: #fdecea;
   color: #a72f22;
 }
@@ -136,17 +159,22 @@ h1 {
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 14px;
+    gap: 12px;
     width: 100%;
     max-width: 100vw;
+    padding: 14px;
     overflow: hidden;
+  }
+
+  .brand {
+    padding-bottom: 10px;
   }
 
   nav {
     display: flex;
-    overflow-x: auto;
-    padding-bottom: 10px;
     max-width: 100%;
+    padding-bottom: 10px;
+    overflow-x: auto;
     scrollbar-color: #7ee0b0 #173b42;
     scrollbar-width: thin;
     scroll-snap-type: x proximity;
@@ -167,16 +195,16 @@ h1 {
   }
 
   nav a {
+    white-space: nowrap;
     scroll-snap-align: start;
   }
 
-  nav a {
-    white-space: nowrap;
+  nav a.active {
+    box-shadow: inset 0 -3px 0 #42b883;
   }
 
   .nav-hint {
     display: block;
-    margin-top: 6px;
     color: #9db3b8;
     font-size: 11px;
     text-align: center;
@@ -194,7 +222,7 @@ h1 {
   }
 
   .user-pill {
-    justify-content: space-between;
     width: 100%;
+    min-width: 0;
   }
 }

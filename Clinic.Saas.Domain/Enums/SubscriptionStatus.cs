@@ -9,6 +9,8 @@ namespace Clinic.Saas.Domain.Enums
         Active = 1,
         Expired = 2,
         Cancelled = 3,
-        Trial = 4
+        Trial = 4,
+        PastDue = 5,
+        Suspended = 6
     }
 }

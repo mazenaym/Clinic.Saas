@@ -1,4 +1,5 @@
 using Clinic.Saas.Service.Interfaces;
+using Clinic.Saas.Service.Jobs;
 using Clinic.Saas.Service.Services;
 using Clinic.Saas.Service.UseCases.Admin.Commands;
 using Clinic.Saas.Service.UseCases.Admin.Queries;
@@ -44,6 +45,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<IClinicAuthorizationService, ClinicAuthorizationService>();
+        services.AddScoped<SubscriptionExpiryRecurringJob>();
 
         services.AddScoped<GetAdminDashboardQuery.Handler>();
         services.AddScoped<GetAdminClinicsQuery.Handler>();

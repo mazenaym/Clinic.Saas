@@ -1,0 +1,118 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>Clinic Details</h2>
+      <p>SuperAdmin management for clinic profile, status, usage, and subscriptions.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link secondary-link" routerLink="/admin">Back to admin</a>
+      @if (clinic()) {
+        <button type="button" [class.danger]="clinic()!.isActive" [class.secondary]="!clinic()!.isActive" (click)="toggleStatus()" [disabled]="ui.busy()">
+          {{ clinic()!.isActive ? 'Deactivate clinic' : 'Activate clinic' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <section class="panel"><p class="inline-help">Loading clinic details...</p></section>
+  } @else if (error()) {
+    <section class="panel">
+      <p class="inline-help">{{ error() }}</p>
+      <div class="actions"><button type="button" (click)="load()">Retry</button></div>
+    </section>
+  } @else if (clinic()) {
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>{{ clinic()!.name }}</h3>
+          <p>{{ clinic()!.subdomain }} · {{ clinic()!.email }}</p>
+        </div>
+        <span class="badge">{{ clinic()!.isActive ? 'Active' : 'Inactive' }}</span>
+      </div>
+      <div class="grid">
+        <article class="metric card span-3"><span>Users</span><strong>{{ clinic()!.usersCount || 0 }}</strong></article>
+        <article class="metric card span-3"><span>Patients</span><strong>{{ clinic()!.patientsCount || 0 }}</strong></article>
+        <article class="metric card span-3"><span>Appointments</span><strong>{{ clinic()!.appointmentsCount || 0 }}</strong></article>
+        <article class="metric card span-3"><span>Revenue</span><strong>{{ clinic()!.clinicRevenue || 0 | number:'1.0-0' }}</strong></article>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel span-6">
+        <h3>Basic Info</h3>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><th>Status</th><td>{{ clinic()!.isActive ? 'Active' : 'Inactive' }}</td></tr>
+              <tr><th>Subdomain</th><td>{{ clinic()!.subdomain }}</td></tr>
+              <tr><th>Email</th><td>{{ clinic()!.email }}</td></tr>
+              <tr><th>Phone</th><td>{{ clinic()!.phone || '-' }}</td></tr>
+              <tr><th>Plan</th><td>{{ planLabel(clinic()!.plan) }}</td></tr>
+              <tr><th>Subscription status</th><td>{{ statusLabel(clinic()!.subscriptionStatus) }}</td></tr>
+              <tr><th>Subscription dates</th><td>{{ clinic()!.subscriptionStartDate || '-' }} - {{ clinic()!.subscriptionEndDate || '-' }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel span-6">
+        <h3>Update Clinic</h3>
+        <form class="form-grid" (ngSubmit)="save()">
+          <label>Name<input name="name" [(ngModel)]="form['name']" required /></label>
+          <label>Subdomain<input name="subdomain" [(ngModel)]="form['subdomain']" required /></label>
+          <label>Email<input name="email" type="email" [(ngModel)]="form['email']" required /></label>
+          <label>Phone<input name="phone" [(ngModel)]="form['phone']" /></label>
+          <label>Logo URL<input name="logoUrl" [(ngModel)]="form['logoUrl']" /></label>
+          <label>Plan<select name="plan" [(ngModel)]="form['plan']">@for (plan of plans; track plan.value) { <option [ngValue]="plan.value">{{ plan.label }}</option> }</select></label>
+          <label>Time zone<input name="timeZone" [(ngModel)]="form['timeZone']" /></label>
+          <label>Currency<input name="currency" [(ngModel)]="form['currency']" /></label>
+          <label>Status<select name="isActive" [(ngModel)]="form['isActive']"><option [ngValue]="true">Active</option><option [ngValue]="false">Inactive</option></select></label>
+          <div class="actions span-all"><button [disabled]="ui.busy()">Save changes</button></div>
+        </form>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>Subscriptions</h3>
+          <p>Current subscription is shown from clinic details. Add/renew is supported by the backend.</p>
+        </div>
+        <span class="badge">{{ planLabel(clinic()!.plan) }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Plan</th><th>Start</th><th>End</th><th>Status</th><th>Amount</th><th>Payment ref</th><th>Notes</th></tr></thead>
+          <tbody>
+            @for (subscription of subscriptions(); track subscription.id) {
+              <tr>
+                <td>{{ planLabel(subscription.plan) }}</td>
+                <td>{{ subscription.startDate | date:'mediumDate' }}</td>
+                <td>{{ subscription.endDate | date:'mediumDate' }}</td>
+                <td><span class="badge">{{ statusLabel(subscription.status) }}</span></td>
+                <td>{{ subscription.amountPaid | number:'1.0-2' }}</td>
+                <td>{{ subscription.paymentRef || '-' }}</td>
+                <td>{{ subscription.notes || '-' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty">No subscription details available.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Add / Renew Subscription</h3>
+      <form class="form-grid" (ngSubmit)="addSubscription()">
+        <label>Plan<select name="subscriptionPlan" [(ngModel)]="subscriptionForm.plan">@for (plan of plans; track plan.value) { <option [ngValue]="plan.value">{{ plan.label }}</option> }</select></label>
+        <label>Status<select name="subscriptionStatus" [(ngModel)]="subscriptionForm.status">@for (status of subscriptionStatuses; track status.value) { <option [ngValue]="status.value">{{ status.label }}</option> }</select></label>
+        <label>Start date<input name="startDate" type="date" [(ngModel)]="subscriptionForm.startDate" /></label>
+        <label>End date<input name="endDate" type="date" [(ngModel)]="subscriptionForm.endDate" /></label>
+        <label>Amount paid<input name="amountPaid" type="number" min="0" [(ngModel)]="subscriptionForm.amountPaid" /></label>
+        <label>Payment ref<input name="paymentRef" [(ngModel)]="subscriptionForm.paymentRef" /></label>
+        <label class="span-all">Notes<textarea name="subscriptionNotes" [(ngModel)]="subscriptionForm.notes"></textarea></label>
+        <div class="actions span-all"><button [disabled]="ui.busy()">Add subscription</button></div>
+      </form>
+    </section>
+  }
+</section>

@@ -1,0 +1,66 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>الحجز الأونلاين</h2>
+      <p>مراجعة طلبات المواعيد القادمة من بوابة حجز المرضى.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link secondary-link" routerLink="/appointments">المواعيد</a>
+      <button type="button" (click)="load()" [disabled]="loading()">تحديث</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <article class="metric card span-3"><span>بانتظار الموافقة</span><strong>{{ pendingCount() }}</strong></article>
+    <article class="metric card span-3"><span>إجمالي الطلبات</span><strong>{{ bookings().length }}</strong></article>
+    <article class="metric card span-3"><span>مواعيد اليوم</span><strong>{{ appointments().length }}</strong></article>
+    <article class="metric card span-3"><span>الأطباء</span><strong>{{ doctorsCount() }}</strong></article>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h3>طلبات الحجز</h3>
+      <label>الحالة<select name="statusFilter" [(ngModel)]="statusFilter"><option value="pending">بانتظار الموافقة</option><option value="all">كل الطلبات</option></select></label>
+    </div>
+
+    @if (loading()) { <p class="inline-help">جاري تحميل طلبات الحجز...</p> }
+    @if (error()) { <p class="inline-help">{{ error() }}</p> }
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>اسم المريض</th>
+            <th>الهاتف</th>
+            <th>الدكتور المطلوب</th>
+            <th>التاريخ والوقت</th>
+            <th>الحالة</th>
+            <th>ملاحظات</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (booking of visibleBookings(); track booking.id) {
+            <tr>
+              <td><strong>{{ booking.patientName }}</strong><br><span class="muted">{{ booking.patientEmail || booking.confirmCode }}</span></td>
+              <td>{{ booking.patientPhone }}</td>
+              <td>{{ doctorName(booking) }}</td>
+              <td>{{ booking.requestedDate | date:'mediumDate' }} {{ booking.requestedTime }}</td>
+              <td><span class="badge">{{ booking.status }}</span></td>
+              <td>{{ notes(booking) }}</td>
+              <td class="actions">
+                @if (isPending(booking)) {
+                  <button type="button" (click)="approve(booking)" [disabled]="ui.busy()">قبول</button>
+                  <button type="button" class="danger" (click)="reject(booking)" [disabled]="ui.busy()">رفض</button>
+                }
+                <a class="button-link secondary-link" routerLink="/patients" [queryParams]="{ search: booking.patientPhone }">فتح أو إنشاء مريض</a>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="empty">لا توجد طلبات تطابق الفلتر الحالي.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>

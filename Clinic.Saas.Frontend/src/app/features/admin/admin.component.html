@@ -1,14 +1,30 @@
 <section class="page">
-  <div class="page-head"><div><h2>إدارة المنصة</h2><p>لوحة SuperAdmin للعيادات والاشتراكات.</p></div></div>
-  <div class="grid">
-    <article class="metric card span-3"><span>عيادات</span><strong>{{ stats()?.totalClinics || 0 }}</strong></article>
-    <article class="metric card span-3"><span>نشطة</span><strong>{{ stats()?.activeClinics || 0 }}</strong></article>
-    <article class="metric card span-3"><span>مستخدمين</span><strong>{{ stats()?.totalUsers || 0 }}</strong></article>
-    <article class="metric card span-3"><span>إيراد شهري</span><strong>{{ stats()?.monthlyRevenue || 0 | number:'1.0-0' }}</strong></article>
+  <div class="page-head">
+    <div>
+      <h2>لوحة المنصة</h2>
+      <p>إدارة العيادات والاشتراكات والخطط ومؤشرات تشغيل ClinicFlow.</p>
+    </div>
+  </div>
+
+  <div class="dashboard-actions" aria-label="إجراءات سريعة للمنصة">
+    <a href="#clinic-form" class="primary-action">إضافة عيادة</a>
+    <a href="#subscriptions" class="secondary-action">إدارة الاشتراكات</a>
+    <a href="#platform-reports" class="secondary-action">تقارير المنصة</a>
   </div>
 
   <div class="grid">
-    <section class="panel span-4">
+    <article class="metric card span-3"><span>إجمالي العيادات</span><strong>{{ stats()?.totalClinics || 0 }}</strong></article>
+    <article class="metric card span-3"><span>عيادات نشطة</span><strong>{{ stats()?.activeClinics || 0 }}</strong></article>
+    <article class="metric card span-3"><span>اشتراكات تجريبية</span><strong>{{ stats()?.trialSubscriptions || 0 }}</strong></article>
+    <article class="metric card span-3"><span>موقوفة أو غير نشطة</span><strong>{{ suspendedClinics() }}</strong></article>
+    <article class="metric card span-3"><span>اشتراكات منتهية</span><strong>{{ stats()?.expiredSubscriptions || 0 }}</strong></article>
+    <article class="metric card span-3"><span>تنتهي قريبا</span><strong>{{ expiringSoonCount() }}</strong></article>
+    <article class="metric card span-3"><span>مستخدمو المنصة</span><strong>{{ stats()?.totalUsers || 0 }}</strong></article>
+    <article class="metric card span-3"><span>إيراد الاشتراكات الشهري</span><strong>{{ monthlySubscriptionRevenue() | number:'1.0-0' }}</strong></article>
+  </div>
+
+  <div class="grid">
+    <section id="clinic-form" class="panel span-4">
       <h3>عيادة جديدة</h3>
       <form class="form-grid" (ngSubmit)="create()">
         <label>اسم العيادة<input name="name" [(ngModel)]="form['name']" /></label>
@@ -18,51 +34,83 @@
         <label>اسم المالك<input name="ownerFullName" [(ngModel)]="form['ownerFullName']" /></label>
         <label>إيميل المالك<input name="ownerEmail" type="email" [(ngModel)]="form['ownerEmail']" /></label>
         <label class="span-all">كلمة مرور المالك<input name="ownerPassword" type="password" [(ngModel)]="form['ownerPassword']" /></label>
-        <button class="span-all" [disabled]="ui.busy()">إنشاء</button>
+        <button class="span-all" [disabled]="ui.busy()">إنشاء العيادة</button>
       </form>
     </section>
 
     <section class="panel span-8">
+      <div class="panel-header">
+        <div>
+          <h3>أحدث العيادات</h3>
+          <p>آخر عيادات تم إنشاؤها أو تحديثها على المنصة.</p>
+        </div>
+        <button type="button" class="secondary" (click)="load()">تحديث</button>
+      </div>
       <div class="table-wrap">
-        <table><thead><tr><th>العيادة</th><th>Subdomain</th><th>المستخدمين</th><th>المرضى</th><th>الإيراد</th><th></th></tr></thead><tbody>
-          @for (c of clinics(); track c.id) {
-            <tr><td><strong>{{ c.name }}</strong><br><span class="muted">{{ c.email }}</span></td><td>{{ c.subdomain }}</td><td>{{ c.usersCount }}</td><td>{{ c.patientsCount }}</td><td>{{ c.clinicRevenue | number:'1.0-0' }} {{ c.currency }}</td><td><button class="secondary" (click)="toggle(c)">{{ c.isActive ? 'إيقاف' : 'تفعيل' }}</button></td></tr>
-          } @empty { <tr><td colspan="6" class="empty">لا توجد عيادات</td></tr> }
-        </tbody></table>
+        <table>
+          <thead><tr><th>العيادة</th><th>Subdomain</th><th>الحالة</th><th>المستخدمون</th><th>المرضى</th><th>الاشتراك</th><th>الإيراد</th><th></th></tr></thead>
+          <tbody>
+            @for (c of recentClinics(); track c.id) {
+              <tr>
+                <td><strong>{{ c.name }}</strong><br><span class="muted">{{ c.email }}</span></td>
+                <td>{{ c.subdomain }}</td>
+                <td><span class="badge">{{ c.isActive ? 'نشطة' : 'غير نشطة' }}</span></td>
+                <td>{{ c.usersCount }}</td>
+                <td>{{ c.patientsCount }}</td>
+                <td>{{ c.subscriptionStatus || '-' }}</td>
+                <td>{{ c.clinicRevenue | number:'1.0-0' }} {{ c.currency }}</td>
+                <td class="actions">
+                  <a class="button-link secondary-link" [routerLink]="['/admin/clinics', c.id]">التفاصيل</a>
+                  <button class="secondary" (click)="toggle(c)">{{ c.isActive ? 'إيقاف' : 'تفعيل' }}</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="empty">لا توجد عيادات بعد.</td></tr>
+            }
+          </tbody>
+        </table>
       </div>
     </section>
   </div>
 
-  <div class="grid">
+  <div id="platform-reports" class="grid">
     <section class="panel span-6">
-      <h3>Clinic Usage Metrics</h3>
-      <table><thead><tr><th>Clinic</th><th>Users</th><th>Patients</th><th>Appointments</th></tr></thead><tbody>
+      <h3>مؤشرات استخدام العيادات</h3>
+      <table><thead><tr><th>العيادة</th><th>المستخدمون</th><th>المرضى</th><th>المواعيد</th></tr></thead><tbody>
         @for (row of usage(); track row['id']) {
           <tr><td>{{ row['name'] }}</td><td>{{ row['usersCount'] }}</td><td>{{ row['patientsCount'] }}</td><td>{{ row['appointmentsCount'] }}</td></tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">لا توجد مؤشرات استخدام.</td></tr>
         }
       </tbody></table>
     </section>
-    <section class="panel span-6">
-      <h3>Revenue From Subscriptions</h3>
-      <table><thead><tr><th>Year</th><th>Month</th><th>Revenue</th><th>Count</th></tr></thead><tbody>
+    <section id="subscriptions" class="panel span-6">
+      <h3>إيرادات الاشتراكات</h3>
+      <table><thead><tr><th>السنة</th><th>الشهر</th><th>الإيراد</th><th>عدد الاشتراكات</th></tr></thead><tbody>
         @for (row of revenue(); track row['year'] + '-' + row['month']) {
           <tr><td>{{ row['year'] }}</td><td>{{ row['month'] }}</td><td>{{ row['revenue'] }}</td><td>{{ row['subscriptionCount'] }}</td></tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">لا توجد بيانات إيرادات.</td></tr>
         }
       </tbody></table>
     </section>
     <section class="panel span-6">
-      <h3>Expiring Subscriptions</h3>
-      <table><thead><tr><th>Clinic</th><th>Plan</th><th>End</th><th>Status</th></tr></thead><tbody>
+      <h3>اشتراكات تنتهي قريبا</h3>
+      <table><thead><tr><th>العيادة</th><th>الخطة</th><th>تاريخ الانتهاء</th><th>الحالة</th></tr></thead><tbody>
         @for (row of expiring(); track row['subdomain'] + '-' + row['endDate']) {
           <tr><td>{{ row['name'] }}</td><td>{{ row['plan'] }}</td><td>{{ row['endDate'] }}</td><td>{{ row['status'] }}</td></tr>
+        } @empty {
+          <tr><td colspan="4" class="empty">لا توجد اشتراكات قريبة الانتهاء.</td></tr>
         }
       </tbody></table>
     </section>
     <section class="panel span-6">
-      <h3>Admin Activity Log</h3>
-      <table><thead><tr><th>Action</th><th>Entity</th><th>Date</th></tr></thead><tbody>
+      <h3>سجل نشاط مديري المنصة</h3>
+      <table><thead><tr><th>الإجراء</th><th>العنصر</th><th>التاريخ</th></tr></thead><tbody>
         @for (row of activity(); track row['id']) {
           <tr><td>{{ row['action'] }}</td><td>{{ row['entityName'] }}</td><td>{{ row['createdAt'] }}</td></tr>
+        } @empty {
+          <tr><td colspan="3" class="empty">لا توجد أنشطة حديثة.</td></tr>
         }
       </tbody></table>
     </section>

@@ -1,42 +1,47 @@
-<aside class="sidebar">
-  <div class="brand">
-    <span class="brand-mark">CF</span>
-    <div>
-      <strong>ClinicFlow</strong>
-      <small>{{ auth.tenant()?.name || 'نظام العيادة' }}</small>
+@if (auth.isAuthenticated()) {
+  <aside class="sidebar" aria-label="التنقل الرئيسي">
+    <div class="brand">
+      <span class="brand-mark">CF</span>
+      <div>
+        <strong>ClinicFlow</strong>
+        <small>{{ isSuperAdmin() ? 'إدارة المنصة' : (auth.tenant()?.name || 'نظام العيادات') }}</small>
+      </div>
     </div>
-  </div>
 
-  <nav>
-    @for (item of visibleNav(); track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active">
-        <span>{{ item.icon }}</span>
-        {{ item.label }}
-      </a>
+    <nav>
+      @for (item of visibleNav(); track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="active">
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+    <small class="nav-hint">مرر القائمة لعرض باقي الأقسام</small>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div class="clinic-heading">
+        <span class="eyebrow">{{ workspaceLabel() }}</span>
+        <h1>{{ workspaceName() }}</h1>
+      </div>
+
+      <div class="user-pill">
+        <div>
+          <span>{{ auth.user()?.fullName }}</span>
+          <small>{{ roleLabel() }} · {{ sessionState() }}</small>
+        </div>
+        <button type="button" class="secondary" (click)="logout()">تسجيل الخروج</button>
+      </div>
+    </header>
+
+    @if (ui.message()) {
+      <p class="toast success">{{ ui.message() }}</p>
     }
-  </nav>
-  <small class="nav-hint">اسحب القائمة لعرض باقي الأقسام</small>
-</aside>
+    @if (ui.error()) {
+      <p class="toast error">{{ ui.error() }}</p>
+    }
 
-<main class="workspace">
-  <header class="topbar">
-    <div>
-      <span class="eyebrow">مساحة العمل</span>
-      <h1>{{ auth.tenant()?.name || 'ClinicFlow' }}</h1>
-    </div>
-    <div class="user-pill">
-      <span>{{ auth.user()?.fullName }}</span>
-      <small>{{ auth.user()?.role }} · الجلسة {{ sessionState() }}</small>
-      <button type="button" (click)="logout()">خروج</button>
-    </div>
-  </header>
-
-  @if (ui.message()) {
-    <p class="toast success">{{ ui.message() }}</p>
-  }
-  @if (ui.error()) {
-    <p class="toast error">{{ ui.error() }}</p>
-  }
-
-  <router-outlet />
-</main>
+    <router-outlet />
+  </main>
+}

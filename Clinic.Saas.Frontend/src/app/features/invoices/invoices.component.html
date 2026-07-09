@@ -1,0 +1,133 @@
+<section class="page">
+  <div class="page-head">
+    <div>
+      <h2>الفواتير</h2>
+      <p>إنشاء فواتير المرضى، مراجعة التفاصيل، وتسجيل الدفعات.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link secondary-link" routerLink="/billing">لوحة الفوترة</a>
+      @if (invoiceForm.patientId) {
+        <a class="button-link secondary-link" [routerLink]="['/patients', invoiceForm.patientId, 'chart']" [queryParams]="{ tab: 'invoices' }">ملف المريض</a>
+      }
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h3>البحث عن فاتورة</h3>
+      <div class="actions">
+        <input placeholder="رقم الفاتورة" [(ngModel)]="lookupInvoiceId" />
+        <button type="button" (click)="loadInvoice()" [disabled]="loading()">عرض الفاتورة</button>
+      </div>
+    </div>
+    @if (error()) { <p class="inline-help">{{ error() }}</p> }
+    @if (loading()) { <p class="inline-help">جاري تحميل تفاصيل الفاتورة...</p> }
+  </section>
+
+  <div class="grid">
+    <section class="panel span-8">
+      <h3>{{ invoice() ? 'تفاصيل الفاتورة' : 'إنشاء فاتورة' }}</h3>
+      <form class="form-grid" (ngSubmit)="createInvoice()">
+        <label>المريض<select name="patientId" [(ngModel)]="invoiceForm.patientId" (ngModelChange)="patientChanged()" required>@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+        <label>رقم الزيارة<input name="visitId" [(ngModel)]="invoiceForm.visitId" /></label>
+        <label class="span-all">ملاحظات<textarea name="invoiceNotes" [(ngModel)]="invoiceForm.notes"></textarea></label>
+
+        <div class="span-all">
+          <div class="panel-header">
+            <h3>البنود والخدمات</h3>
+            <button type="button" class="secondary" (click)="addItem()">إضافة بند</button>
+          </div>
+          @for (item of invoiceForm.items; track $index) {
+            <div class="service-item">
+              <div class="form-grid">
+                <label>الوصف<input name="description{{$index}}" [(ngModel)]="item.description" required /></label>
+                <label>نوع الخدمة<select name="serviceType{{$index}}" [(ngModel)]="item.serviceType">@for (t of serviceTypes; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }</select></label>
+                <label>الكمية<input name="quantity{{$index}}" type="number" min="1" [(ngModel)]="item.quantity" /></label>
+                <label>سعر الوحدة<input name="unitPrice{{$index}}" type="number" min="0" [(ngModel)]="item.unitPrice" /></label>
+                <label>الخصم<input name="discount{{$index}}" type="number" min="0" [(ngModel)]="item.discountAmount" /></label>
+                <label>الضريبة<input name="tax{{$index}}" type="number" min="0" [(ngModel)]="item.taxAmount" /></label>
+              </div>
+              <button type="button" class="secondary" (click)="removeItem($index)" [disabled]="invoiceForm.items.length === 1">حذف البند</button>
+            </div>
+          }
+        </div>
+
+        <div class="grid span-all">
+          <article class="metric card span-3"><span>الإجمالي</span><strong>{{ totals().grandTotal | number:'1.0-2' }}</strong></article>
+          <article class="metric card span-3"><span>الخصم</span><strong>{{ totals().discount | number:'1.0-2' }}</strong></article>
+          <article class="metric card span-3"><span>الضريبة</span><strong>{{ totals().tax | number:'1.0-2' }}</strong></article>
+          <article class="metric card span-3"><span>المتبقي</span><strong>{{ invoice()?.remainingAmount ?? totals().remaining | number:'1.0-2' }}</strong></article>
+        </div>
+
+        <div class="actions span-all">
+          <button [disabled]="ui.busy() || !invoiceForm.patientId || !invoiceForm.items.length">إنشاء الفاتورة</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel span-4">
+      <h3>الدفع</h3>
+      @if (invoice()) {
+        <article class="card">
+          <strong>{{ invoice()!.invoiceNumber }}</strong>
+          <p>{{ invoice()!.patientName }}</p>
+          <span class="badge">{{ invoiceStatus(invoice()!) }}</span>
+        </article>
+        <form class="form-grid" (ngSubmit)="addPayment()">
+          <label>المبلغ<input name="paymentAmount" type="number" min="0" [(ngModel)]="paymentForm.amount" /></label>
+          <label>طريقة الدفع<select name="paymentMethod" [(ngModel)]="paymentForm.paymentMethod">@for (m of methods; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }</select></label>
+          <label class="span-all">ملاحظات<textarea name="paymentNotes" [(ngModel)]="paymentForm.notes"></textarea></label>
+          <button class="span-all" [disabled]="ui.busy() || !paymentForm.amount">إضافة دفعة</button>
+        </form>
+      } @else {
+        <p class="empty">أنشئ أو حمّل فاتورة قبل إضافة دفعة.</p>
+      }
+    </section>
+  </div>
+
+  @if (invoice()) {
+    <section class="panel">
+      <h3>الفاتورة المحملة</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>البند</th><th>الكمية</th><th>الوحدة</th><th>الخصم</th><th>الضريبة</th><th>الإجمالي</th></tr></thead>
+          <tbody>
+            @for (item of invoice()!.items; track item.id) {
+              <tr><td>{{ item.description }}</td><td>{{ item.quantity }}</td><td>{{ item.unitPrice | number:'1.0-2' }}</td><td>{{ item.discountAmount | number:'1.0-2' }}</td><td>{{ item.taxAmount | number:'1.0-2' }}</td><td>{{ item.lineTotal | number:'1.0-2' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <h3>الدفعات</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>وقت الدفع</th><th>المبلغ</th><th>الطريقة</th><th>المرجع</th><th>ملاحظات</th></tr></thead>
+          <tbody>
+            @for (payment of invoice()!.payments; track payment.id) {
+              <tr><td>{{ payment.paidAt }}</td><td>{{ payment.amount | number:'1.0-2' }}</td><td>{{ payment.paymentMethod }}</td><td>{{ payment.paymentReference || '-' }}</td><td>{{ payment.notes || '-' }}</td></tr>
+            } @empty {
+              <tr><td colspan="5" class="empty">لا توجد دفعات مسجلة.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <section class="panel">
+    <h3>حركات فواتير ودفعات المريض</h3>
+    <p class="muted">هذه القائمة مبنية من دفتر حسابات المريض إلى حين توفر قائمة فواتير مباشرة من الخادم.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>التاريخ</th><th>النوع</th><th>المرجع</th><th>الوصف</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+        <tbody>
+          @for (entry of patientLedgerEntries(); track entry.date + entry.type + entry.referenceNumber) {
+            <tr><td>{{ entry.date }}</td><td>{{ entry.type }}</td><td>{{ entry.referenceNumber }}</td><td>{{ entry.description }}</td><td>{{ entry.debit | number:'1.0-2' }}</td><td>{{ entry.credit | number:'1.0-2' }}</td><td>{{ entry.balance | number:'1.0-2' }}</td></tr>
+          } @empty {
+            <tr><td colspan="7" class="empty">لا توجد حركات مالية للمريض المحدد.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>

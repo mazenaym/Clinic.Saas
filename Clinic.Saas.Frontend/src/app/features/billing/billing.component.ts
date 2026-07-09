@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { DailyRevenue, Patient, enumValues } from '../../core/models';
 import { UiService } from '../../core/ui.service';
+import { CfConfirmDialogService } from '../../shared/ui';
 
 @Component({
   selector: 'app-billing',
@@ -14,6 +15,7 @@ import { UiService } from '../../core/ui.service';
 })
 export class BillingComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly dialog = inject(CfConfirmDialogService);
   readonly ui = inject(UiService);
   readonly patients = signal<Patient[]>([]);
   readonly report = signal<DailyRevenue | null>(null);
@@ -116,10 +118,21 @@ export class BillingComponent implements OnInit {
     this.debts.set(await firstValueFrom(this.api.debts()).catch(() => []));
   }
 
-  receiptUrl(id: string) { return this.api.receiptPdfUrl(id); }
+  async downloadReceipt(id: string) {
+    await this.ui.run(async () => {
+      const receipt = await firstValueFrom(this.api.receiptPdf(id));
+      this.downloadBlob(receipt, `receipt-${id}.pdf`);
+    }, 'تم تنزيل الإيصال');
+  }
 
   async refund(id: string) {
-    const reason = prompt('Refund reason') || '';
+    const reason = await this.dialog.prompt({
+      title: 'رد دفعة',
+      message: 'اكتب سبب رد الدفعة قبل المتابعة.',
+      inputLabel: 'سبب الرد',
+      confirmLabel: 'رد الدفعة',
+    });
+    if (!reason) return;
     await this.ui.run(async () => {
       await firstValueFrom(this.api.refundPayment(id, reason, this.paymentRowVersion(id)));
       await this.loadExtras();
@@ -133,5 +146,16 @@ export class BillingComponent implements OnInit {
     const nested = selected?.['payment'] as Record<string, unknown> | undefined;
     if (nested?.['id'] === id) return nested['rowVersion'] as string | undefined;
     return this.patientPayments().find((payment) => payment['id'] === id)?.['rowVersion'] as string | undefined;
+  }
+
+  private downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 }

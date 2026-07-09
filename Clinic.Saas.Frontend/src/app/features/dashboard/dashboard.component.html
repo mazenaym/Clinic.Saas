@@ -1,45 +1,82 @@
 <section class="page">
-  <div class="page-head">
-    <div>
-      <h2>لوحة التحكم</h2>
-      <p>ملخص سريع ليوم {{ today | date: 'yyyy/MM/dd' }}</p>
-    </div>
-    <div class="actions">
-      <a routerLink="/patients" class="button-link">إضافة مريض</a>
-      <a routerLink="/appointments" class="button-link secondary-link">حجز موعد</a>
-    </div>
+  <cf-page-header
+    [title]="dashboardTitle()"
+    [description]="dashboardDescription()"
+  />
+
+  <div class="dashboard-actions" aria-label="إجراءات سريعة">
+    <a routerLink="/patients" class="primary-action">إضافة مريض</a>
+    <a routerLink="/appointments" class="secondary-action">حجز موعد</a>
+    @if (auth.hasRole(['Admin', 'Doctor'])) {
+      <a routerLink="/visits" class="secondary-action">تسجيل كشف</a>
+    }
+    @if (auth.hasRole(['Admin', 'Reception'])) {
+      <a routerLink="/billing" class="secondary-action">تسجيل دفعة</a>
+    }
   </div>
 
   <div class="grid">
-    <article class="metric card span-3"><span>مواعيد اليوم</span><strong>{{ appointments().length }}</strong></article>
-    <article class="metric card span-3"><span>إجمالي المرضى</span><strong>{{ patients().length }}</strong></article>
-    <article class="metric card span-3"><span>زيارات مكتملة</span><strong>{{ revenue()?.completedVisits || 0 }}</strong></article>
-    <article class="metric card span-3"><span>صافي الإيراد</span><strong>{{ revenue()?.netRevenue || 0 | number: '1.0-0' }} EGP</strong></article>
+    <cf-metric-card class="span-3" label="مواعيد اليوم" [value]="appointments().length" />
+    <cf-metric-card class="span-3" label="إجمالي المرضى" [value]="patients().length" />
+    <cf-metric-card class="span-3" label="زيارات مكتملة" [value]="revenue()?.completedVisits || 0" />
+    <cf-metric-card class="span-3" label="صافي الإيراد" [value]="((revenue()?.netRevenue || 0) | number: '1.0-0') + ' ج.م'" />
   </div>
 
   <div class="grid">
     <section class="panel span-8">
-      <h3>جدول اليوم</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>الوقت</th><th>المريض</th><th>الدكتور</th><th>الحالة</th></tr></thead>
-          <tbody>
-            @for (item of appointments(); track item.id) {
-              <tr><td>{{ item.startTime }}</td><td>{{ item.patientName }}</td><td>{{ item.doctorName }}</td><td><span class="badge">{{ item.status }}</span></td></tr>
-            } @empty {
-              <tr><td colspan="4" class="empty">لا توجد مواعيد اليوم. ابدأ بحجز أول موعد من زر "حجز موعد".</td></tr>
-            }
-          </tbody>
-        </table>
+      <div class="panel-header">
+        <div>
+          <h3>قائمة مواعيد اليوم</h3>
+          <p>أقرب مواعيد تحتاج متابعة من الفريق.</p>
+        </div>
+        <a routerLink="/appointments" class="secondary-action">إدارة المواعيد</a>
       </div>
+
+      @if (nextAppointments().length) {
+        <div class="appointment-list">
+          @for (item of nextAppointments(); track item.id) {
+            <article class="appointment-row">
+              <div>
+                <strong>{{ item.startTime }} - {{ item.endTime }}</strong>
+                <span>{{ item.patientName }} · {{ item.patientPhone }}</span>
+              </div>
+              <div>
+                <span class="muted">{{ item.doctorName }}</span>
+                <cf-badge [label]="item.status" [variant]="statusVariant(item.status)" />
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <cf-empty-state
+          title="لا توجد مواعيد اليوم"
+          description="يمكنك إضافة أول موعد من شاشة المواعيد عند وصول مريض أو طلب حجز."
+        />
+      }
     </section>
 
     <section class="panel span-4">
-      <h3>آخر المرضى</h3>
-      @for (patient of patients().slice(0, 6); track patient.id) {
-        <p><strong>{{ patient.fullName }}</strong><br><span class="muted">{{ patient.phoneNumber }} · {{ patient.patientCode }}</span></p>
-      } @empty {
-        <p class="empty">لم يتم تسجيل مرضى بعد. أضف أول مريض لبدء العمل على العيادة.</p>
+      <div class="panel-header">
+        <div>
+          <h3>آخر المرضى</h3>
+          <p>أحدث ملفات تم تسجيلها في العيادة.</p>
+        </div>
+      </div>
+
+      @if (recentPatients().length) {
+        <div class="patient-list">
+          @for (patient of recentPatients(); track patient.id) {
+            <a [routerLink]="['/patients', patient.id, 'chart']" class="patient-row">
+              <strong>{{ patient.fullName }}</strong>
+              <span>{{ patient.patientCode }} · {{ patient.phoneNumber }}</span>
+            </a>
+          }
+        </div>
+      } @else {
+        <cf-empty-state
+          title="لم يتم تسجيل مرضى بعد"
+          description="ابدأ بإضافة أول مريض لفتح ملفه ومتابعة زياراته."
+        />
       }
     </section>
   </div>

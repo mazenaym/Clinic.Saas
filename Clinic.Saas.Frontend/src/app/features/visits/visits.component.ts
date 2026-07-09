@@ -5,10 +5,11 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Patient, User, Visit, enumValues } from '../../core/models';
 import { UiService } from '../../core/ui.service';
+import { CfBadgeComponent, CfCardComponent, CfEmptyStateComponent, CfPageHeaderComponent } from '../../shared/ui';
 
 @Component({
   selector: 'app-visits',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, CfPageHeaderComponent, CfCardComponent, CfBadgeComponent, CfEmptyStateComponent],
   templateUrl: './visits.component.html',
 })
 export class VisitsComponent implements OnInit {
