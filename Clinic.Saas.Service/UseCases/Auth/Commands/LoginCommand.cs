@@ -88,7 +88,10 @@ public class LoginCommand
             var accessToken = _jwtTokenService.GenerateAccessToken(user, tenant);
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
             var refreshExpiry = _jwtTokenService.GetRefreshTokenExpiryUtc();
-            await _userRepository.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshExpiry);
+            await _userRepository.UpdateRefreshTokenAsync(
+                user.Id,
+                _jwtTokenService.HashRefreshToken(refreshToken),
+                refreshExpiry);
 
             return new BaseResponse<AuthResponseDto>
             {

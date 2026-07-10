@@ -49,13 +49,14 @@ public class RefreshTokenCommand
                 };
             }
 
-            var user = await _userRepository.GetByRefreshTokenAsync(command.Request.RefreshToken);
+            var refreshTokenHash = _jwtTokenService.HashRefreshToken(command.Request.RefreshToken);
+            var user = await _userRepository.GetByRefreshTokenAsync(refreshTokenHash);
             if (user is null || string.IsNullOrWhiteSpace(user.RefreshToken))
             {
                 return Fail("المستخدم غير موجود", 404);
             }
 
-            if (!string.Equals(user.RefreshToken, command.Request.RefreshToken, StringComparison.Ordinal) ||
+            if (!string.Equals(user.RefreshToken, refreshTokenHash, StringComparison.Ordinal) ||
                 !user.RefreshTokenExpiry.HasValue ||
                 user.RefreshTokenExpiry.Value <= DateTime.UtcNow)
             {
@@ -71,7 +72,10 @@ public class RefreshTokenCommand
             var accessToken = _jwtTokenService.GenerateAccessToken(user, tenant);
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
             var refreshExpiry = _jwtTokenService.GetRefreshTokenExpiryUtc();
-            await _userRepository.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshExpiry);
+            await _userRepository.UpdateRefreshTokenAsync(
+                user.Id,
+                _jwtTokenService.HashRefreshToken(refreshToken),
+                refreshExpiry);
 
             return new BaseResponse<AuthResponseDto>
             {

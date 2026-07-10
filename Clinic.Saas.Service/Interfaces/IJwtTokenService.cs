@@ -6,6 +6,7 @@ public interface IJwtTokenService
 {
     string GenerateAccessToken(User user, Tenant tenant);
     string GenerateRefreshToken();
+    string HashRefreshToken(string refreshToken);
     DateTime GetAccessTokenExpiryUtc();
     DateTime GetRefreshTokenExpiryUtc();
 }

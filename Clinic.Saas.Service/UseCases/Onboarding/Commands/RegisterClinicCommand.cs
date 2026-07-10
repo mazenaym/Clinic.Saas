@@ -120,7 +120,10 @@ public class RegisterClinicCommand
             var accessToken = _jwtTokenService.GenerateAccessToken(owner, tenant);
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
             var refreshExpiry = _jwtTokenService.GetRefreshTokenExpiryUtc();
-            await _userRepository.UpdateRefreshTokenAsync(owner.Id, refreshToken, refreshExpiry);
+            await _userRepository.UpdateRefreshTokenAsync(
+                owner.Id,
+                _jwtTokenService.HashRefreshToken(refreshToken),
+                refreshExpiry);
 
             return new BaseResponse<AuthResponseDto>
             {

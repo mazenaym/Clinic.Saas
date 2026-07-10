@@ -54,6 +54,12 @@ public class JwtTokenService : IJwtTokenService
         return Convert.ToBase64String(bytes);
     }
 
+    public string HashRefreshToken(string refreshToken)
+    {
+        var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(refreshToken));
+        return Convert.ToHexString(bytes);
+    }
+
     public DateTime GetAccessTokenExpiryUtc()
     {
         var minutes = _configuration.GetValue<int?>("Jwt:AccessTokenMinutes") ?? 15;
