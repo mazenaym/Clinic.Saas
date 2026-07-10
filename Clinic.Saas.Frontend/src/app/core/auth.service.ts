@@ -54,7 +54,7 @@ export class AuthService {
     if (!this.refreshPromise) {
       const version = this.sessionVersion;
       this.refreshPromise = firstValueFrom(
-        this.http.post<{ data: AuthSession }>('/api/Auth/refresh', { refreshToken }),
+        this.http.post<{ data: AuthSession }>('/api/auth/refresh', { refreshToken }),
       )
         .then((response) => {
           if (version !== this.sessionVersion) {

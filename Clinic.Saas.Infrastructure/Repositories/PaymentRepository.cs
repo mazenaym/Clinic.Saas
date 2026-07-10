@@ -81,13 +81,13 @@ SELECT
 INSERT INTO dbo.Payments
 (
     Id, TenantId, VisitId, PatientId, InvoiceNumber, TotalAmount, DiscountAmount,
-    DiscountPct, TaxAmount, PaidAmount, RemainingAmount, PaymentMethod, Status,
+    DiscountPct, TaxAmount, PaidAmount, PaymentMethod, Status,
     InsuranceCompany, InsuranceNumber, ReceiptUrl, Notes, CreatedAt, UpdatedAt, CreatedBy
 )
 VALUES
 (
     @Id, @TenantId, @VisitId, @PatientId, @InvoiceNumber, @TotalAmount, @DiscountAmount,
-    @DiscountPct, @TaxAmount, @PaidAmount, @RemainingAmount, @PaymentMethod, @Status,
+    @DiscountPct, @TaxAmount, @PaidAmount, @PaymentMethod, @Status,
     @InsuranceCompany, @InsuranceNumber, @ReceiptUrl, @Notes, @CreatedAt, @UpdatedAt, @CreatedBy
 );";
 
@@ -103,7 +103,6 @@ VALUES
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
-                entity.RemainingAmount,
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -120,11 +119,11 @@ VALUES
                 const string itemSql = @"
 INSERT INTO dbo.PaymentItems
 (
-    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice
+    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct
 )
 VALUES
 (
-    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice
+    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct
 );";
 
                 foreach (var item in entity.Items)
@@ -144,15 +143,13 @@ VALUES
                         item.ServiceType,
                         item.Quantity,
                         item.UnitPrice,
-                        item.DiscountPct,
-                        item.TotalPrice
+                        item.DiscountPct
                     }, transaction);
                 }
             }
 
+            var created = await GetByIdInternalAsync(connection, transaction, entity.Id, entity.TenantId);
             transaction.Commit();
-
-            var created = await GetByIdInternalAsync(connection, entity.Id, entity.TenantId);
             return created;
         }
         catch
@@ -212,7 +209,6 @@ SET InvoiceNumber = @InvoiceNumber,
     DiscountPct = @DiscountPct,
     TaxAmount = @TaxAmount,
     PaidAmount = @PaidAmount,
-    RemainingAmount = @RemainingAmount,
     PaymentMethod = @PaymentMethod,
     Status = @Status,
     InsuranceCompany = @InsuranceCompany,
@@ -236,7 +232,6 @@ WHERE Id = @Id
             entity.DiscountPct,
             entity.TaxAmount,
             entity.PaidAmount,
-            entity.RemainingAmount,
             entity.PaymentMethod,
             entity.Status,
             entity.InsuranceCompany,
@@ -269,7 +264,6 @@ SET VisitId = @VisitId,
     DiscountPct = @DiscountPct,
     TaxAmount = @TaxAmount,
     PaidAmount = @PaidAmount,
-    RemainingAmount = @RemainingAmount,
     PaymentMethod = @PaymentMethod,
     [Status] = @Status,
     InsuranceCompany = @InsuranceCompany,
@@ -292,7 +286,6 @@ WHERE TenantId = @TenantId
                 entity.DiscountPct,
                 entity.TaxAmount,
                 entity.PaidAmount,
-                entity.RemainingAmount,
                 entity.PaymentMethod,
                 entity.Status,
                 entity.InsuranceCompany,
@@ -325,11 +318,11 @@ WHERE pay.TenantId = @TenantId
                 const string insertItemSql = @"
 INSERT INTO dbo.PaymentItems
 (
-    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct, TotalPrice
+    Id, PaymentId, ServiceName, ServiceType, Quantity, UnitPrice, DiscountPct
 )
 VALUES
 (
-    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct, @TotalPrice
+    @Id, @PaymentId, @ServiceName, @ServiceType, @Quantity, @UnitPrice, @DiscountPct
 );";
 
                 foreach (var item in entity.Items)
@@ -348,8 +341,7 @@ VALUES
                         item.ServiceType,
                         item.Quantity,
                         item.UnitPrice,
-                        item.DiscountPct,
-                        item.TotalPrice
+                        item.DiscountPct
                     }, transaction);
                 }
             }
@@ -575,13 +567,13 @@ SELECT
         }
     }
 
-    private static async Task<Payment> GetByIdInternalAsync(IDbConnection connection, Guid id, Guid tenantId)
+    private static async Task<Payment> GetByIdInternalAsync(IDbConnection connection, IDbTransaction transaction, Guid id, Guid tenantId)
     {
         const string paymentSql = PaymentSelect + @"
 WHERE pay.Id = @Id
   AND pay.TenantId = @TenantId;";
 
-        var payment = await GetByIdInternalOrDefaultAsync(connection, paymentSql, new { TenantId = tenantId, Id = id });
+        var payment = await GetByIdInternalOrDefaultAsync(connection, paymentSql, new { TenantId = tenantId, Id = id }, transaction);
         if (payment is null)
         {
             throw new InvalidOperationException("Payment was not found after creation.");
@@ -598,20 +590,20 @@ FROM dbo.Payments pay
 INNER JOIN dbo.Patients p ON p.Id = pay.PatientId AND p.TenantId = pay.TenantId
 ";
 
-    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(IDbConnection connection, string paymentSql, object parameters)
+    private static async Task<Payment?> GetByIdInternalOrDefaultAsync(IDbConnection connection, string paymentSql, object parameters, IDbTransaction? transaction = null)
     {
         const string itemsSql = @"
 SELECT * FROM dbo.PaymentItems
 WHERE PaymentId = @Id
 ORDER BY ServiceName;";
 
-        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, parameters);
+        var payment = await connection.QueryFirstOrDefaultAsync<Payment>(paymentSql, parameters, transaction);
         if (payment is null)
         {
             return null;
         }
 
-        var items = await connection.QueryAsync<PaymentItem>(itemsSql, new { Id = payment.Id });
+        var items = await connection.QueryAsync<PaymentItem>(itemsSql, new { Id = payment.Id }, transaction);
         payment.Items = items.ToList();
         return payment;
     }

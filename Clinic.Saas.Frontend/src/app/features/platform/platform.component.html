@@ -30,7 +30,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>العيادة</th><th>Subdomain</th><th>الحالة</th><th>المستخدمون</th><th>المرضى</th><th>الاشتراك</th><th>ينتهي في</th><th></th></tr></thead>
+          <thead><tr><th>العيادة</th><th>Subdomain</th><th>الحالة</th><th>المستخدمون</th><th>المرضى</th><th>الاشتراك</th><th>المبلغ المدفوع</th><th>ينتهي في</th><th></th></tr></thead>
           <tbody>
             @for (clinic of clinics(); track clinic.id) {
               <tr>
@@ -40,6 +40,7 @@
                 <td>{{ clinic.usersCount }}</td>
                 <td>{{ clinic.patientsCount }}</td>
                 <td>{{ statusLabel(clinic.subscriptionStatus) }}</td>
+                <td>{{ clinic.subscriptionAmountPaid ?? 0 | number:'1.0-2' }} {{ clinic.currency }}</td>
                 <td>{{ clinic.subscriptionEndDate | date:'mediumDate' }}</td>
                 <td class="actions">
                   <a class="button-link secondary-link" [routerLink]="['/platform/clinics', clinic.id]">التفاصيل</a>
@@ -48,7 +49,7 @@
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="empty">لا توجد عيادات.</td></tr>
+              <tr><td colspan="9" class="empty">لا توجد عيادات.</td></tr>
             }
           </tbody>
         </table>
@@ -66,7 +67,7 @@
       </div>
       <form class="form-grid" (ngSubmit)="renew()">
         <label>العيادة
-          <select name="tenantId" [(ngModel)]="renewForm['tenantId']">
+          <select name="tenantId" required [(ngModel)]="renewForm['tenantId']">
             <option value="">اختر عيادة</option>
             @for (clinic of clinics(); track clinic.id) {
               <option [value]="clinic.id">{{ clinic.name }} - {{ clinic.email || clinic.subdomain }}</option>
@@ -74,7 +75,7 @@
           </select>
         </label>
         <label>الخطة
-          <select name="planId" [(ngModel)]="renewForm['planId']" (ngModelChange)="onRenewPlanChange()">
+          <select name="planId" required [(ngModel)]="renewForm['planId']" (ngModelChange)="onRenewPlanChange()">
             <option value="">اختر خطة</option>
             @for (plan of plans(); track plan.id) {
               <option [value]="plan.id">{{ plan.name }} - {{ plan.durationDays }} يوم</option>
@@ -86,7 +87,7 @@
         <label>طريقة الدفع<input name="paymentMethod" maxlength="100" [(ngModel)]="renewForm['paymentMethod']" /></label>
         <label>نهاية مخصصة<input name="customEndDateUtc" type="date" [(ngModel)]="renewForm['customEndDateUtc']" /></label>
         <label>ملاحظات<input name="notes" [(ngModel)]="renewForm['notes']" /></label>
-        <button [disabled]="ui.busy()">تجديد</button>
+        <button [disabled]="ui.busy() || !renewForm['tenantId'] || !renewForm['planId']">تجديد</button>
       </form>
     </section>
 
@@ -100,22 +101,24 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>العيادة</th><th>الخطة</th><th>الحالة</th><th>البداية</th><th>النهاية</th><th>الأيام</th><th>المبلغ المدفوع</th><th>سماح</th><th>ملاحظات</th></tr></thead>
+          <thead><tr><th>العيادة</th><th>الخطة</th><th>الحالة</th><th>البداية</th><th>النهاية</th><th>الأيام</th><th>المبلغ المدفوع</th><th>طريقة الدفع</th><th>تاريخ الدفع</th><th>سماح</th><th>ملاحظات</th></tr></thead>
           <tbody>
             @for (subscription of subscriptions(); track subscription.id) {
               <tr>
-                <td>{{ clinicLabel(subscription.tenantId) }}</td>
+                <td>{{ subscription.tenantName || clinicLabel(subscription.tenantId) }}</td>
                 <td>{{ subscription.planName }}</td>
                 <td>{{ statusLabel(subscription.status) }}</td>
                 <td>{{ subscription.startsAtUtc | date:'mediumDate' }}</td>
                 <td>{{ subscription.endsAtUtc | date:'mediumDate' }}</td>
                 <td>{{ subscription.daysRemaining }}</td>
                 <td>{{ subscription.actualPaidAmount ?? 0 | number:'1.0-2' }}</td>
+                <td>{{ subscription.paymentMethod || '-' }}</td>
+                <td>{{ subscription.paymentDateUtc ? (subscription.paymentDateUtc | date:'mediumDate') : '-' }}</td>
                 <td>{{ subscription.isInGracePeriod ? 'نعم' : 'لا' }}</td>
                 <td>{{ subscription.notes || '-' }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="9" class="empty">لا توجد اشتراكات.</td></tr>
+              <tr><td colspan="11" class="empty">لا توجد اشتراكات.</td></tr>
             }
           </tbody>
         </table>
@@ -200,16 +203,18 @@
       <section class="panel span-4">
         <h3>{{ editingPlanId() ? 'تعديل خطة' : 'خطة جديدة' }}</h3>
         <form class="form-grid" (ngSubmit)="savePlan()">
-          <label>الاسم<input name="name" [(ngModel)]="planForm['name']" /></label>
-          <label>Code<input name="code" [(ngModel)]="planForm['code']" /></label>
-          <label>السعر<input name="price" type="number" [(ngModel)]="planForm['price']" /></label>
-          <label>المدة بالأيام<input name="durationDays" type="number" [(ngModel)]="planForm['durationDays']" /></label>
+          <label>الاسم<input name="name" required [(ngModel)]="planForm['name']" /></label>
+          <label>Code<input name="code" required [(ngModel)]="planForm['code']" /></label>
+          <label>السعر<input name="price" type="number" min="0" [(ngModel)]="planForm['price']" /></label>
+          <label>العملة<input name="currency" maxlength="10" [(ngModel)]="planForm['currency']" /></label>
+          <label>المدة بالأيام<input name="durationDays" type="number" min="1" required [(ngModel)]="planForm['durationDays']" /></label>
           <label>المستخدمون<input name="maxUsers" type="number" [(ngModel)]="planForm['maxUsers']" /></label>
           <label>المرضى<input name="maxPatients" type="number" [(ngModel)]="planForm['maxPatients']" /></label>
           <label>الأطباء<input name="maxDoctors" type="number" [(ngModel)]="planForm['maxDoctors']" /></label>
-          <label class="span-all">Features JSON<textarea name="featuresJson" [(ngModel)]="planForm['featuresJson']"></textarea></label>
+          <label class="checkbox-line"><input name="isActive" type="checkbox" [(ngModel)]="planForm['isActive']" /> نشطة</label>
+          <label class="span-all">مميزات الخطة<textarea name="featuresJson" [(ngModel)]="planForm['featuresJson']"></textarea></label>
           <div class="actions span-all">
-            <button [disabled]="ui.busy()">{{ editingPlanId() ? 'تحديث' : 'حفظ' }}</button>
+            <button [disabled]="ui.busy() || !planForm['name'] || !planForm['code'] || !planForm['durationDays'] || planForm['durationDays'] < 1 || planForm['price'] < 0">{{ editingPlanId() ? 'تحديث' : 'حفظ' }}</button>
             @if (editingPlanId()) {
               <button class="secondary" type="button" (click)="cancelPlanEdit()">إلغاء</button>
             }

@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Clinic.Saas\Clinic.Saas.api.csproj" />
     <ProjectReference Include="..\Clinic.Saas.Service\Clinic.Saas.Service.csproj" />
   </ItemGroup>
 

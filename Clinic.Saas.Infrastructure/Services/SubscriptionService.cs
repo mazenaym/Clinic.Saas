@@ -39,6 +39,14 @@ INSERT INTO dbo.TenantSubscriptions
 VALUES
 (@Id, @TenantId, @PlanId, @Status, @Now, @EndsAt, 0, @GracePeriodDays, @Notes, @CreatedByUserId, @Now);
 
+IF @InitialPaymentAmount > 0
+BEGIN
+    INSERT INTO dbo.SubscriptionPayments
+    (Id, TenantId, SubscriptionId, Amount, Currency, PaymentStatus, PaymentMethod, PaidAtUtc, CreatedAtUtc, Notes, CreatedByUserId)
+    VALUES
+    (NEWID(), @TenantId, @Id, @InitialPaymentAmount, @Currency, @Paid, NULL, @Now, @Now, @Notes, @CreatedByUserId);
+END
+
 UPDATE dbo.Tenants
 SET IsActive = 1,
     SubscriptionState = @State,
@@ -55,6 +63,9 @@ WHERE Id = @TenantId;";
             Active = SubscriptionStatus.Active,
             PastDue = SubscriptionStatus.PastDue,
             Cancelled = SubscriptionStatus.Cancelled,
+            Currency = plan.Currency,
+            InitialPaymentAmount = status == SubscriptionStatus.Trial ? 0 : plan.Price,
+            Paid = SubscriptionPaymentStatus.Paid,
             State = status == SubscriptionStatus.Trial ? "Trial" : "Active",
             DurationDays = plan.DurationDays,
             GracePeriodDays = await GetDefaultGracePeriodDaysAsync(connection),
@@ -420,7 +431,7 @@ ORDER BY CASE WHEN @PlanId IS NOT NULL AND Id = @PlanId THEN 0 ELSE 1 END;";
 
     private static decimal ResolvePaidAmount(decimal? requestedAmount, decimal planPrice)
     {
-        if (requestedAmount.HasValue && requestedAmount.Value > 0)
+        if (requestedAmount.HasValue && requestedAmount.Value >= 0)
         {
             return requestedAmount.Value;
         }
@@ -446,6 +457,7 @@ ORDER BY CASE WHEN @PlanId IS NOT NULL AND Id = @PlanId THEN 0 ELSE 1 END;";
 SELECT
     s.Id,
     s.TenantId,
+    t.Name AS TenantName,
     s.PlanId,
     p.Name AS PlanName,
     p.Code AS PlanCode,
@@ -465,6 +477,7 @@ SELECT
     pay.PaidAtUtc AS PaymentDateUtc,
     latestPayment.PaymentMethod
 FROM dbo.TenantSubscriptions s
+JOIN dbo.Tenants t ON t.Id = s.TenantId
 JOIN dbo.SubscriptionPlans p ON p.Id = s.PlanId
 OUTER APPLY (
     SELECT SUM(Amount) AS TotalPaidAmount, MAX(PaidAtUtc) AS PaidAtUtc

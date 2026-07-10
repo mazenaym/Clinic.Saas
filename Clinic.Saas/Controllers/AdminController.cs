@@ -9,6 +9,7 @@ namespace Clinic.Saas.api.Controllers;
 [Route("api/admin")]
 [ApiController]
 [Authorize(Roles = "SuperAdmin")]
+[Obsolete("Compatibility API. Use /api/platform endpoints.")]
 public class AdminController : ControllerBase
 {
     private readonly GetAdminDashboardQuery.Handler _dashboard;

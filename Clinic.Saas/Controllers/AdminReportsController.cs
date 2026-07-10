@@ -9,6 +9,7 @@ namespace Clinic.Saas.api.Controllers;
 [Route("api/admin")]
 [ApiController]
 [Authorize]
+[Obsolete("Compatibility API. Use /api/platform/reports or /api/platform/audit-logs endpoints.")]
 public class AdminReportsController : ControllerBase
 {
     private readonly ICurrentUserService _currentUser;

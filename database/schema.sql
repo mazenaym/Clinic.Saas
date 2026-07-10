@@ -193,7 +193,7 @@ CREATE TABLE dbo.Payments
     DiscountPct DECIMAL(5,2) NOT NULL,
     TaxAmount DECIMAL(18,2) NOT NULL,
     PaidAmount DECIMAL(18,2) NOT NULL,
-    RemainingAmount DECIMAL(18,2) NOT NULL,
+    RemainingAmount AS (TotalAmount + TaxAmount - DiscountAmount - PaidAmount) PERSISTED,
     PaymentMethod SMALLINT NOT NULL,
     [Status] SMALLINT NOT NULL,
     InsuranceCompany NVARCHAR(200) NULL,
@@ -220,7 +220,7 @@ CREATE TABLE dbo.PaymentItems
     Quantity INT NOT NULL,
     UnitPrice DECIMAL(18,2) NOT NULL,
     DiscountPct DECIMAL(5,2) NOT NULL,
-    TotalPrice DECIMAL(18,2) NOT NULL,
+    TotalPrice AS ((Quantity * UnitPrice) * (1 - DiscountPct / 100.0)) PERSISTED,
     CONSTRAINT FK_PaymentItems_Payments FOREIGN KEY (PaymentId) REFERENCES dbo.Payments(Id)
 );
 

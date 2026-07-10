@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clinic.Saas.api.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/prescriptions")]
 [ApiController]
 [Authorize]
 public class PrescriptionsController : ControllerBase

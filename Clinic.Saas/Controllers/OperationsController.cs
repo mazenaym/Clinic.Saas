@@ -29,6 +29,7 @@ namespace Clinic.Saas.api.Controllers;
 [Route("api/operations")]
 [ApiController]
 [Authorize]
+[Obsolete("Compatibility API. Use the canonical domain routes documented in docs/api-route-migration.md.")]
 public class OperationsController : ControllerBase
 {
     private readonly ICurrentUserService _currentUser;

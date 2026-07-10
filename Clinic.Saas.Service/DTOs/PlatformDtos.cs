@@ -62,6 +62,7 @@ public record UpdatePlatformPlanStatusRequest(bool IsActive);
 public record TenantSubscriptionDto(
     Guid Id,
     Guid TenantId,
+    string TenantName,
     Guid PlanId,
     string PlanName,
     string PlanCode,

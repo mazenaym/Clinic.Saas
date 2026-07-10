@@ -13,10 +13,14 @@
 
   <section class="panel">
     <h3>فاتورة جديدة</h3>
-    <div class="actions"><a routerLink="/visits" class="button-link secondary-link">تسجيل كشف أولا</a></div>
     <form class="form-grid" (ngSubmit)="create()">
-      <label>رقم الكشف<input name="visitId" [(ngModel)]="form['visitId']" required /></label>
-      <label>المريض<select name="patientId" [(ngModel)]="form['patientId']" (change)="loadPatientPayments()">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+      <label>المريض<select name="patientId" [(ngModel)]="form['patientId']" (change)="patientChanged()">@for (p of patients(); track p.id) { <option [value]="p.id">{{ p.fullName }}</option> }</select></label>
+      <label>بحث في كشوف المريض<input name="encounterSearch" [(ngModel)]="encounterSearch" placeholder="التاريخ أو الطبيب أو التشخيص" /></label>
+      <label class="span-all">الكشف المرتبط<select name="visitId" [(ngModel)]="form['visitId']" required>
+        <option value="" disabled>اختر كشفًا</option>
+        @for (visit of filteredVisits(); track visit.id) { <option [value]="visit.id">{{ visit.visitDate | date:'yyyy/MM/dd HH:mm' }} — {{ visit.doctorName }} — {{ visit.chiefComplaint || visit.diagnosis || 'كشف' }}</option> }
+      </select></label>
+      @if (form['patientId'] && !visits().length) { <p class="inline-help span-all">لا توجد كشوف مسجلة لهذا المريض. اطلب من الطبيب تسجيل الكشف قبل إنشاء الفاتورة.</p> }
       <label>طريقة الدفع<select name="paymentMethod" [(ngModel)]="form['paymentMethod']">@for (m of methods; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }</select></label>
       <label>خصم<input name="discountAmount" type="number" [(ngModel)]="form['discountAmount']" (input)="recalculate()" /></label>
       <div class="span-all">

@@ -285,7 +285,7 @@ SELECT
     ts.Status AS SubscriptionStatus,
     ts.StartsAtUtc AS SubscriptionStartDate,
     ts.EndsAtUtc AS SubscriptionEndDate,
-    sp.Price AS SubscriptionAmountPaid
+    COALESCE(subscriptionPayments.TotalPaidAmount, 0) AS SubscriptionAmountPaid
 FROM dbo.Tenants t
 OUTER APPLY
 (
@@ -294,7 +294,13 @@ OUTER APPLY
     WHERE latest.TenantId = t.Id
     ORDER BY latest.EndsAtUtc DESC, latest.CreatedAtUtc DESC
 ) ts
-LEFT JOIN dbo.SubscriptionPlans sp ON sp.Id = ts.PlanId
+OUTER APPLY
+(
+    SELECT COALESCE(SUM(payment.Amount), 0) AS TotalPaidAmount
+    FROM dbo.SubscriptionPayments payment
+    WHERE payment.SubscriptionId = ts.Id
+      AND payment.PaymentStatus = 2
+) subscriptionPayments
 OUTER APPLY (SELECT COUNT(1) AS UsersCount FROM dbo.Users WHERE TenantId = t.Id) u
 OUTER APPLY (SELECT COUNT(1) AS PatientsCount FROM dbo.Patients WHERE TenantId = t.Id AND IsDeleted = 0) p
 OUTER APPLY (SELECT COUNT(1) AS AppointmentsCount FROM dbo.Appointments WHERE TenantId = t.Id AND IsDeleted = 0) a

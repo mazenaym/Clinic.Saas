@@ -79,7 +79,21 @@ public class CreatePaymentCommand
                 }).ToList()
             };
 
-            var created = await _repository.AddAsync(entity);
+            Payment created;
+            try
+            {
+                created = await _repository.AddAsync(entity);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return new BaseResponse<PaymentDto>
+                {
+                    Success = false,
+                    Message = "تعذر تسجيل الفاتورة.",
+                    Errors = [TranslateReferenceError(exception.Message)],
+                    StatusCode = 400
+                };
+            }
             return new BaseResponse<PaymentDto>
             {
                 Success = true,
@@ -88,5 +102,12 @@ public class CreatePaymentCommand
                 StatusCode = 201
             };
         }
+
+        private static string TranslateReferenceError(string message) => message switch
+        {
+            "Visit does not belong to this tenant and patient." => "الكشف المختار غير مرتبط بهذا المريض أو بهذه العيادة.",
+            "Patient does not belong to this tenant." => "المريض المختار غير تابع لهذه العيادة.",
+            _ => "تعذر التحقق من بيانات المريض والكشف. راجع الاختيارات وحاول مرة أخرى."
+        };
     }
 }

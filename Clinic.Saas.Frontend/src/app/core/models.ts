@@ -423,6 +423,7 @@ export interface PlatformPlan {
 export interface TenantSubscription {
   id: string;
   tenantId: string;
+  tenantName: string;
   planId: string;
   planName: string;
   planCode: string;

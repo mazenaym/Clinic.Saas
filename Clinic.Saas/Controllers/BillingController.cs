@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clinic.Saas.api.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/billing")]
 [ApiController]
 [Authorize]
 public class BillingController : ControllerBase
@@ -200,7 +200,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin", Policy = Permissions.ReportsFinancialView)]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.ReportsFinancialView)]
     [HttpGet("reports/monthly-revenue")]
     public async Task<IActionResult> MonthlyRevenue([FromQuery] int year, [FromQuery] int month)
     {
@@ -219,7 +219,7 @@ public class BillingController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin", Policy = Permissions.ReportsFinancialView)]
+    [Authorize(Roles = "Admin,Reception", Policy = Permissions.ReportsFinancialView)]
     [HttpGet("reports/daily-revenue")]
     public async Task<IActionResult> DailyRevenue([FromQuery] DateTime date)
     {

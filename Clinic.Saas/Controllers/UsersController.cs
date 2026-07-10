@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clinic.Saas.api.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/users")]
 [ApiController]
 [Authorize]
 public class UsersController : ControllerBase
@@ -137,7 +137,7 @@ public class UsersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
+    [Authorize(Roles = "Admin,Doctor,Reception")]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {

@@ -1,16 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { DailyRevenue, Patient, enumValues } from '../../core/models';
+import { DailyRevenue, Patient, Visit, enumValues } from '../../core/models';
 import { UiService } from '../../core/ui.service';
 import { CfConfirmDialogService } from '../../shared/ui';
 
 @Component({
   selector: 'app-billing',
-  imports: [FormsModule, DecimalPipe, RouterLink],
+  imports: [FormsModule, DecimalPipe, DatePipe],
   templateUrl: './billing.component.html',
 })
 export class BillingComponent implements OnInit {
@@ -18,6 +17,7 @@ export class BillingComponent implements OnInit {
   private readonly dialog = inject(CfConfirmDialogService);
   readonly ui = inject(UiService);
   readonly patients = signal<Patient[]>([]);
+  readonly visits = signal<Visit[]>([]);
   readonly report = signal<DailyRevenue | null>(null);
   readonly monthly = signal<Record<string, unknown>[]>([]);
   readonly debts = signal<Record<string, unknown>[]>([]);
@@ -25,6 +25,7 @@ export class BillingComponent implements OnInit {
   readonly patientPayments = signal<Record<string, unknown>[]>([]);
   readonly editingPaymentId = signal('');
   lookupPaymentId = '';
+  encounterSearch = '';
   readonly methods = enumValues.paymentMethod;
   readonly serviceTypes = enumValues.serviceType;
   date = new Date().toISOString().slice(0, 10);
@@ -33,6 +34,7 @@ export class BillingComponent implements OnInit {
   async ngOnInit() {
     this.patients.set(await firstValueFrom(this.api.patients()).catch(() => []));
     this.applyDefaultLookups();
+    await this.loadEncounters();
     await this.loadReport();
     await this.loadExtras();
   }
@@ -49,12 +51,28 @@ export class BillingComponent implements OnInit {
   private applyDefaultLookups() {
     this.form['patientId'] ||= this.patients()[0]?.id || '';
   }
+  async patientChanged() {
+    this.form['visitId'] = '';
+    this.encounterSearch = '';
+    await Promise.all([this.loadEncounters(), this.loadPatientPayments()]);
+  }
+  async loadEncounters() {
+    const patientId = this.form['patientId'];
+    this.visits.set(patientId ? await firstValueFrom(this.api.visitHistory(patientId)).catch(() => []) : []);
+    this.form['visitId'] = this.visits()[0]?.id || '';
+  }
+  filteredVisits() {
+    const query = this.encounterSearch.trim().toLocaleLowerCase('ar');
+    if (!query) return this.visits();
+    return this.visits().filter((visit) =>
+      [visit.visitDate, visit.doctorName, visit.chiefComplaint, visit.diagnosis]
+        .some((value) => String(value || '').toLocaleLowerCase('ar').includes(query)));
+  }
   addItem() { this.items().push({ serviceName: '', serviceType: 1, quantity: 1, unitPrice: 0, discountPct: 0 }); }
   removeItem(index: number) { this.items().splice(index, 1); this.recalculate(); }
   recalculate() {
     const total = this.items().reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
     this.form['totalAmount'] = total;
-    this.form['paidAmount'] = Math.max(0, total - Number(this.form['discountAmount'] || 0) + Number(this.form['taxAmount'] || 0));
   }
 
   async create() {

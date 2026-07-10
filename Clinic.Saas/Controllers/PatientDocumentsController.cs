@@ -9,7 +9,7 @@ using Microsoft.Net.Http.Headers;
 
 namespace Clinic.Saas.api.Controllers
 {
-    [Route("api/[controller]")]
+[Route("api/patient-documents")]
     [ApiController]
     [Authorize(Roles = "Admin,Doctor,Reception")]
     public class PatientDocumentsController : ControllerBase

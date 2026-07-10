@@ -10,6 +10,7 @@ namespace Clinic.Saas.api.Controllers;
 [Route("api/admin/plans")]
 [ApiController]
 [Authorize(Roles = "SuperAdmin")]
+[Obsolete("Compatibility API. Use /api/platform/plans endpoints.")]
 public class AdminPlansController : ControllerBase
 {
     private readonly IPlanService _plans;

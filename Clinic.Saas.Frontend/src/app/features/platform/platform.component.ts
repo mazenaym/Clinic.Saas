@@ -20,6 +20,10 @@ import { UiService } from '../../core/ui.service';
       margin-top: 0;
     }
 
+    .plans-table-panel {
+      gap: 0;
+    }
+
     .checkbox-line {
       grid-template-columns: auto 1fr;
       align-items: center;
@@ -103,7 +107,6 @@ export class PlatformComponent implements OnInit {
       this.section.set(first === 'platform' ? 'dashboard' : first);
       await this.load();
     });
-    await this.load();
   }
 
   async load() {
@@ -211,7 +214,7 @@ export class PlatformComponent implements OnInit {
       }));
       this.settings.set(saved);
       this.settingsForm = { ...saved };
-    }, 'ØªÙ… Ø­ÙØ¸ Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª');
+    }, 'تم حفظ الإعدادات');
   }
 
   clinicLabel(tenantId?: string) {
@@ -328,7 +331,7 @@ export class PlatformComponent implements OnInit {
     const selectedPlan = this.plans().find((item) => item.id === this.renewForm['planId']);
     if (rawAmount !== undefined && rawAmount !== null && rawAmount !== '') {
       const amount = Number(rawAmount);
-      return amount === 0 && (selectedPlan?.price ?? 0) > 0 ? selectedPlan?.price ?? 0 : amount;
+      return amount;
     }
 
     return selectedPlan?.price ?? null;
@@ -369,6 +372,6 @@ export class PlatformComponent implements OnInit {
 
   private readHttpError(error: any) {
     const body = error?.error;
-    return String(body?.detail || body?.message || body?.title || error?.message || 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø®Ø·Ø·.').trim();
+    return String(body?.detail || body?.message || body?.title || error?.message || 'تعذر تحميل الخطط.').trim();
   }
 }
