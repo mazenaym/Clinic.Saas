@@ -86,6 +86,7 @@ public class VisitsController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize(Roles = "Admin,Doctor")]
     [HttpGet("patient/{patientId:guid}")]
     public async Task<IActionResult> GetByPatient(Guid patientId)
     {
