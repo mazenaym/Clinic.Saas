@@ -17,7 +17,9 @@ namespace Clinic.Saas.Service.Validators
                 .NotEmpty()
                 .WithMessage("New password is required.")
                 .MinimumLength(6)
-                .WithMessage("New password must be at least 6 characters.");
+                .WithMessage("New password must be at least 6 characters.")
+                .NotEqual(x => x.CurrentPassword)
+                .WithMessage("New password must be different from current password.");
         }
     }
 }
