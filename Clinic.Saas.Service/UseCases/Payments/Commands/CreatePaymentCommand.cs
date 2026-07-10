@@ -42,7 +42,20 @@ public class CreatePaymentCommand
                 };
             }
 
-            var netAmount = command.Payment.TotalAmount + command.Payment.TaxAmount - command.Payment.DiscountAmount;
+            var items = command.Payment.Items.Select(item => new PaymentItem
+            {
+                ServiceName = item.ServiceName,
+                ServiceType = item.ServiceType,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                DiscountPct = item.DiscountPct,
+                TotalPrice = decimal.Round(
+                    (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m)),
+                    2)
+            }).ToList();
+
+            var totalAmount = items.Sum(item => item.TotalPrice);
+            var netAmount = totalAmount + command.Payment.TaxAmount - command.Payment.DiscountAmount;
             var status = command.Payment.PaidAmount switch
             {
                 <= 0 => PaymentStatus.Pending,
@@ -55,7 +68,7 @@ public class CreatePaymentCommand
                 TenantId = command.TenantId,
                 VisitId = command.Payment.VisitId,
                 PatientId = command.Payment.PatientId,
-                TotalAmount = command.Payment.TotalAmount,
+                TotalAmount = totalAmount,
                 DiscountAmount = command.Payment.DiscountAmount,
                 DiscountPct = command.Payment.DiscountPct,
                 TaxAmount = command.Payment.TaxAmount,
@@ -68,15 +81,7 @@ public class CreatePaymentCommand
                 Notes = command.Payment.Notes,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Items = command.Payment.Items.Select(item => new PaymentItem
-                {
-                    ServiceName = item.ServiceName,
-                    ServiceType = item.ServiceType,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    DiscountPct = item.DiscountPct,
-                    TotalPrice = (item.Quantity * item.UnitPrice) * (1 - (item.DiscountPct / 100m))
-                }).ToList()
+                Items = items
             };
 
             Payment created;
