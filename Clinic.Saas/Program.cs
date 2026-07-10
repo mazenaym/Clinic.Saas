@@ -62,7 +62,10 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddInfrastructure();
 builder.Services.AddApplication();
-builder.Services.AddClinicHangfire(builder.Configuration);
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddClinicHangfire(builder.Configuration);
+}
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var key = jwtSection["Key"] ?? throw new InvalidOperationException("Jwt:Key is missing from configuration.");
@@ -95,7 +98,8 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-app.UseClinicProblemDetails();
+if (app.Environment.IsEnvironment("Testing")) app.UseDeveloperExceptionPage();
+else app.UseClinicProblemDetails();
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -110,20 +114,28 @@ app.UseCors("ClinicSaasCors");
 app.UseAuthentication();
 app.UseMiddleware<TenantAccessMiddleware>();
 app.UseAuthorization();
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    Authorization = [new HangfireSuperAdminAuthorizationFilter()]
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = [new HangfireSuperAdminAuthorizationFilter()]
+    });
+}
 
 app.MapControllers();
 
-RecurringJob.AddOrUpdate<SubscriptionExpiryRecurringJob>(
-    "subscription-expiry-check",
-    job => job.RunAsync(),
-    "5 0 * * *",
-    new RecurringJobOptions
-    {
-        TimeZone = TimeZoneInfo.Utc
-    });
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    RecurringJob.AddOrUpdate<SubscriptionExpiryRecurringJob>(
+        "subscription-expiry-check",
+        job => job.RunAsync(),
+        "5 0 * * *",
+        new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Utc
+        });
+}
 
 app.Run();
+
+public partial class Program;

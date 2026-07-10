@@ -41,3 +41,19 @@ The two diagnostic controllers (`/api/Test/connection` and `/api/Testfactory/ses
 ## Authorization re-audit
 
 Comparison with `7525f13` found two unrelated widenings. `GET /api/users` was restored to `Admin` plus `UsersManage`; monthly and daily billing revenue reports were restored to `Admin` plus `ReportsFinancialView`. Platform routes remain `SuperAdmin` only. Legacy Admin controllers are equally protected except the intentionally pre-existing tenant-aware activity-log contract (`Admin,SuperAdmin`).
+
+## Platform controller architecture
+
+The former `PlatformController` was removed. Its actions now have these focused owners:
+
+| Former action group | Focused controller | Route prefix |
+|---|---|---|
+| Dashboard summary | `PlatformDashboardController` | `/api/platform/dashboard` |
+| Clinic list/detail/create/update/status | `PlatformClinicsController` | `/api/platform/clinics` |
+| Plan CRUD and activation | `PlatformPlansController` | `/api/platform/plans` |
+| Subscription list/detail/expiry and clinic subscription commands | `PlatformSubscriptionsController` | `/api/platform/subscriptions` plus preserved absolute clinic-subscription routes |
+| Revenue, subscriptions, clinic growth, usage, platform report | `PlatformReportsController` | `/api/platform/reports` |
+| Platform settings | `PlatformSettingsController` | `/api/platform/settings` |
+| Platform audit logs | `PlatformAuditLogsController` | `/api/platform/audit-logs` |
+
+Shared Application facades coordinate existing handlers/services for dashboard, clinics, plans, reports, and audit logs. Legacy Admin controllers use these same facades and contain HTTP adaptation only.

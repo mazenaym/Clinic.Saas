@@ -45,6 +45,11 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<IClinicAuthorizationService, ClinicAuthorizationService>();
+        services.AddScoped<IPlatformDashboardFacade, PlatformDashboardFacade>();
+        services.AddScoped<IPlatformClinicsFacade, PlatformClinicsFacade>();
+        services.AddScoped<IPlatformPlansFacade, PlatformPlansFacade>();
+        services.AddScoped<IPlatformReportsFacade, PlatformReportsFacade>();
+        services.AddScoped<IPlatformAuditLogsFacade, PlatformAuditLogsFacade>();
         services.AddScoped<SubscriptionExpiryRecurringJob>();
 
         services.AddScoped<GetAdminDashboardQuery.Handler>();
