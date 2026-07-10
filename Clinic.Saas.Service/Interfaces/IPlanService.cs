@@ -1,4 +1,5 @@
 using Clinic.Saas.Service.DTOs;
+using Clinic.Saas.Domain.Enums;
 
 namespace Clinic.Saas.Service.Interfaces;
 
@@ -10,6 +11,6 @@ public interface IPlanService
     Task<PlatformPlanDto?> GetPlanByCodeAsync(string code);
     Task<PlatformPlanDto> CreatePlanAsync(UpsertPlatformPlanDto dto);
     Task<PlatformPlanDto?> UpdatePlanAsync(Guid id, UpsertPlatformPlanDto dto);
-    Task<bool> DeletePlanAsync(Guid id);
+    Task<DeletePlanResult> DeletePlanAsync(Guid id);
     Task<bool> SetPlanActiveAsync(Guid id, bool isActive);
 }

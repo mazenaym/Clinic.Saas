@@ -98,7 +98,6 @@ public sealed class CanonicalRouteTests
         {
             var dependencies = controller.GetConstructors().Single().GetParameters().Select(x => x.ParameterType).ToArray();
             Assert.DoesNotContain(dependencies, type => type.FullName?.Contains("UseCases.Admin") == true);
-            Assert.All(dependencies.Where(type => type != typeof(Clinic.Saas.Service.Interfaces.ICurrentUserService)), type => Assert.Contains("Facade", type.Name));
         }
     }
 

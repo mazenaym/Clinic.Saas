@@ -85,6 +85,16 @@ WHERE Id = @TenantId;";
         return await connection.QueryFirstOrDefaultAsync<TenantSubscriptionDto>(sql, new { TenantId = tenantId });
     }
 
+    public async Task<TenantSubscriptionDto?> GetSubscriptionByIdAsync(Guid id)
+    {
+        const string sql = CurrentSubscriptionSql + " WHERE s.Id = @Id;";
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync();
+        return await connection.QueryFirstOrDefaultAsync<TenantSubscriptionDto>(sql, new { Id = id });
+    }
+
+    public Task<TenantSubscriptionDto?> ChangeSubscriptionPlanAsync(RenewTenantSubscriptionRequest request, Guid? changedByUserId) =>
+        ReplaceSubscriptionAsync(request, changedByUserId, "ChangeSubscriptionPlan");
+
     public async Task<SubscriptionStatusDto> GetSubscriptionStatusAsync(Guid tenantId)
     {
         const string sql = @"
@@ -111,6 +121,9 @@ WHERE t.Id = @TenantId;";
     }
 
     public async Task<TenantSubscriptionDto?> RenewSubscriptionAsync(RenewTenantSubscriptionRequest request, Guid? renewedByUserId)
+        => await ReplaceSubscriptionAsync(request, renewedByUserId, "RenewSubscription");
+
+    private async Task<TenantSubscriptionDto?> ReplaceSubscriptionAsync(RenewTenantSubscriptionRequest request, Guid? renewedByUserId, string auditAction)
     {
         using var connection = await _connectionFactory.CreateOpenConnectionAsync();
         var tenantExists = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.Tenants WHERE Id = @TenantId;", new { request.TenantId });
@@ -182,7 +195,7 @@ SELECT @SubscriptionId;";
             Now = now
         });
 
-        await LogAsync("RenewSubscription", request.TenantId, subscriptionId, renewedByUserId, new
+        await LogAsync(auditAction, request.TenantId, subscriptionId, renewedByUserId, new
         {
             plan.Id,
             plan.Code,
@@ -196,7 +209,11 @@ SELECT @SubscriptionId;";
         return await GetCurrentSubscriptionAsync(request.TenantId);
     }
 
-    public async Task<bool> SuspendTenantAsync(Guid tenantId, string reason, Guid? suspendedByUserId)
+    public Task<bool> SuspendTenantAsync(Guid tenantId, string reason, Guid? suspendedByUserId) => SetSuspendedAsync(tenantId, reason, suspendedByUserId, "SuspendTenant");
+
+    public Task<bool> DisableTenantAsync(Guid tenantId, string reason, Guid? disabledByUserId) => SetSuspendedAsync(tenantId, reason, disabledByUserId, "DisableTenant");
+
+    private async Task<bool> SetSuspendedAsync(Guid tenantId, string reason, Guid? userId, string auditAction)
     {
         const string sql = @"
 UPDATE dbo.Tenants
@@ -222,7 +239,7 @@ WHERE Id = (
             Suspended = SubscriptionStatus.Suspended
         });
 
-        await LogAsync("SuspendTenant", tenantId, tenantId, suspendedByUserId, new { reason });
+        if (rows > 0) await LogAsync(auditAction, tenantId, tenantId, userId, new { reason });
         return rows > 0;
     }
 
@@ -249,15 +266,17 @@ WHERE Id = @SubscriptionId;";
         return true;
     }
 
-    public async Task<bool> CancelSubscriptionAsync(Guid subscriptionId, string? reason)
+    public async Task<bool> CancelSubscriptionAsync(Guid subscriptionId, string? reason, Guid? cancelledByUserId)
     {
         const string sql = @"
 UPDATE dbo.TenantSubscriptions
 SET Status = @Cancelled, CancelledAtUtc = SYSUTCDATETIME(), Notes = COALESCE(@Reason, Notes), UpdatedAtUtc = SYSUTCDATETIME()
 WHERE Id = @SubscriptionId;";
 
+        var existing = await GetSubscriptionByIdAsync(subscriptionId);
         using var connection = await _connectionFactory.CreateOpenConnectionAsync();
         var rows = await connection.ExecuteAsync(sql, new { SubscriptionId = subscriptionId, Cancelled = SubscriptionStatus.Cancelled, Reason = reason });
+        if (rows > 0 && existing is not null) await LogAsync("CancelSubscription", existing.TenantId, subscriptionId, cancelledByUserId, new { reason });
         return rows > 0;
     }
 

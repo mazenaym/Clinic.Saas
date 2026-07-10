@@ -3,6 +3,7 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 
 namespace Clinic.Saas.Service.UseCases.Admin.Commands;
 
@@ -18,15 +19,19 @@ public class BootstrapSuperAdminCommand
         private readonly IPlatformAdminRepository _repository;
         private readonly IPasswordService _passwordService;
         private readonly IValidator<BootstrapSuperAdminDto> _validator;
+        private readonly IAuditService _audit;
+        private readonly Microsoft.Extensions.Logging.ILogger<Handler> _logger;
 
         public Handler(
             IPlatformAdminRepository repository,
             IPasswordService passwordService,
-            IValidator<BootstrapSuperAdminDto> validator)
+            IValidator<BootstrapSuperAdminDto> validator, IAuditService audit, Microsoft.Extensions.Logging.ILogger<Handler> logger)
         {
             _repository = repository;
             _passwordService = passwordService;
             _validator = validator;
+            _audit = audit;
+            _logger = logger;
         }
 
         public async Task<BaseResponse<AdminClinicDto>> Handle(Command command)
@@ -91,6 +96,12 @@ public class BootstrapSuperAdminCommand
             };
 
             var created = await _repository.BootstrapSuperAdminAsync(platformTenant, superAdmin);
+            if (created is null)
+            {
+                return new BaseResponse<AdminClinicDto> { Success = false, Message = "Super admin already exists", StatusCode = 409 };
+            }
+            try { await _audit.LogAsync(new AuditEntry { TenantId = created.Id, UserId = superAdmin.Id, Action = "BootstrapSuperAdmin", EntityName = "Tenant", EntityId = created.Id, CreatedAt = DateTime.UtcNow }); }
+            catch (Exception ex) { _logger.LogError(ex, "Audit failed after SuperAdmin bootstrap for tenant {TenantId}", created.Id); }
             return new BaseResponse<AdminClinicDto>
             {
                 Success = true,

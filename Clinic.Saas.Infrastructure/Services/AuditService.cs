@@ -1,16 +1,19 @@
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
+using Microsoft.Extensions.Logging;
 
 namespace Clinic.Saas.Infrastructure.Services;
 
 public class AuditService : IAuditService
 {
     private readonly IDbConnectionFactory _connectionFactory;
+    private readonly Microsoft.Extensions.Logging.ILogger<AuditService> _logger;
 
-    public AuditService(IDbConnectionFactory connectionFactory)
+    public AuditService(IDbConnectionFactory connectionFactory, Microsoft.Extensions.Logging.ILogger<AuditService> logger)
     {
         _connectionFactory = connectionFactory;
+        _logger = logger;
     }
 
     public async Task LogAsync(AuditEntry entry)
@@ -44,9 +47,9 @@ VALUES
                 CreatedAt = entry.CreatedAt == default ? DateTime.UtcNow : entry.CreatedAt
             });
         }
-        catch
+        catch (Exception ex)
         {
-            // Audit logging must never break the business operation.
+            _logger.LogError(ex, "Audit logging failed for {Action} {EntityName} {EntityId}", entry.Action, entry.EntityName, entry.EntityId);
         }
     }
 }

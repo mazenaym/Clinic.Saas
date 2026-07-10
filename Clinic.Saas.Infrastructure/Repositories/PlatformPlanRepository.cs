@@ -2,6 +2,8 @@ using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
+using Microsoft.Data.SqlClient;
+using Clinic.Saas.Domain.Enums;
 
 namespace Clinic.Saas.Infrastructure.Repositories;
 
@@ -94,12 +96,19 @@ FROM dbo.SubscriptionPlans WHERE Id = @Id;";
         return await connection.QueryFirstOrDefaultAsync<SubscriptionPlan>(sql, plan);
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<DeletePlanResult> DeleteAsync(Guid id)
     {
         const string sql = "DELETE FROM dbo.SubscriptionPlans WHERE Id = @Id;";
 
         using var connection = await _connectionFactory.CreateOpenConnectionAsync();
-        return await connection.ExecuteAsync(sql, new { Id = id }) > 0;
+        try
+        {
+            return await connection.ExecuteAsync(sql, new { Id = id }) > 0 ? DeletePlanResult.Deleted : DeletePlanResult.NotFound;
+        }
+        catch (SqlException ex) when (ex.Number == 547)
+        {
+            return DeletePlanResult.InUse;
+        }
     }
 
     public async Task<bool> UpdateStatusAsync(Guid id, bool isActive)

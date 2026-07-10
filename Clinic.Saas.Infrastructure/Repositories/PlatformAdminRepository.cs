@@ -94,7 +94,7 @@ WHERE LOWER(Subdomain) = LOWER(@Subdomain)
         return count > 0;
     }
 
-    public async Task<AdminClinicDto> BootstrapSuperAdminAsync(Tenant platformTenant, User superAdmin)
+    public async Task<AdminClinicDto?> BootstrapSuperAdminAsync(Tenant platformTenant, User superAdmin)
     {
         if (platformTenant.Id == Guid.Empty)
         {
@@ -118,7 +118,8 @@ WHERE LOWER(Subdomain) = LOWER(@Subdomain)
             var existingSuperAdmins = await connection.ExecuteScalarAsync<int>(guardSql, transaction: transaction);
             if (existingSuperAdmins > 0)
             {
-                throw new InvalidOperationException("Super admin already exists.");
+                transaction.Rollback();
+                return null;
             }
 
             const string tenantSql = @"

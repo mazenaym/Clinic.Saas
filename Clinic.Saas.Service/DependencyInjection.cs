@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IPlatformClinicsFacade, PlatformClinicsFacade>();
         services.AddScoped<IPlatformPlansFacade, PlatformPlansFacade>();
         services.AddScoped<IPlatformReportsFacade, PlatformReportsFacade>();
+        services.AddScoped<IPlatformSubscriptionsFacade, PlatformSubscriptionsFacade>();
         services.AddScoped<IPlatformAuditLogsFacade, PlatformAuditLogsFacade>();
         services.AddScoped<SubscriptionExpiryRecurringJob>();
 

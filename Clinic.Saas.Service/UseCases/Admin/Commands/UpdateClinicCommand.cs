@@ -2,6 +2,7 @@ using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 
 namespace Clinic.Saas.Service.UseCases.Admin.Commands;
 
@@ -17,11 +18,15 @@ public class UpdateClinicCommand
     {
         private readonly IPlatformAdminRepository _repository;
         private readonly IValidator<UpdateClinicDto> _validator;
+        private readonly IAuditService _audit;
+        private readonly Microsoft.Extensions.Logging.ILogger<Handler> _logger;
 
-        public Handler(IPlatformAdminRepository repository, IValidator<UpdateClinicDto> validator)
+        public Handler(IPlatformAdminRepository repository, IValidator<UpdateClinicDto> validator, IAuditService audit, Microsoft.Extensions.Logging.ILogger<Handler> logger)
         {
             _repository = repository;
             _validator = validator;
+            _audit = audit;
+            _logger = logger;
         }
 
         public async Task<BaseResponse<AdminClinicDto>> Handle(Command command)
@@ -76,6 +81,8 @@ public class UpdateClinicCommand
             });
 
             var updated = await _repository.GetClinicByIdAsync(command.ClinicId);
+            try { await _audit.LogAsync(new AuditEntry { Action = "UpdateClinic", EntityName = "Tenant", EntityId = command.ClinicId, NewValues = System.Text.Json.JsonSerializer.Serialize(new { command.ClinicId, command.Clinic.Name, command.Clinic.Subdomain }), CreatedAt = DateTime.UtcNow }); }
+            catch (Exception ex) { _logger.LogError(ex, "Audit failed after updating clinic {ClinicId}", command.ClinicId); }
             return new BaseResponse<AdminClinicDto>
             {
                 Success = true,

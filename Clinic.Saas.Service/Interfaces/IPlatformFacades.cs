@@ -7,14 +7,13 @@ namespace Clinic.Saas.Service.Interfaces;
 public interface IPlatformDashboardFacade
 {
     Task<PlatformDashboardSummaryDto> GetSummaryAsync();
-    Task<BaseResponse<AdminDashboardStatsDto>> GetLegacySummaryAsync();
 }
 
 public interface IPlatformClinicsFacade
 {
-    Task<IReadOnlyList<AdminClinicDto>> GetOverviewAsync(PlatformClinicFilterDto filter);
-    Task<BaseResponse<IEnumerable<AdminClinicDto>>> GetLegacyListAsync();
-    Task<BaseResponse<AdminClinicDto>> GetAsync(Guid id);
+    Task<IReadOnlyList<AdminClinicDto>> GetAsync(PlatformClinicFilterDto filter);
+    Task<BaseResponse<AdminClinicDto>> GetByIdAsync(Guid id);
+    Task<BaseResponse<AdminClinicDto>> CreateWithInitialSubscriptionAsync(CreateClinicDto dto, Guid? planId, Guid? actingUserId);
     Task<BaseResponse<AdminClinicDto>> CreateAsync(CreateClinicDto dto);
     Task<BaseResponse<AdminClinicDto>> UpdateAsync(Guid id, UpdateClinicDto dto);
     Task<BaseResponse<AdminClinicDto>> SetLegacyStatusAsync(Guid id, bool isActive);
@@ -25,15 +24,12 @@ public interface IPlatformClinicsFacade
 public interface IPlatformPlansFacade
 {
     Task<IReadOnlyList<PlatformPlanDto>> GetAsync(bool includeInactive);
-    Task<PlatformPlanDto?> GetAsync(Guid id);
-    Task<PlatformPlanDto> CreateAsync(UpsertPlatformPlanDto dto);
-    Task<PlatformPlanDto?> UpdateAsync(Guid id, UpsertPlatformPlanDto dto);
-    Task<bool> DeleteAsync(Guid id);
-    Task<bool> SetActiveAsync(Guid id, bool active);
-    Task<BaseResponse<PlatformPlanDto>> CreateLegacyAsync(CreatePlatformPlanRequest request);
-    Task<BaseResponse<PlatformPlanDto?>> UpdateLegacyAsync(Guid id, UpdatePlatformPlanRequest request);
-    Task<BaseResponse<bool>> DeleteLegacyAsync(Guid id);
-    Task<BaseResponse<bool>> SetLegacyStatusAsync(Guid id, UpdatePlatformPlanStatusRequest request, string successMessage);
+    Task<PlatformPlanDto?> GetByIdAsync(Guid id);
+    Task<PlatformPlanDto?> GetByCodeAsync(string code);
+    Task<PlatformPlanDto> CreateAsync(UpsertPlatformPlanDto dto, Guid? actingUserId);
+    Task<PlatformPlanDto?> UpdateAsync(Guid id, UpsertPlatformPlanDto dto, Guid? actingUserId);
+    Task<DeletePlanResult> DeleteAsync(Guid id, Guid? actingUserId);
+    Task<bool> SetActiveAsync(Guid id, bool active, Guid? actingUserId);
 }
 
 public interface IPlatformReportsFacade
@@ -42,9 +38,14 @@ public interface IPlatformReportsFacade
     Task<IReadOnlyList<TenantSubscriptionDto>> GetSubscriptionsAsync(PlatformSubscriptionFilterDto filter);
     Task<IReadOnlyList<AdminClinicDto>> GetClinicsAsync(PlatformClinicFilterDto filter);
     Task<PlatformReportsDto> GetPlatformAsync(PlatformReportsFilterDto filter);
-    Task<BaseResponse<List<ClinicUsageMetricDto>>> GetLegacyUsageAsync();
-    Task<BaseResponse<List<SubscriptionRevenueDto>>> GetLegacyRevenueAsync();
-    Task<BaseResponse<List<ExpiringSubscriptionDto>>> GetLegacyExpiringAsync(int days);
+}
+
+public interface IPlatformSubscriptionsFacade
+{
+    Task<TenantSubscriptionDto?> GetByIdAsync(Guid id);
+    Task<IReadOnlyList<TenantSubscriptionDto>> GetExpiringAsync(int days);
+    Task<BaseResponse<TenantSubscriptionDto>> RenewAsync(Guid tenantId, RenewTenantSubscriptionRequest request, Guid? actingUserId);
+    Task<BaseResponse<TenantSubscriptionDto>> ChangePlanAsync(Guid tenantId, RenewTenantSubscriptionRequest request, Guid? actingUserId);
 }
 
 public interface IPlatformAuditLogsFacade

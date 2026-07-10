@@ -1,4 +1,5 @@
 using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Enums;
 
 namespace Clinic.Saas.Domain.Interfaces;
 
@@ -9,6 +10,6 @@ public interface IPlatformPlanRepository
     Task<SubscriptionPlan?> GetByCodeAsync(string code);
     Task<SubscriptionPlan> CreateAsync(SubscriptionPlan plan);
     Task<SubscriptionPlan?> UpdateAsync(SubscriptionPlan plan);
-    Task<bool> DeleteAsync(Guid id);
+    Task<DeletePlanResult> DeleteAsync(Guid id);
     Task<bool> UpdateStatusAsync(Guid id, bool isActive);
 }

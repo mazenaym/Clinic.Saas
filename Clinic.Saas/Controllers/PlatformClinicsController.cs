@@ -14,21 +14,19 @@ public sealed class PlatformClinicsController(
     ICurrentUserService currentUser) : PlatformControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] PlatformClinicFilterDto filter) => OkResponse(await facade.GetOverviewAsync(filter));
+    public async Task<IActionResult> Get([FromQuery] PlatformClinicFilterDto filter) => OkResponse(await facade.GetAsync(filter));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var result = await facade.GetAsync(id);
+        var result = await facade.GetByIdAsync(id);
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateClinicDto dto, [FromQuery] Guid? planId = null)
     {
-        var result = await facade.CreateAsync(dto);
-        if (result.Success && result.Data is not null)
-            await subscriptions.CreateInitialSubscriptionAsync(result.Data.Id, planId, currentUser.UserId);
+        var result = await facade.CreateWithInitialSubscriptionAsync(dto, planId, currentUser.UserId);
         return StatusCode(result.StatusCode, result);
     }
 
@@ -49,5 +47,5 @@ public sealed class PlatformClinicsController(
 
     [HttpPatch("{id:guid}/disable")]
     public async Task<IActionResult> Disable(Guid id) =>
-        await subscriptions.SuspendTenantAsync(id, "Disabled by platform admin.", currentUser.UserId) ? OkResponse(true, "Clinic disabled.") : NotFoundResponse<bool>("Clinic was not found.");
+        await subscriptions.DisableTenantAsync(id, "Disabled by platform admin.", currentUser.UserId) ? OkResponse(true, "Clinic disabled.") : NotFoundResponse<bool>("Clinic was not found.");
 }

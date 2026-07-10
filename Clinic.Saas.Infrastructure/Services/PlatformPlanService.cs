@@ -1,4 +1,5 @@
 using Clinic.Saas.Domain.Entities;
+using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
@@ -56,7 +57,7 @@ public class PlatformPlanService : IPlanService
         return (await _plans.UpdateAsync(plan)) is { } updated ? Map(updated) : null;
     }
 
-    public Task<bool> DeletePlanAsync(Guid id)
+    public Task<DeletePlanResult> DeletePlanAsync(Guid id)
     {
         return _plans.DeleteAsync(id);
     }

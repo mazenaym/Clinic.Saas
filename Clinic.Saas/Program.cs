@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,10 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddClinicProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddRateLimiter(options => options.AddPolicy("bootstrap", context =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 })));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClinicSaasCors", policy =>
@@ -111,6 +116,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseCors("ClinicSaasCors");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantAccessMiddleware>();
 app.UseAuthorization();

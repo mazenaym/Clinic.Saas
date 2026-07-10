@@ -3,6 +3,7 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 
 namespace Clinic.Saas.Service.UseCases.Admin.Commands;
 
@@ -18,15 +19,19 @@ public class CreateClinicCommand
         private readonly IPlatformAdminRepository _repository;
         private readonly IPasswordService _passwordService;
         private readonly IValidator<CreateClinicDto> _validator;
+        private readonly IAuditService _audit;
+        private readonly Microsoft.Extensions.Logging.ILogger<Handler> _logger;
 
         public Handler(
             IPlatformAdminRepository repository,
             IPasswordService passwordService,
-            IValidator<CreateClinicDto> validator)
+            IValidator<CreateClinicDto> validator, IAuditService audit, Microsoft.Extensions.Logging.ILogger<Handler> logger)
         {
             _repository = repository;
             _passwordService = passwordService;
             _validator = validator;
+            _audit = audit;
+            _logger = logger;
         }
 
         public async Task<BaseResponse<AdminClinicDto>> Handle(Command command)
@@ -104,6 +109,8 @@ public class CreateClinicCommand
             };
 
             var created = await _repository.CreateClinicAsync(tenant, owner, subscription, settings);
+            try { await _audit.LogAsync(new AuditEntry { Action = "CreateClinic", EntityName = "Tenant", EntityId = created.Id, NewValues = System.Text.Json.JsonSerializer.Serialize(new { created.Id, created.Name, created.Subdomain }), CreatedAt = DateTime.UtcNow }); }
+            catch (Exception ex) { _logger.LogError(ex, "Audit failed after creating clinic {ClinicId}", created.Id); }
             return new BaseResponse<AdminClinicDto>
             {
                 Success = true,
