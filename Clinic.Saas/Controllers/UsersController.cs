@@ -137,7 +137,7 @@ public class UsersController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin", Policy = Permissions.UsersManage)]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {

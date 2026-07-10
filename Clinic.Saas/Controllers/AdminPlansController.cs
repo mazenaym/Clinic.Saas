@@ -11,7 +11,7 @@ namespace Clinic.Saas.api.Controllers;
 [ApiController]
 [Authorize(Roles = "SuperAdmin")]
 [Obsolete("Compatibility API. Use /api/platform/plans endpoints.")]
-public class AdminPlansController : ControllerBase
+public class AdminPlansController : LegacyCompatibilityControllerBase
 {
     private readonly IPlanService _plans;
     private readonly IValidator<CreatePlatformPlanRequest> _createValidator;

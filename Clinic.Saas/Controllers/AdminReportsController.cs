@@ -10,7 +10,7 @@ namespace Clinic.Saas.api.Controllers;
 [ApiController]
 [Authorize]
 [Obsolete("Compatibility API. Use /api/platform/reports or /api/platform/audit-logs endpoints.")]
-public class AdminReportsController : ControllerBase
+public class AdminReportsController : LegacyCompatibilityControllerBase
 {
     private readonly ICurrentUserService _currentUser;
     private readonly GetClinicUsageMetricsQuery.Handler _usageMetrics;
