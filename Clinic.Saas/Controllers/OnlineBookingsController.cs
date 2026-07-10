@@ -9,7 +9,7 @@ namespace Clinic.Saas.api.Controllers;
 
 [Route("api/online-bookings")]
 [ApiController]
-[Authorize]
+[Authorize(Roles = "Admin,Reception")]
 public class OnlineBookingsController : ControllerBase
 {
     private readonly ICurrentUserService _currentUser;
