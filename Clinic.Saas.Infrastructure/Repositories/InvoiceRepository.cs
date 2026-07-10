@@ -28,7 +28,7 @@ public class InvoiceRepository : IInvoiceRepository
         invoice.CreatedAt = invoice.CreatedAt == default ? DateTime.UtcNow : invoice.CreatedAt;
         invoice.UpdatedAt = invoice.UpdatedAt == default ? invoice.CreatedAt : invoice.UpdatedAt;
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(invoice.TenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -100,7 +100,7 @@ VALUES
 WHERE i.TenantId = @TenantId
   AND i.Id = @Id;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await GetByIdInternalOrDefaultAsync(connection, invoiceSql, new { TenantId = tenantId, Id = id });
     }
 
@@ -117,7 +117,7 @@ WHERE i.TenantId = @TenantId
         payment.InvoiceId = invoiceId;
         payment.PaidAt = payment.PaidAt == default ? DateTime.UtcNow : payment.PaidAt;
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -248,7 +248,7 @@ SELECT
 FROM LedgerRows
 ORDER BY [Date], SortOrder, ReferenceNumber;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var multi = await connection.QueryMultipleAsync(sql, new
         {
             TenantId = tenantId,
@@ -357,7 +357,7 @@ GROUP BY PatientId, PatientName, Phone
 HAVING SUM(RemainingAmount) > 0
 ORDER BY OutstandingAmount DESC, PatientName;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var multi = await connection.QueryMultipleAsync(sql, new
         {
             TenantId = tenantId,
@@ -378,7 +378,7 @@ ORDER BY OutstandingAmount DESC, PatientName;";
     {
         EnsureTenantId(tenantId);
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
         var invoiceNumber = await GenerateInvoiceNumberAsync(connection, transaction, tenantId, createdAt);
         transaction.Commit();

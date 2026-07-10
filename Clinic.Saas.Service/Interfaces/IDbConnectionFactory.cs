@@ -8,6 +8,6 @@ namespace Clinic.Saas.Service.Interfaces
     public interface IDbConnectionFactory
     {
         Task<IDbConnection> CreateOpenConnectionAsync();
-        Task<IDbConnection> CreateOpenTenantConnectionAsync();
+        Task<IDbConnection> CreateOpenTenantConnectionAsync(Guid requestedTenantId);
     }
 }

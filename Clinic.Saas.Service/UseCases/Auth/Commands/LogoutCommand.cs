@@ -5,9 +5,10 @@ namespace Clinic.Saas.Service.UseCases.Auth.Commands;
 
 public class LogoutCommand
 {
-    public class Command
-    {
-        public Guid UserId { get; set; }
+        public class Command
+        {
+            public Guid TenantId { get; set; }
+            public Guid UserId { get; set; }
     }
 
     public class Handler
@@ -21,7 +22,7 @@ public class LogoutCommand
 
         public async Task<BaseResponse<object>> Handle(Command command)
         {
-            await _userRepository.UpdateRefreshTokenAsync(command.UserId, null, null);
+            await _userRepository.UpdateRefreshTokenAsync(command.TenantId, command.UserId, null, null);
             return new BaseResponse<object>
             {
                 Success = true,

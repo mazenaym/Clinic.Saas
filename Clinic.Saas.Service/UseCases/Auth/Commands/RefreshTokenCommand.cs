@@ -73,6 +73,7 @@ public class RefreshTokenCommand
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
             var refreshExpiry = _jwtTokenService.GetRefreshTokenExpiryUtc();
             await _userRepository.UpdateRefreshTokenAsync(
+                user.TenantId,
                 user.Id,
                 _jwtTokenService.HashRefreshToken(refreshToken),
                 refreshExpiry);

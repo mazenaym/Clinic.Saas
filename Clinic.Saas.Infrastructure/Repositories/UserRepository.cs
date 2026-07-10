@@ -45,7 +45,7 @@ VALUES
 
 SELECT * FROM dbo.Users WHERE TenantId = @TenantId AND Id = @Id;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         return await connection.QuerySingleAsync<User>(sql, entity);
     }
 
@@ -62,7 +62,7 @@ FROM dbo.Users
 WHERE TenantId = @TenantId
   AND Id = @Id;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<User>(sql, new { TenantId = tenantId, Id = id });
     }
 
@@ -105,7 +105,7 @@ SELECT * FROM dbo.Users
 WHERE TenantId = @TenantId
 ORDER BY CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<User>(sql, new { TenantId = tenantId });
     }
 
@@ -118,48 +118,54 @@ SELECT COUNT(1) FROM dbo.Users
 WHERE TenantId = @TenantId
   AND LOWER(Email) = LOWER(@Email);";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Email = email });
         return count > 0;
     }
 
-    public async Task UpdateRefreshTokenAsync(Guid userId, string? refreshToken, DateTime? expiry)
+    public async Task UpdateRefreshTokenAsync(Guid tenantId, Guid userId, string? refreshToken, DateTime? expiry)
     {
+        EnsureTenantId(tenantId);
         const string sql = @"
 UPDATE dbo.Users
 SET RefreshToken = @RefreshToken,
     RefreshTokenExpiry = @RefreshTokenExpiry,
     UpdatedAt = SYSUTCDATETIME()
-WHERE Id = @UserId;";
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
 
         using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new { UserId = userId, RefreshToken = refreshToken, RefreshTokenExpiry = expiry });
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, UserId = userId, RefreshToken = refreshToken, RefreshTokenExpiry = expiry });
     }
 
-    public async Task IncrementFailedLoginAsync(Guid userId, int failedAttempts, DateTime? lockedUntil)
+    public async Task IncrementFailedLoginAsync(Guid tenantId, Guid userId, int failedAttempts, DateTime? lockedUntil)
     {
+        EnsureTenantId(tenantId);
         const string sql = @"
 UPDATE dbo.Users
 SET FailedLoginAttempts = @FailedAttempts,
     LockedUntil = @LockedUntil,
     UpdatedAt = SYSUTCDATETIME()
-WHERE Id = @UserId;";
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
 
         using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new { UserId = userId, FailedAttempts = failedAttempts, LockedUntil = lockedUntil });
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, UserId = userId, FailedAttempts = failedAttempts, LockedUntil = lockedUntil });
     }
 
-    public async Task ResetFailedLoginAsync(Guid userId)
+    public async Task ResetFailedLoginAsync(Guid tenantId, Guid userId)
     {
+        EnsureTenantId(tenantId);
         const string sql = @"
 UPDATE dbo.Users
 SET FailedLoginAttempts = 0,
     LockedUntil = NULL,
     UpdatedAt = SYSUTCDATETIME()
-WHERE Id = @UserId;";
+WHERE TenantId = @TenantId
+  AND Id = @UserId;";
 
         using var connection = _context.CreateConnection();
-        await connection.ExecuteAsync(sql, new { UserId = userId });
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, UserId = userId });
     }
     public async Task<User?> GetActiveByIdAsync(Guid tenantId, Guid userId)
     {
@@ -172,7 +178,7 @@ WHERE TenantId = @TenantId
   AND Id = @UserId
   AND IsActive = 1;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<User>(sql, new
         {
             TenantId = tenantId,
@@ -194,7 +200,7 @@ WHERE TenantId = @TenantId
   AND Id = @UserId
   AND IsActive = 1;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -216,7 +222,7 @@ SET AvatarUrl = COALESCE(@AvatarUrl, AvatarUrl),
 WHERE TenantId = @TenantId
   AND Id = @UserId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -238,7 +244,7 @@ WHERE TenantId = @TenantId
   AND Id <> @UserId
   AND LOWER(Email) = LOWER(@Email);";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var count = await connection.ExecuteScalarAsync<int>(sql, new
         {
             TenantId = tenantId,
@@ -265,7 +271,7 @@ SET FullName = @FullName,
 WHERE TenantId = @TenantId
   AND Id = @UserId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -292,7 +298,7 @@ WHERE TenantId = @TenantId
   AND Role = @AdminRole
   AND IsActive = 1;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.ExecuteScalarAsync<int>(sql, new
         {
             TenantId = tenantId,
@@ -313,7 +319,7 @@ SET IsActive = 0,
 WHERE TenantId = @TenantId
   AND Id = @UserId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -336,7 +342,7 @@ SET PasswordHash = @PasswordHash,
 WHERE TenantId = @TenantId
   AND Id = @UserId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,

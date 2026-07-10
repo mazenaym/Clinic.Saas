@@ -60,12 +60,16 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
-        if (!_currentUser.UserId.HasValue)
+        if (!_currentUser.TenantId.HasValue || !_currentUser.UserId.HasValue)
         {
             return Unauthorized();
         }
 
-        var result = await _logout.Handle(new LogoutCommand.Command { UserId = _currentUser.UserId.Value });
+        var result = await _logout.Handle(new LogoutCommand.Command
+        {
+            TenantId = _currentUser.TenantId.Value,
+            UserId = _currentUser.UserId.Value
+        });
         return StatusCode(result.StatusCode, result);
     }
     [Authorize]

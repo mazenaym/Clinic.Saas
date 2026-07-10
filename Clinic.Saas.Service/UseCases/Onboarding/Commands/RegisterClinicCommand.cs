@@ -121,6 +121,7 @@ public class RegisterClinicCommand
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
             var refreshExpiry = _jwtTokenService.GetRefreshTokenExpiryUtc();
             await _userRepository.UpdateRefreshTokenAsync(
+                owner.TenantId,
                 owner.Id,
                 _jwtTokenService.HashRefreshToken(refreshToken),
                 refreshExpiry);

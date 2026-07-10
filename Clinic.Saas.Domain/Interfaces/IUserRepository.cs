@@ -9,9 +9,9 @@ public interface IUserRepository : IBaseRepository<User>
     Task<User?> GetByRefreshTokenAsync(string refreshToken);
     Task<IEnumerable<User>> GetByTenantAsync(Guid tenantId);
     Task<bool> ExistsByEmailAsync(Guid tenantId, string email);
-    Task UpdateRefreshTokenAsync(Guid userId, string? refreshToken, DateTime? expiry);
-    Task IncrementFailedLoginAsync(Guid userId, int failedAttempts, DateTime? lockedUntil);
-    Task ResetFailedLoginAsync(Guid userId);
+    Task UpdateRefreshTokenAsync(Guid tenantId, Guid userId, string? refreshToken, DateTime? expiry);
+    Task IncrementFailedLoginAsync(Guid tenantId, Guid userId, int failedAttempts, DateTime? lockedUntil);
+    Task ResetFailedLoginAsync(Guid tenantId, Guid userId);
     Task<User?> GetActiveByIdAsync(Guid tenantId, Guid userId);
     Task<bool> UpdatePasswordAsync(Guid tenantId, Guid userId, string passwordHash);
     Task<bool> UpdatePreferencesAsync(Guid tenantId, Guid userId, string? avatarUrl);

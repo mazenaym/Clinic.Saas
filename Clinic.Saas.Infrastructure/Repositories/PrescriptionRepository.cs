@@ -31,7 +31,7 @@ public class PrescriptionRepository : IPrescriptionRepository
             entity.QrCode = $"RX-{entity.Id:N}";
         }
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         using var transaction = connection.BeginTransaction();
 
         try
@@ -149,7 +149,7 @@ WHERE pr.Id = @Id
   AND pr.TenantId = @TenantId
   AND pr.IsActive = 1;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await GetByIdInternalOrDefaultAsync(connection, prescriptionSql, new { TenantId = tenantId, Id = id });
     }
 
@@ -175,7 +175,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
@@ -206,7 +206,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
         await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
     }
@@ -221,7 +221,7 @@ WHERE pr.TenantId = @TenantId
   AND pr.IsActive = 1
 ORDER BY pr.CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Prescription>(sql, new { TenantId = tenantId, PatientId = patientId });
     }
 
@@ -237,7 +237,7 @@ WHERE TenantId = @TenantId
   AND IsActive = 1
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
         await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
         return rows;

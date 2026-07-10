@@ -29,7 +29,7 @@ public class AppointmentRepository : IAppointmentRepository
         entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
         entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -136,7 +136,7 @@ WHERE a.Id = @Id
   AND a.TenantId = @TenantId
   AND a.IsDeleted = 0;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<Appointment>(sql, new
         {
             TenantId = tenantId,
@@ -156,7 +156,7 @@ WHERE a.TenantId = @TenantId
   AND a.IsDeleted = 0
 ORDER BY a.AppointmentDate DESC, a.StartTime DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Appointment>(sql, new
         {
             TenantId = tenantId
@@ -188,7 +188,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
@@ -224,7 +224,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
         await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
     }
@@ -245,7 +245,7 @@ WHERE TenantId = @TenantId
   AND StartTime < @EndTime
   AND EndTime > @StartTime;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var count = await connection.ExecuteScalarAsync<int>(sql, new
         {
             TenantId = tenantId,
@@ -270,7 +270,7 @@ WHERE a.TenantId = @TenantId
   AND a.IsDeleted = 0
 ORDER BY a.StartTime;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Appointment>(sql, new { TenantId = tenantId, AppointmentDate = appointmentDate.Date });
     }
 
@@ -285,7 +285,7 @@ WHERE a.TenantId = @TenantId
   AND a.IsDeleted = 0
 ORDER BY a.AppointmentDate, a.StartTime;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Appointment>(sql, new
         {
             TenantId = tenantId,
@@ -308,7 +308,7 @@ WHERE TenantId = @TenantId
   AND IsDeleted = 0
 ORDER BY AppointmentDate DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<AppointmentCancellationReportRow>(sql, new
         {
             TenantId = tenantId,
@@ -332,7 +332,7 @@ WHERE TenantId = @TenantId
   AND Status <> @CancelledStatus
 ORDER BY StartTime;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<TimeSlot>(sql, new
         {
             TenantId = tenantId,
@@ -346,7 +346,7 @@ ORDER BY StartTime;";
     {
         EnsureTenantId(tenantId);
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
 
         try

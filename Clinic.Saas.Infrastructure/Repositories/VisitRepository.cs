@@ -29,7 +29,7 @@ public class VisitRepository : IVisitRepository
         entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
         entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
 
         try
@@ -153,7 +153,7 @@ WHERE v.Id = @Id
   AND v.TenantId = @TenantId
   AND v.IsDeleted = 0;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<Visit>(sql, new { TenantId = tenantId, Id = id });
     }
 
@@ -169,7 +169,7 @@ WHERE v.TenantId = @TenantId
   AND v.IsDeleted = 0
 ORDER BY v.VisitDate DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Visit>(sql, new { TenantId = tenantId });
     }
 
@@ -199,7 +199,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
@@ -236,7 +236,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion });
         await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
     }
@@ -251,7 +251,7 @@ WHERE v.TenantId = @TenantId
   AND v.IsDeleted = 0
 ORDER BY v.VisitDate DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Visit>(sql, new { TenantId = tenantId, PatientId = patientId });
     }
 
@@ -275,7 +275,7 @@ WHERE TenantId = @TenantId
   AND FinalizedAt IS NULL
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -309,7 +309,7 @@ WHERE TenantId = @TenantId
   AND FinalizedAt IS NULL
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -333,7 +333,7 @@ WHERE TenantId = @TenantId
   AND CAST(VisitDate AS date) = @VisitDate
   AND IsDeleted = 0;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, VisitDate = date.Date });
     }
 

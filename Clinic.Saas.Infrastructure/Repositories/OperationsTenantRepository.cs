@@ -27,7 +27,7 @@ SELECT
 FROM dbo.Tenants t
 WHERE t.Id = @TenantId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<TenantSubscriptionStatusDto>(sql, new { TenantId = tenantId });
     }
 
@@ -40,7 +40,7 @@ SELECT WorkingDays, OpenTime, CloseTime, SlotDurationMin, ConsultFee, SmsEnabled
 FROM dbo.ClinicSettings
 WHERE TenantId = @TenantId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<UpdateClinicSettingsDto>(sql, new { TenantId = tenantId })
             ?? new UpdateClinicSettingsDto();
     }
@@ -70,7 +70,7 @@ WHEN NOT MATCHED THEN INSERT
 VALUES
     (NEWID(), @TenantId, @WorkingDays, @OpenTime, @CloseTime, @SlotDurationMin, @ConsultFee, @SmsEnabled, @WhatsappEnabled, @EmailEnabled, @Language, @TaxPct, SYSUTCDATETIME());";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,

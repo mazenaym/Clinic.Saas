@@ -21,7 +21,7 @@ SELECT COALESCE(
     CAST(0 AS bit)
 );";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.ExecuteScalarAsync<bool>(sql, new { TenantId = tenantId });
     }
 }

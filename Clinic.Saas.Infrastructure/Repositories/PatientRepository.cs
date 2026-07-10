@@ -34,7 +34,7 @@ WHERE TenantId = @TenantId
   AND Id = @Id
   AND IsDeleted = 0;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<Patient>(sql, new { TenantId = tenantId, Id = id });
     }
 
@@ -49,7 +49,7 @@ WHERE TenantId = @TenantId
   AND IsDeleted = 0
 ORDER BY CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Patient>(sql, new { TenantId = tenantId });
     }
 
@@ -68,7 +68,7 @@ ORDER BY CreatedAt DESC;";
         entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
         entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
@@ -124,7 +124,7 @@ WHERE TenantId = @TenantId
   AND PhoneNumber = @Phone
   AND IsDeleted = 0;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<Patient>(sql, new { TenantId = tenantId, Phone = phone });
     }
 
@@ -142,7 +142,7 @@ WHERE TenantId = @TenantId
   )
 ORDER BY FullName;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Patient>(sql, new { TenantId = tenantId, Search = $"%{searchTerm}%" });
     }
 
@@ -189,7 +189,7 @@ WHERE TenantId = @TenantId
   AND PatientId = @PatientId
 ORDER BY [Date] DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<PatientTimelineRow>(sql, new
         {
             TenantId = tenantId,
@@ -343,7 +343,7 @@ FROM
 ) timeline
 ORDER BY [Date] DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var multi = await connection.QueryMultipleAsync(sql, new
         {
             TenantId = tenantId,
@@ -371,7 +371,7 @@ WHERE TenantId = @TenantId
   AND IsDeleted = 0
   AND ((@Phone IS NOT NULL AND PhoneNumber = @Phone) OR (@NationalId IS NOT NULL AND NationalId = @NationalId));";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<PatientDuplicateRow>(sql, new
         {
             TenantId = tenantId,
@@ -389,7 +389,7 @@ WHERE TenantId = @TenantId
   AND IsDeleted = 0
 ORDER BY CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<PatientExportRow>(sql, new { TenantId = tenantId });
     }
 
@@ -401,14 +401,14 @@ WHERE TenantId = @TenantId
   AND PhoneNumber = @Phone
   AND IsDeleted = 0;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, Phone = phone });
         return count > 0;
     }
 
     public async Task<string> GenerateNextPatientCodeAsync(Guid tenantId)
     {
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
         var code = await GenerateNextPatientCodeAsync(connection, transaction, tenantId);
@@ -456,7 +456,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
@@ -492,7 +492,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,

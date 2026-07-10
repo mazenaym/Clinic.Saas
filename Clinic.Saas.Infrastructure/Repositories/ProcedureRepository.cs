@@ -36,7 +36,7 @@ WHERE p.TenantId = @TenantId
   AND (@IncludeInactive = 1 OR p.IsActive = 1)
 ORDER BY p.Name;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Procedure>(sql, new
         {
             TenantId = tenantId,
@@ -65,7 +65,7 @@ LEFT JOIN dbo.ProcedureCategories c ON c.TenantId = p.TenantId AND c.Id = p.Cate
 WHERE p.TenantId = @TenantId
   AND p.Id = @Id;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryFirstOrDefaultAsync<Procedure>(sql, new { TenantId = tenantId, Id = id });
     }
 
@@ -90,7 +90,7 @@ VALUES
     @IsActive, SYSUTCDATETIME(), SYSUTCDATETIME()
 );";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(procedure.TenantId);
         await connection.ExecuteAsync(sql, procedure);
         return await GetByIdAsync(procedure.TenantId, procedure.Id) ?? procedure;
     }
@@ -109,7 +109,7 @@ SET CategoryId = @CategoryId,
 WHERE TenantId = @TenantId
   AND Id = @Id;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -134,7 +134,7 @@ SET IsActive = @IsActive,
 WHERE TenantId = @TenantId
   AND Id = @Id;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, IsActive = isActive });
         return rows > 0;
     }
@@ -150,7 +150,7 @@ WHERE TenantId = @TenantId
   AND Id = @CategoryId
   AND IsActive = 1;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId, CategoryId = categoryId });
         return count > 0;
     }

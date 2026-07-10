@@ -25,7 +25,7 @@ WHERE TenantId = @TenantId
   AND IsActive = 1
 ORDER BY Name;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<ClinicalTemplate>(sql, new { TenantId = tenantId });
     }
 
@@ -50,7 +50,7 @@ VALUES
     1, SYSUTCDATETIME(), SYSUTCDATETIME()
 );";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(template.TenantId);
         await connection.ExecuteAsync(sql, template);
         return template.Id;
     }

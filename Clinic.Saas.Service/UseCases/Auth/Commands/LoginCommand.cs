@@ -79,16 +79,17 @@ public class LoginCommand
             {
                 var attempts = user.FailedLoginAttempts + 1;
                 DateTime? lockout = attempts >= 5 ? DateTime.UtcNow.AddMinutes(15) : null;
-                await _userRepository.IncrementFailedLoginAsync(user.Id, attempts, lockout);
+                await _userRepository.IncrementFailedLoginAsync(user.TenantId, user.Id, attempts, lockout);
                 return Fail("بيانات الدخول غير صحيحة", 401);
             }
 
-            await _userRepository.ResetFailedLoginAsync(user.Id);
+            await _userRepository.ResetFailedLoginAsync(user.TenantId, user.Id);
 
             var accessToken = _jwtTokenService.GenerateAccessToken(user, tenant);
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
             var refreshExpiry = _jwtTokenService.GetRefreshTokenExpiryUtc();
             await _userRepository.UpdateRefreshTokenAsync(
+                user.TenantId,
                 user.Id,
                 _jwtTokenService.HashRefreshToken(refreshToken),
                 refreshExpiry);

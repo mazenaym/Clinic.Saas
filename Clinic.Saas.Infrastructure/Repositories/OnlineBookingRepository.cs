@@ -26,7 +26,7 @@ FROM dbo.OnlineBookings
 WHERE TenantId = @TenantId
 ORDER BY CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<OnlineBooking>(sql, new { TenantId = tenantId });
     }
 
@@ -47,7 +47,7 @@ SET Status = @Status,
 WHERE TenantId = @TenantId
   AND Id = @BookingId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,

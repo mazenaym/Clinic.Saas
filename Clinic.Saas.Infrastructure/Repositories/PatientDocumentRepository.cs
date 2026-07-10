@@ -27,7 +27,7 @@ namespace Clinic.Saas.Infrastructure.Repositories
             document.FileName = Path.GetFileName(document.FileName);
             document.UploadedAt = document.UploadedAt == default ? DateTime.UtcNow : document.UploadedAt;
 
-            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(document.TenantId);
             using var transaction = connection.BeginTransaction();
 
             try
@@ -125,7 +125,7 @@ WHERE TenantId = @TenantId
   AND PatientId = @PatientId
 ORDER BY UploadedAt DESC;";
 
-            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
             return await connection.QueryAsync<PatientDocument>(sql, new
             {
                 TenantId = tenantId,
@@ -158,7 +158,7 @@ WHERE TenantId = @TenantId
   AND PatientId = @PatientId
   AND Id = @DocumentId;";
 
-            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
             return await connection.QueryFirstOrDefaultAsync<PatientDocument>(sql, new
             {
                 TenantId = tenantId,

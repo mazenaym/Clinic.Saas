@@ -31,11 +31,16 @@ namespace Clinic.Saas.Infrastructure.Data
             return connection;
         }
 
-        public async Task<IDbConnection> CreateOpenTenantConnectionAsync()
+        public async Task<IDbConnection> CreateOpenTenantConnectionAsync(Guid requestedTenantId)
         {
             if (!_currentUser.TenantId.HasValue)
             {
                 throw new InvalidOperationException("TenantId is required for tenant-scoped database access.");
+            }
+
+            if (_currentUser.TenantId.Value != requestedTenantId)
+            {
+                throw new UnauthorizedAccessException("Requested tenant does not match the authenticated user's tenant.");
             }
 
             var connection = new SqlConnection(_connectionString);
@@ -48,7 +53,7 @@ EXEC sys.sp_set_session_context @key = N'TenantId', @value = @TenantId, @read_on
 EXEC sys.sp_set_session_context @key = N'UserId', @value = @UserId, @read_only = 1;",
                     new
                     {
-                        TenantId = _currentUser.TenantId.Value,
+                        TenantId = requestedTenantId,
                         UserId = _currentUser.UserId
                     });
 

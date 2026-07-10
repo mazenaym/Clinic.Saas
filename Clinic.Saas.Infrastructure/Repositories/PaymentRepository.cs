@@ -29,7 +29,7 @@ public class PaymentRepository : IPaymentRepository
         entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
         entity.UpdatedAt = entity.UpdatedAt == default ? entity.CreatedAt : entity.UpdatedAt;
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(entity.TenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -170,7 +170,7 @@ VALUES
 WHERE pay.Id = @Id
   AND pay.TenantId = @TenantId;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await GetByIdInternalOrDefaultAsync(connection, paymentSql, new { TenantId = tenantId, Id = id });
     }
 
@@ -183,7 +183,7 @@ WHERE pay.TenantId = @TenantId
   AND pay.PatientId = @PatientId
 ORDER BY pay.CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Payment>(sql, new
         {
             TenantId = tenantId,
@@ -220,7 +220,7 @@ WHERE Id = @Id
   AND TenantId = @TenantId
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             entity.Id,
@@ -248,7 +248,7 @@ WHERE Id = @Id
     {
         EnsureTenantId(tenantId);
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -370,7 +370,7 @@ WHERE TenantId = @TenantId
   AND Id = @Id
   AND RowVersion = @RowVersion;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         var rows = await connection.ExecuteAsync(sql, new
         {
             TenantId = tenantId,
@@ -391,7 +391,7 @@ WHERE TenantId = @TenantId
     {
         EnsureTenantId(tenantId);
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
 
         try
@@ -442,7 +442,7 @@ WHERE Id = @Id
     {
         EnsureTenantId(tenantId);
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
         var number = await GenerateInvoiceNumberAsync(connection, transaction, tenantId, createdAt);
         transaction.Commit();
@@ -458,7 +458,7 @@ WHERE pay.TenantId = @TenantId
   AND CAST(pay.CreatedAt AS date) = @PaymentDate
 ORDER BY pay.CreatedAt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<Payment>(sql, new
         {
             TenantId = tenantId,
@@ -479,7 +479,7 @@ WHERE p.TenantId = @TenantId
 GROUP BY p.PatientId, pt.FullName, pt.PhoneNumber
 ORDER BY TotalDebt DESC;";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<PaymentDebtRow>(sql, new { TenantId = tenantId });
     }
 
@@ -499,7 +499,7 @@ WHERE TenantId = @TenantId
 GROUP BY CAST(CreatedAt AS date)
 ORDER BY [Date];";
 
-        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync();
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
         return await connection.QueryAsync<MonthlyRevenueRow>(sql, new
         {
             TenantId = tenantId,
