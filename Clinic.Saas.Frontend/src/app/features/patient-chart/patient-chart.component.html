@@ -18,7 +18,7 @@
         @if (canUploadDocuments()) {
           <label class="button-link secondary-link">
             رفع مستند
-            <input type="file" hidden accept=".pdf,image/*,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" (change)="uploadDocument($event)" [disabled]="uploading()" />
+            <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx,.rtf,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf" (change)="uploadDocument($event)" [disabled]="uploading()" />
           </label>
         }
       }
@@ -258,7 +258,7 @@
             <label class="span-all">ملاحظات<textarea name="documentDescription" [(ngModel)]="documentUploadForm.description"></textarea></label>
             <label class="button-link secondary-link span-all">
               {{ uploading() ? 'جاري الرفع...' : 'رفع مستند' }}
-              <input type="file" hidden accept=".pdf,image/*,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" (change)="uploadDocument($event)" [disabled]="uploading()" />
+              <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.docx,.rtf,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf" (change)="uploadDocument($event)" [disabled]="uploading()" />
             </label>
           </div>
         }
@@ -270,7 +270,7 @@
             <tbody>
               @for (document of documents(); track document.id) {
                 <tr>
-                  <td><strong>{{ document.fileName }}</strong><br><span class="muted">{{ document.description || '-' }}</span></td>
+                  <td>@if (documentPreviews()[document.id]) { <img class="document-thumb" [src]="documentPreviews()[document.id]" [alt]="document.fileName" /> } <strong>{{ document.fileName }}</strong><br><span class="muted">{{ document.description || '-' }}</span></td>
                   <td>{{ documentTypeLabel(document.documentType) }}</td>
                   <td>{{ documentKind(document) }}</td>
                   <td>{{ uploadedBy(document) }}</td>
@@ -279,6 +279,7 @@
                   <td class="actions">
                     <button type="button" class="secondary" (click)="openDocument(document)">فتح</button>
                     <button type="button" (click)="downloadDocument(document)">تحميل</button>
+                    <button type="button" class="danger" (click)="deleteDocument(document)">حذف</button>
                   </td>
                 </tr>
               } @empty {

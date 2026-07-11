@@ -1,8 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { Role } from '../../core/models';
 import { UiService } from '../../core/ui.service';
+import { ApiService } from '../../core/api.service';
+import { firstValueFrom } from 'rxjs';
 
 interface NavItem {
   label: string;
@@ -17,10 +19,13 @@ interface NavItem {
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
 })
-export class ShellComponent {
+export class ShellComponent implements OnDestroy {
   readonly auth = inject(AuthService);
   readonly ui = inject(UiService);
   private readonly router = inject(Router);
+  private readonly api = inject(ApiService);
+  readonly avatarUrl = signal<string | null>(null);
+  readonly logoUrl = signal<string | null>(null);
   readonly menuOpen = signal(false);
   readonly todayLabel = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
@@ -60,6 +65,23 @@ export class ShellComponent {
   });
   readonly roleLabel = computed(() => this.roleInArabic(this.auth.user()?.role));
   readonly workspaceName = computed(() => (this.isSuperAdmin() ? 'منصة ClinicFlow' : this.auth.tenant()?.name || 'ClinicFlow'));
+
+  constructor() { void this.loadMedia(); }
+
+  ngOnDestroy() {
+    if (this.avatarUrl()) URL.revokeObjectURL(this.avatarUrl()!);
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl()!);
+  }
+
+  private async loadMedia() {
+    if (this.isSuperAdmin()) return;
+    const [avatar, logo] = await Promise.all([
+      firstValueFrom(this.api.avatar()).catch(() => null),
+      firstValueFrom(this.api.clinicLogo()).catch(() => null),
+    ]);
+    if (avatar) this.avatarUrl.set(URL.createObjectURL(avatar));
+    if (logo) this.logoUrl.set(URL.createObjectURL(logo));
+  }
 
   closeMenu() {
     this.menuOpen.set(false);

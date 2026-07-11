@@ -17,19 +17,22 @@ public class InvoicesController : ControllerBase
     private readonly CreateInvoiceCommand.Handler _createInvoice;
     private readonly GetInvoiceByIdQuery.Handler _getInvoiceById;
     private readonly AddInvoicePaymentCommand.Handler _addInvoicePayment;
+    private readonly GetInvoicePdfQuery.Handler _getInvoicePdf;
 
     public InvoicesController(
         ICurrentUserService currentUser,
         IAuditService auditService,
         CreateInvoiceCommand.Handler createInvoice,
         GetInvoiceByIdQuery.Handler getInvoiceById,
-        AddInvoicePaymentCommand.Handler addInvoicePayment)
+        AddInvoicePaymentCommand.Handler addInvoicePayment,
+        GetInvoicePdfQuery.Handler getInvoicePdf)
     {
         _currentUser = currentUser;
         _auditService = auditService;
         _createInvoice = createInvoice;
         _getInvoiceById = getInvoiceById;
         _addInvoicePayment = addInvoicePayment;
+        _getInvoicePdf = getInvoicePdf;
     }
 
     [HttpPost]
@@ -94,5 +97,15 @@ public class InvoicesController : ControllerBase
         }
 
         return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> Pdf(Guid id)
+    {
+        if (!_currentUser.TenantId.HasValue) return Unauthorized();
+        var result = await _getInvoicePdf.Handle(new(_currentUser.TenantId.Value, id));
+        if (!result.Success || result.Data is null) return StatusCode(result.StatusCode, result);
+        await this.AuditAsync(_auditService, _currentUser, "AccessPdf", "Invoice", id, new { id });
+        return File(result.Data.Content, "application/pdf", result.Data.FileName);
     }
 }

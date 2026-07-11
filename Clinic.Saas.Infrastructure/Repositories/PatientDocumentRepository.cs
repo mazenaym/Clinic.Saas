@@ -108,22 +108,24 @@ VALUES
 
             const string sql = @"
 SELECT
-    Id,
-    TenantId,
-    PatientId,
-    VisitId,
-    FileName,
-    FileSizeKb,
-    FileType,
-    DocumentType,
-    Description,
-    UploadedBy,
-    UploadedAt,
-    RowVersion
-FROM dbo.PatientDocuments
-WHERE TenantId = @TenantId
-  AND PatientId = @PatientId
-ORDER BY UploadedAt DESC;";
+    d.Id,
+    d.TenantId,
+    d.PatientId,
+    d.VisitId,
+    d.FileName,
+    d.FileSizeKb,
+    d.FileType,
+    d.DocumentType,
+    d.Description,
+    d.UploadedBy,
+    u.FullName AS UploadedByName,
+    d.UploadedAt,
+    d.RowVersion
+FROM dbo.PatientDocuments d
+LEFT JOIN dbo.Users u ON u.TenantId = d.TenantId AND u.Id = d.UploadedBy
+WHERE d.TenantId = @TenantId
+  AND d.PatientId = @PatientId
+ORDER BY d.UploadedAt DESC;";
 
             using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
             return await connection.QueryAsync<PatientDocument>(sql, new
@@ -165,6 +167,16 @@ WHERE TenantId = @TenantId
                 PatientId = patientId,
                 DocumentId = documentId
             });
+        }
+
+        public async Task<bool> DeleteAsync(Guid tenantId, Guid patientId, Guid documentId)
+        {
+            EnsureTenantId(tenantId);
+            EnsurePatientId(patientId);
+            const string sql = @"DELETE FROM dbo.PatientDocuments
+WHERE TenantId = @TenantId AND PatientId = @PatientId AND Id = @DocumentId;";
+            using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+            return await connection.ExecuteAsync(sql, new { TenantId = tenantId, PatientId = patientId, DocumentId = documentId }) == 1;
         }
 
         private static void EnsureTenantId(Guid tenantId)

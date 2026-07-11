@@ -94,7 +94,10 @@
         <form class="form-grid" (ngSubmit)="savePreferences()">
           <label>اللغة<select name="language" [(ngModel)]="preferenceForm['language']"><option value="ar">العربية</option><option value="en">English</option></select></label>
           <label>الثيم<select name="theme" [(ngModel)]="preferenceForm['theme']"><option value="light">Light</option><option value="dark">Dark</option></select></label>
-          <label class="span-all">رابط الصورة<input name="avatarUrl" [(ngModel)]="preferenceForm['avatarUrl']" /></label>
+          <label class="span-all">صورة الحساب<input type="file" accept="image/jpeg,image/png,image/webp" (change)="uploadAvatar($event)" /></label>
+          @if (avatarPreview()) { <img class="media-preview" [src]="avatarPreview()" alt="معاينة صورة الحساب" /> }
+          <label class="span-all">شعار العيادة<input type="file" accept="image/jpeg,image/png,image/webp" (change)="uploadLogo($event)" /></label>
+          @if (logoPreview()) { <img class="media-preview" [src]="logoPreview()" alt="معاينة شعار العيادة" /> }
           <button class="span-all" [disabled]="ui.busy()">حفظ التفضيلات</button>
         </form>
       </section>

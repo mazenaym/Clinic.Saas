@@ -22,7 +22,10 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Queries
             {
                 "application/pdf",
                 "image/jpeg",
-                "image/png"
+                "image/png",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/rtf",
+                "text/rtf"
             };
 
             private readonly IPatientDocumentRepository _documentRepository;

@@ -53,6 +53,9 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Commands
                     return Fail("File is too large.", 413);
                 }
 
+                if (!Enum.IsDefined(typeof(Domain.Enums.DocumentType), command.DocumentType))
+                    return Fail("Document type is invalid.", 400);
+
                 var patient = await _patientRepository.GetByIdAsync(command.TenantId, command.PatientId);
                 if (patient is null)
                 {
@@ -82,15 +85,23 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Commands
                     VisitId = null,
                     FileName = Path.GetFileName(command.FileName),
                     FileUrl = storageKey,
-                    FileSizeKb = (int)Math.Ceiling(command.FileLength / 1024d),
-                    FileType = command.ContentType,
+                    FileSizeKb = (int)Math.Ceiling((await _fileStorage.GetLengthAsync(storageKey) ?? command.FileLength) / 1024d),
+                    FileType = CanonicalContentType(command.FileName),
                     DocumentType = (Domain.Enums.DocumentType)command.DocumentType,
                     Description = command.Description,
                     UploadedBy = command.UserId,
                     UploadedAt = DateTime.UtcNow
                 };
 
-                await _documentRepository.AddAsync(document);
+                try
+                {
+                    await _documentRepository.AddAsync(document);
+                }
+                catch
+                {
+                    await _fileStorage.DeleteAsync(storageKey);
+                    throw;
+                }
 
                 return new BaseResponse<PatientDocumentUploadResultDto>
                 {
@@ -117,6 +128,13 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Commands
                     StatusCode = statusCode
                 };
             }
+
+            private static string CanonicalContentType(string fileName) => Path.GetExtension(fileName).ToLowerInvariant() switch
+            {
+                ".pdf" => "application/pdf", ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".rtf" => "application/rtf", _ => "application/octet-stream"
+            };
         }
     }
 }

@@ -34,6 +34,7 @@ using Clinic.Saas.Service.UseCases.Visits.Commands;
 using Clinic.Saas.Service.UseCases.Visits.Queries;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using QuestPDF.Infrastructure;
 
 namespace Clinic.Saas.Service;
 
@@ -41,10 +42,12 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        QuestPDF.Settings.License = LicenseType.Community;
         services.AddAutoMapper(cfg => { }, typeof(DependencyInjection).Assembly);
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<IClinicAuthorizationService, ClinicAuthorizationService>();
+        services.AddSingleton<IPdfDocumentService, PdfDocumentService>();
         services.AddScoped<IPlatformDashboardFacade, PlatformDashboardFacade>();
         services.AddScoped<IPlatformClinicsFacade, PlatformClinicsFacade>();
         services.AddScoped<IPlatformPlansFacade, PlatformPlansFacade>();
@@ -124,6 +127,7 @@ public static class DependencyInjection
 
         services.AddScoped<CreateInvoiceCommand.Handler>();
         services.AddScoped<GetInvoiceByIdQuery.Handler>();
+        services.AddScoped<GetInvoicePdfQuery.Handler>();
         services.AddScoped<AddInvoicePaymentCommand.Handler>();
         services.AddScoped<GetFinancialDuesReportQuery.Handler>();
 
@@ -152,6 +156,7 @@ public static class DependencyInjection
         services.AddScoped<UploadPatientDocumentCommand.Handler>();
         services.AddScoped<GetPatientDocumentsQuery.Handler>();
         services.AddScoped<DownloadPatientDocumentQuery.Handler>();
+        services.AddScoped<DeletePatientDocumentCommand.Handler>();
 
         return services;
     }

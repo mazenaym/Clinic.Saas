@@ -149,6 +149,24 @@ export class ApiService {
     return this.blob(`/patient-documents/${documentId}/download`, { patientId });
   }
 
+  deletePatientDocument(patientId: string, documentId: string) {
+    return this.http.delete<ApiResponse<boolean>>(`${this.baseUrl}/patient-documents/${documentId}`, { params: this.params({ patientId }) }).pipe(map((r) => r.data));
+  }
+
+  uploadAvatar(file: File) {
+    const form = new FormData(); form.append('file', file);
+    return this.http.post<ApiResponse<{ url: string; length: number }>>(`${this.baseUrl}/media/me/avatar`, form).pipe(map((r) => r.data));
+  }
+
+  avatar() { return this.blob('/media/me/avatar'); }
+
+  uploadClinicLogo(file: File) {
+    const form = new FormData(); form.append('file', file);
+    return this.http.post<ApiResponse<{ url: string; length: number }>>(`${this.baseUrl}/media/tenant/logo`, form).pipe(map((r) => r.data));
+  }
+
+  clinicLogo() { return this.blob('/media/tenant/logo'); }
+
   private uploadPatientDocumentResult(patientId: string, file: File, metadata: PatientDocumentUploadMetadata = {}) {
     const form = new FormData();
     form.append('file', file);
@@ -304,6 +322,8 @@ export class ApiService {
   getInvoiceById(id: string) {
     return this.get<Invoice>(`/invoices/${id}`);
   }
+
+  invoicePdf(id: string) { return this.blob(`/invoices/${id}/pdf`); }
 
   addInvoicePayment(invoiceId: string, payload: AddInvoicePaymentPayload) {
     return this.post<Invoice>(`/invoices/${invoiceId}/payments`, payload);

@@ -18,6 +18,7 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<BaseResponseProblemDetailsFilter>();
 });
+builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
 builder.Services.AddClinicProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddRateLimiter(options => options.AddPolicy("bootstrap", context =>
@@ -105,6 +106,8 @@ var app = builder.Build();
 
 if (app.Environment.IsEnvironment("Testing")) app.UseDeveloperExceptionPage();
 else app.UseClinicProblemDetails();
+
+app.UseResponseCompression();
 
 app.UseSwagger();
 app.UseSwaggerUI();

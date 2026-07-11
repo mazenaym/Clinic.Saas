@@ -36,10 +36,12 @@ public class GetPrescriptionByIdQuery
                 };
             }
 
+            var dto = _mapper.Map<PrescriptionDto>(prescription);
+            dto.PdfUrl = $"/api/prescriptions/{prescription.Id}/pdf";
             return new BaseResponse<PrescriptionDto>
             {
                 Success = true,
-                Data = _mapper.Map<PrescriptionDto>(prescription),
+                Data = dto,
                 StatusCode = 200
             };
         }

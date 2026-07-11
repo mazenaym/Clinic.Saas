@@ -257,6 +257,7 @@ export interface PatientDocument {
   documentType: number;
   description?: string;
   uploadedBy?: string;
+  uploadedByName?: string;
   uploadedAt: string;
   rowVersion?: string;
 }

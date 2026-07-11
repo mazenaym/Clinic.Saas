@@ -6,17 +6,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
+using Clinic.Saas.Service.Security;
 
 namespace Clinic.Saas.api.Controllers
 {
 [Route("api/patient-documents")]
     [ApiController]
-    [Authorize(Roles = "Admin,Doctor,Reception")]
+    [Authorize(Roles = "Admin,Doctor,Reception", Policy = Permissions.PatientsView)]
     public class PatientDocumentsController : ControllerBase
     {
         private readonly UploadPatientDocumentCommand.Handler _uploadDocument;
         private readonly GetPatientDocumentsQuery.Handler _getDocuments;
         private readonly DownloadPatientDocumentQuery.Handler _downloadDocument;
+        private readonly DeletePatientDocumentCommand.Handler _deleteDocument;
         private readonly ICurrentUserService _currentUser;
         private readonly IAuditService _auditService;
 
@@ -24,18 +26,21 @@ namespace Clinic.Saas.api.Controllers
             UploadPatientDocumentCommand.Handler uploadDocument,
             GetPatientDocumentsQuery.Handler getDocuments,
             DownloadPatientDocumentQuery.Handler downloadDocument,
+            DeletePatientDocumentCommand.Handler deleteDocument,
             ICurrentUserService currentUser,
             IAuditService auditService)
         {
             _uploadDocument = uploadDocument;
             _getDocuments = getDocuments;
             _downloadDocument = downloadDocument;
+            _deleteDocument = deleteDocument;
             _currentUser = currentUser;
             _auditService = auditService;
         }
 
         [HttpPost]
-        [RequestSizeLimit(10 * 1024 * 1024)]
+        [Authorize(Policy = Permissions.PatientsEdit)]
+        [RequestSizeLimit(11 * 1024 * 1024)]
         public async Task<IActionResult> Upload(
             Guid patientId,
             IFormFile file,
@@ -122,7 +127,19 @@ namespace Clinic.Saas.api.Controllers
             return File(
                 result.Data.FileStream,
                 result.Data.FileType,
-                result.Data.FileName);
+                result.Data.FileName,
+                enableRangeProcessing: true);
+        }
+
+        [Authorize(Policy = Permissions.PatientsEdit)]
+        [HttpDelete("{documentId:guid}")]
+        public async Task<IActionResult> Delete(Guid patientId, Guid documentId)
+        {
+            if (!_currentUser.TenantId.HasValue) return Unauthorized();
+            var result = await _deleteDocument.Handle(new(_currentUser.TenantId.Value, patientId, documentId));
+            if (result.Success)
+                await this.AuditAsync(_auditService, _currentUser, "Delete", "PatientDocument", documentId, new { documentId, patientId });
+            return StatusCode(result.StatusCode, result);
         }
 
         [HttpGet("{documentId:guid}/view")]
@@ -152,7 +169,7 @@ namespace Clinic.Saas.api.Controllers
                 FileNameStar = result.Data.FileName
             }.ToString();
 
-            return File(result.Data.FileStream, result.Data.FileType);
+            return File(result.Data.FileStream, result.Data.FileType, enableRangeProcessing: true);
         }
     }
 }

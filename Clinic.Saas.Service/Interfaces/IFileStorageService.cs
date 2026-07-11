@@ -17,5 +17,22 @@ namespace Clinic.Saas.Service.Interfaces
         Task<Stream?> OpenReadAsync(
             string storageKey,
             CancellationToken cancellationToken = default);
+
+        Task<StoredImage> SaveImageAsync(
+            Guid tenantId,
+            string category,
+            Guid ownerId,
+            string originalFileName,
+            Stream fileStream,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        Task<bool> DeleteAsync(string storageKey, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        Task<long?> GetLengthAsync(string storageKey, CancellationToken cancellationToken = default) =>
+            Task.FromResult<long?>(null);
     }
+
+    public sealed record StoredImage(string StorageKey, string ContentType, long Length);
 }

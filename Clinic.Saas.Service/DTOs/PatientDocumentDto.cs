@@ -14,6 +14,7 @@ namespace Clinic.Saas.Service.DTOs
         public short DocumentType { get; set; }
         public string? Description { get; set; }
         public Guid? UploadedBy { get; set; }
+        public string? UploadedByName { get; set; }
         public DateTime UploadedAt { get; set; }
         public string? RowVersion { get; set; }
     }

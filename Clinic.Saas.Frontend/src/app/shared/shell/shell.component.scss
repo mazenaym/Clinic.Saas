@@ -209,6 +209,7 @@ nav a.active {
   color: var(--cf-color-primary);
   font-weight: var(--cf-weight-bold);
 }
+.avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; border-radius: inherit; }
 
 .toast {
   position: fixed;

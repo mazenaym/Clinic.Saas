@@ -10,5 +10,6 @@ namespace Clinic.Saas.Domain.Interfaces
         Task AddAsync(PatientDocument document);
         Task<IEnumerable<PatientDocument>> GetByPatientAsync(Guid tenantId, Guid patientId);
         Task<PatientDocument?> GetByIdAsync(Guid tenantId, Guid patientId, Guid documentId);
+        Task<bool> DeleteAsync(Guid tenantId, Guid patientId, Guid documentId) => Task.FromResult(false);
     }
 }

@@ -19,6 +19,7 @@ namespace Clinic.Saas.Domain.Entities
         public DocumentType DocumentType { get; set; }
         public string? Description { get; set; }
         public Guid? UploadedBy { get; set; }
+        public string? UploadedByName { get; set; }
         public DateTime UploadedAt { get; set; }
         public byte[] RowVersion { get; set; } = [];
     }

@@ -40,6 +40,7 @@ export class PatientChartComponent implements OnInit {
   readonly documentsError = signal('');
   readonly documentsLoading = signal(false);
   readonly uploading = signal(false);
+  readonly documentPreviews = signal<Record<string, string>>({});
   documentUploadForm = { documentType: 1, description: '' };
   readonly documentTypes = [
     { value: 1, label: 'نتيجة معمل' },
@@ -172,7 +173,16 @@ export class PatientChartComponent implements OnInit {
   }
 
   uploadedBy(document: PatientDocument) {
-    return document.uploadedBy || 'النظام';
+    return document.uploadedByName || 'النظام';
+  }
+
+  async deleteDocument(document: PatientDocument) {
+    const patientId = this.patient()?.id;
+    if (!patientId || !window.confirm(`حذف ${document.fileName}؟`)) return;
+    await this.ui.run(async () => {
+      await firstValueFrom(this.api.deletePatientDocument(patientId, document.id));
+      await this.loadDocuments(patientId);
+    }, 'تم حذف المستند');
   }
 
   private async loadClinical(patientId: string) {
@@ -203,7 +213,15 @@ export class PatientChartComponent implements OnInit {
     this.documentsLoading.set(true);
     this.documentsError.set('');
     try {
-      this.documents.set(await firstValueFrom(this.api.listPatientDocuments(patientId)));
+      const documents = await firstValueFrom(this.api.listPatientDocuments(patientId));
+      Object.values(this.documentPreviews()).forEach((url) => URL.revokeObjectURL(url));
+      this.documents.set(documents);
+      const images = documents.filter((doc) => doc.fileType?.startsWith('image/'));
+      const entries = await Promise.all(images.map(async (doc) => {
+        const blob = await firstValueFrom(this.api.viewPatientDocument(patientId, doc.id)).catch(() => null);
+        return blob ? [doc.id, URL.createObjectURL(blob)] as const : null;
+      }));
+      this.documentPreviews.set(Object.fromEntries(entries.filter((x): x is readonly [string, string] => x !== null)));
     } catch {
       this.documentsError.set('تعذر تحميل المستندات.');
     } finally {

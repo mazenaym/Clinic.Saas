@@ -56,6 +56,8 @@ export class OperationsComponent implements OnInit {
 
   passwordForm = { currentPassword: '', newPassword: '' };
   preferenceForm: Record<string, unknown> = { language: 'ar', theme: 'light', avatarUrl: '' };
+  readonly avatarPreview = signal<string | null>(null);
+  readonly logoPreview = signal<string | null>(null);
 
   async ngOnInit() {
     await this.load();
@@ -75,6 +77,8 @@ export class OperationsComponent implements OnInit {
         this.preferences.set(x);
         this.preferenceForm = { ...this.preferenceForm, ...x };
       }).catch(() => undefined),
+      firstValueFrom(this.api.avatar()).then((blob) => this.avatarPreview.set(URL.createObjectURL(blob))).catch(() => undefined),
+      firstValueFrom(this.api.clinicLogo()).then((blob) => this.logoPreview.set(URL.createObjectURL(blob))).catch(() => undefined),
     ]);
   }
 
@@ -96,5 +100,27 @@ export class OperationsComponent implements OnInit {
       const prefs = await firstValueFrom(this.api.savePreferences(this.preferenceForm));
       this.preferences.set(prefs);
     }, 'تم حفظ تفضيلات الحساب');
+  }
+
+  async uploadAvatar(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0]; if (!file) return;
+    await this.ui.run(async () => {
+      await firstValueFrom(this.api.uploadAvatar(file));
+      if (this.avatarPreview()) URL.revokeObjectURL(this.avatarPreview()!);
+      this.avatarPreview.set(URL.createObjectURL(await firstValueFrom(this.api.avatar())));
+      input.value = '';
+    }, 'تم رفع وضغط صورة الحساب');
+  }
+
+  async uploadLogo(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0]; if (!file) return;
+    await this.ui.run(async () => {
+      await firstValueFrom(this.api.uploadClinicLogo(file));
+      if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
+      this.logoPreview.set(URL.createObjectURL(await firstValueFrom(this.api.clinicLogo())));
+      input.value = '';
+    }, 'تم رفع وضغط شعار العيادة');
   }
 }

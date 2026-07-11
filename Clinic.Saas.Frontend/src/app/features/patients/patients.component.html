@@ -85,7 +85,7 @@
       }
 
       @if (selected()) {
-        <label class="span-all">رفع مستند للمريض<input type="file" (change)="uploadDocument($event)" /></label>
+        <label class="span-all">رفع مستند للمريض<input type="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.rtf" (change)="uploadDocument($event)" /></label>
       }
 
       <div class="actions span-all">

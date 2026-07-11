@@ -140,6 +140,16 @@ export class InvoicesComponent implements OnInit {
     }, 'تم تسجيل الدفعة');
   }
 
+  async downloadPdf() {
+    const invoice = this.invoice(); if (!invoice) return;
+    await this.ui.run(async () => {
+      const blob = await firstValueFrom(this.api.invoicePdf(invoice.id));
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a'); anchor.href = url; anchor.download = `invoice-${invoice.invoiceNumber}.pdf`;
+      anchor.click(); URL.revokeObjectURL(url);
+    }, 'تم تنزيل الفاتورة PDF');
+  }
+
   invoiceStatus(invoice: Invoice) {
     if (invoice.status) return invoice.status;
     if (invoice.remainingAmount <= 0) return 'Paid';

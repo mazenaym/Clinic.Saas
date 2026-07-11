@@ -73,6 +73,7 @@
           <p>{{ invoice()!.patientName }}</p>
           <span class="badge">{{ invoiceStatus(invoice()!) }}</span>
         </article>
+        <button type="button" class="secondary" (click)="downloadPdf()">تنزيل / طباعة PDF</button>
         <form class="form-grid" (ngSubmit)="addPayment()">
           <label>المبلغ<input name="paymentAmount" type="number" min="0" [(ngModel)]="paymentForm.amount" /></label>
           <label>طريقة الدفع<select name="paymentMethod" [(ngModel)]="paymentForm.paymentMethod">@for (m of methods; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }</select></label>

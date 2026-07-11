@@ -64,11 +64,13 @@ public class CreatePrescriptionCommand
             };
 
             var created = await _repository.AddAsync(entity);
+            var dto = _mapper.Map<PrescriptionDto>(created);
+            dto.PdfUrl = $"/api/prescriptions/{created.Id}/pdf";
             return new BaseResponse<PrescriptionDto>
             {
                 Success = true,
                 Message = "تم إنشاء الروشتة بنجاح",
-                Data = _mapper.Map<PrescriptionDto>(created),
+                Data = dto,
                 StatusCode = 201
             };
         }
