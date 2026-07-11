@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ClinicFlow - ملف المريض</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            background-color: #faf8ff;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(225, 226, 238, 0.5);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#191b24",
+                        "inverse-primary": "#b3c5ff",
+                        "surface": "#faf8ff",
+                        "primary-container": "#0066ff",
+                        "secondary-container": "#c5dcfd",
+                        "background": "#faf8ff",
+                        "tertiary-fixed": "#ffdbd0",
+                        "primary-fixed-dim": "#b3c5ff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#dae1ff",
+                        "on-background": "#191b24",
+                        "surface-container-high": "#e6e7f4",
+                        "tertiary": "#a33200",
+                        "on-tertiary-fixed": "#390c00",
+                        "surface-bright": "#faf8ff",
+                        "on-primary-container": "#f8f7ff",
+                        "secondary-fixed-dim": "#b1c8e9",
+                        "on-tertiary-container": "#fff6f4",
+                        "surface-variant": "#e1e2ee",
+                        "on-secondary-fixed": "#021c36",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#324863",
+                        "inverse-on-surface": "#eff0fd",
+                        "primary": "#0050cb",
+                        "surface-dim": "#d8d9e6",
+                        "secondary-fixed": "#d2e4ff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#4a607c",
+                        "tertiary-fixed-dim": "#ffb59d",
+                        "tertiary-container": "#cc4204",
+                        "outline-variant": "#c2c6d8",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e1e2ee",
+                        "on-surface-variant": "#424656",
+                        "on-tertiary-fixed-variant": "#832600",
+                        "on-primary-fixed-variant": "#003fa4",
+                        "on-primary-fixed": "#001849",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#ecedfa",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "outline": "#727687",
+                        "surface-container-low": "#f2f3ff",
+                        "inverse-surface": "#2e303a",
+                        "surface-tint": "#0054d6",
+                        "on-secondary-container": "#4b617d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "xl": "32px",
+                        "lg": "24px",
+                        "unit": "8px",
+                        "container-margin": "24px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "body-base": ["IBM Plex Sans Arabic"],
+                        "display-lg": ["IBM Plex Sans Arabic"],
+                        "headline-md": ["IBM Plex Sans Arabic"],
+                        "label-bold": ["IBM Plex Sans Arabic"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Sidebar Wrapper -->
+<aside class="fixed top-0 right-0 h-full w-[280px] bg-on-surface dark:bg-inverse-surface shadow-md flex flex-col border-l border-outline-variant rtl z-50">
+<!-- Logo Area -->
+<div class="p-lg flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="clinical_notes">clinical_notes</span>
+</div>
+<div>
+<h1 class="text-headline-md font-bold text-white leading-tight">ClinicFlow</h1>
+<p class="text-primary-fixed-dim text-[12px]">خطة بريميم</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 mt-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>لوحة القيادة</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-lg mx-2" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span>المرضى</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="event">event</span>
+<span>المواعيد</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="medical_services">medical_services</span>
+<span>الزيارات</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>التقارير</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>الإعدادات</span>
+</a>
+</nav>
+<!-- Footer Actions -->
+<div class="p-4 border-t border-outline-variant/20">
+<button class="w-full py-3 bg-primary-fixed text-on-primary-fixed font-label-bold rounded-lg mb-4 hover:opacity-90 transition-opacity">
+                ترقية الخطة
+            </button>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-2 text-surface-variant hover:text-white" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span>المساعدة</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-error hover:text-error-container" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>تسجيل الخروج</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="mr-[280px] min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-40 flex justify-between items-center w-full px-lg h-16 border-b border-outline-variant bg-surface/80 backdrop-blur-md rtl">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pr-10 pl-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-body-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none" placeholder="البحث عن مريض أو سجل..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-left rtl:text-right hidden sm:block">
+<p class="font-label-bold text-on-surface leading-none">د. سارة محمود</p>
+<p class="text-[12px] text-on-surface-variant">استشاري باطنة</p>
+</div>
+<img class="w-10 h-10 rounded-full border-2 border-primary-container object-cover" data-alt="A professional headshot of a female doctor in a white lab coat, clean studio lighting, minimalist medical clinic background, serene and authoritative atmosphere, soft focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDL-dsUeB4Pf62VTdGtrmMQT7OUyZOYgyKjS4odUyTjW25HMQEwtLFyqJdZ6kF8W1EkhQm6D0chwq7CQd1EXIDuIqWLH1IWxiQ1i4R0uK4yv-TyJPekd252Hyvt4LhesB9pvB3YB9jTSR7_YhEJovZU6MD1Tlw5na73cVF55Sp7pZs997GTy5TS43aDYaOy6XkwySe9W-UeaPGzyDE_Ii9zYfc38yHiKHbZdG7vAVWTVeSvn_Pyy0WKVk1Xqzi406Mk_OX6UMjYHG3"/>
+</div>
+</div>
+</header>
+<!-- Page Layout -->
+<div class="p-lg max-w-[1440px] mx-auto">
+<!-- Patient Header Card -->
+<div class="glass-card rounded-xl p-lg mb-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<div class="relative">
+<img class="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-sm" data-alt="A portrait of a 34-year-old Middle Eastern man named Ahmed, neutral expression, soft natural lighting, high-quality digital photography, professional clinical record style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdEkd0W_qcaPFZYm7OB-j3mE981zpkPwUxvp7oPWVVQAW7b2zkUc7Vo8nIntUgGO5fWqYNvH7ZvudKt4uw4XDRpVtn7DFiQjE-qt-LB4oyBObH_nPEdUrIU5nDtKLkCbOklDPXHckis9EBJXFIjI64rnVk3e_RDMYS6zV857yJcmfybhYbO53LF0425HwfHYKdzsm55Fp_kQNKQzZlna_QnHJ8sGTt8nLvPQOJC26L2ho_deWe2I5X0O56to506MrFEFU9RQjdk_Vu"/>
+<div class="absolute -bottom-2 -left-2 bg-success text-white p-1 rounded-full border-2 border-white">
+<span class="material-symbols-outlined text-[16px] block" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h2 class="font-display-lg text-display-lg text-on-surface">أحمد علي السيد</h2>
+<span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-utility-mono rounded uppercase">PT-8842</span>
+</div>
+<div class="flex flex-wrap gap-y-2 gap-x-6 text-on-surface-variant font-body-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]" data-icon="cake">cake</span> 34 عاماً</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]" data-icon="call">call</span> 01012345678</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]" data-icon="bloodtype">bloodtype</span> A+</span>
+</div>
+<div class="mt-3 flex gap-2">
+<span class="bg-error-container text-on-error-container px-3 py-1 rounded-full text-label-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="warning">warning</span>
+                                حساسية من البنسلين
+                            </span>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-label-bold">سكري - النوع الثاني</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="bg-white border border-outline text-on-surface-variant font-label-bold px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface-container transition-all active:scale-95">
+<span class="material-symbols-outlined text-[20px]" data-icon="note_add">note_add</span>
+                        إضافة ملاحظة
+                    </button>
+<button class="bg-secondary text-white font-label-bold px-4 py-2.5 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined text-[20px]" data-icon="medical_information">medical_information</span>
+                        بدء زيارة
+                    </button>
+<button class="bg-primary-container text-white font-label-bold px-4 py-2.5 rounded-lg flex items-center gap-2 hover:opacity-90 shadow-lg shadow-primary-container/20 transition-all active:scale-95">
+<span class="material-symbols-outlined text-[20px]" data-icon="add_circle">add_circle</span>
+                        حجز موعد
+                    </button>
+</div>
+</div>
+<!-- Profile Tabs -->
+<div class="border-b border-outline-variant mb-lg overflow-x-auto no-scrollbar">
+<nav class="flex gap-8 min-w-max">
+<button class="text-primary font-bold border-b-2 border-primary pb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="overview" style="font-variation-settings: 'FILL' 1;">overview</span>
+                        نظرة عامة
+                    </button>
+<button class="text-on-surface-variant hover:text-on-surface pb-4 flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="history">history</span>
+                        السجل الطبي
+                    </button>
+<button class="text-on-surface-variant hover:text-on-surface pb-4 flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="medical_services">medical_services</span>
+                        الزيارات
+                    </button>
+<button class="text-on-surface-variant hover:text-on-surface pb-4 flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="prescriptions">prescriptions</span>
+                        الروشتات
+                    </button>
+<button class="text-on-surface-variant hover:text-on-surface pb-4 flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="receipt_long">receipt_long</span>
+                        الفواتير
+                    </button>
+<button class="text-on-surface-variant hover:text-on-surface pb-4 flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="folder_open">folder_open</span>
+                        المستندات
+                    </button>
+</nav>
+</div>
+<!-- Bento Content Grid -->
+<div class="bento-grid">
+<!-- Vital Signs (High Density) -->
+<div class="col-span-12 lg:col-span-8 space-y-gutter">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="glass-card p-lg rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-error-container/20 text-error flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-body-sm">نبض القلب</p>
+<p class="text-headline-md font-bold text-on-surface">78 <span class="text-sm font-normal">bpm</span></p>
+</div>
+</div>
+<div class="glass-card p-lg rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="thermostat">thermostat</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-body-sm">الحرارة</p>
+<p class="text-headline-md font-bold text-on-surface">36.8 <span class="text-sm font-normal">°C</span></p>
+</div>
+</div>
+<div class="glass-card p-lg rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container/20 text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="monitor_weight">monitor_weight</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-body-sm">الوزن</p>
+<p class="text-headline-md font-bold text-on-surface">82 <span class="text-sm font-normal">كجم</span></p>
+</div>
+</div>
+</div>
+<!-- Medical Timeline Snippet -->
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="px-lg py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h3 class="font-label-bold text-on-surface">السجل الطبي الأخير</h3>
+<button class="text-primary text-body-sm font-label-bold hover:underline">عرض الكل</button>
+</div>
+<div class="p-lg space-y-6">
+<div class="relative flex gap-6">
+<div class="absolute right-3 top-8 bottom-0 w-[1px] bg-outline-variant"></div>
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[14px]" data-icon="event" style="font-variation-settings: 'FILL' 1;">event</span>
+</div>
+<div class="flex-1 pb-4">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-label-bold text-on-surface">مراجعة دورية - سكري</h4>
+<span class="text-body-sm text-on-surface-variant">12 أكتوبر 2023</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-2">تم فحص مستويات الجلوكوز التراكمي (HbA1c). النتائج مستقرة.</p>
+<div class="flex gap-2">
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-[12px]">د. مريم كمال</span>
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-[12px]">تقرير مخبري</span>
+</div>
+</div>
+</div>
+<div class="relative flex gap-6">
+<div class="w-6 h-6 rounded-full bg-secondary text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[14px]" data-icon="medication" style="font-variation-settings: 'FILL' 1;">medication</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-label-bold text-on-surface">تعديل جرعة ميتفورمين</h4>
+<span class="text-body-sm text-on-surface-variant">05 سبتمبر 2023</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">زيادة الجرعة المسائية لتنظيم معدلات الصيام.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar (Compact Info) -->
+<div class="col-span-12 lg:col-span-4 space-y-gutter">
+<!-- Medications Card -->
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="px-lg py-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h3 class="font-label-bold text-on-surface">الأدوية النشطة</h3>
+<span class="bg-primary/10 text-primary text-[12px] px-2 py-0.5 rounded-full font-bold">3 أدوية</span>
+</div>
+<div class="p-lg space-y-4">
+<div class="flex items-center gap-4 p-3 rounded-lg border border-outline-variant/30 hover:bg-surface-container transition-colors cursor-pointer">
+<div class="w-10 h-10 rounded bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="pill">pill</span>
+</div>
+<div>
+<p class="font-label-bold text-on-surface">Glucophage 500mg</p>
+<p class="text-[12px] text-on-surface-variant">مرتين يومياً - بعد الأكل</p>
+</div>
+</div>
+<div class="flex items-center gap-4 p-3 rounded-lg border border-outline-variant/30 hover:bg-surface-container transition-colors cursor-pointer">
+<div class="w-10 h-10 rounded bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="pill">pill</span>
+</div>
+<div>
+<p class="font-label-bold text-on-surface">Lipitor 20mg</p>
+<p class="text-[12px] text-on-surface-variant">مرة واحدة يومياً - مساءً</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Billing Summary -->
+<div class="glass-card rounded-xl p-lg bg-gradient-to-br from-white to-surface-container">
+<h3 class="font-label-bold text-on-surface mb-4">الملخص المالي</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant text-body-sm">إجمالي المستحقات</span>
+<span class="font-bold text-error">1,250 ج.م</span>
+</div>
+<div class="h-[1px] bg-outline-variant"></div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant text-body-sm">آخر دفعة</span>
+<span class="text-body-sm font-bold text-on-surface">500 ج.م (12-10)</span>
+</div>
+<button class="w-full mt-2 py-2 bg-on-surface text-white rounded-lg text-label-bold hover:bg-on-surface-variant transition-colors">
+                                إصدار فاتورة جديدة
+                            </button>
+</div>
+</div>
+<!-- Lab Results Banner -->
+<div class="relative rounded-xl overflow-hidden h-32 group cursor-pointer shadow-sm">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="A clean, close-up abstract view of laboratory glass test tubes in a rack, with soft turquoise and white lighting, medical laboratory aesthetic, highly focused depth of field." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDO88LGx4d2krXJo8rlo0c1yX-19AhJvor8faw4XFh0r4eMNntYYihfFDdy3kTjUmV0_SpxcGiiu9e0wMs_mDvfexvIGpMwEfHAIUoS2P02kAmVRHEjdF5Sh9IMPU9rt6RW12e0O15WnrShdn6l7envB3lhMOflsUpLEcGm8pJbKWQSe1xo7nJcAE96rZFup5GQicTxL4vLKlucnzbLSRLy20xblfoeJpUZ5k3UbHo4_LfDvB92SnJEBZ00J9kNGN1pHLa9hS2_oXur')"></div>
+<div class="absolute inset-0 bg-primary/60 backdrop-blur-[2px] flex items-center justify-between px-6">
+<div class="text-white">
+<p class="text-[12px] font-medium opacity-90 uppercase tracking-wider">النتائج المعملية</p>
+<h4 class="text-headline-md font-bold">آخر التحاليل</h4>
+</div>
+<span class="material-symbols-outlined text-white text-3xl" data-icon="arrow_circle_left">arrow_circle_left</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Documents Section (Quick List) -->
+<div class="mt-lg">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-display-lg text-[20px] text-on-surface">المستندات المرفوعة</h3>
+<button class="flex items-center gap-2 text-primary font-label-bold">
+<span class="material-symbols-outlined" data-icon="upload">upload</span>
+                        رفع مستند جديد
+                    </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<div class="glass-card p-4 rounded-xl flex items-center gap-4 hover:border-primary transition-all group">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center text-on-surface-variant group-hover:bg-primary/10 group-hover:text-primary">
+<span class="material-symbols-outlined" data-icon="picture_as_pdf">picture_as_pdf</span>
+</div>
+<div class="overflow-hidden">
+<p class="font-label-bold text-on-surface truncate">صورة أشعة X-Ray.pdf</p>
+<p class="text-[12px] text-on-surface-variant">أكتوبر 2023 • 2.4 MB</p>
+</div>
+</div>
+<div class="glass-card p-4 rounded-xl flex items-center gap-4 hover:border-primary transition-all group">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center text-on-surface-variant group-hover:bg-primary/10 group-hover:text-primary">
+<span class="material-symbols-outlined" data-icon="image">image</span>
+</div>
+<div class="overflow-hidden">
+<p class="font-label-bold text-on-surface truncate">تحليل CBC.jpg</p>
+<p class="text-[12px] text-on-surface-variant">سبتمبر 2023 • 1.1 MB</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button class="fixed bottom-8 left-8 w-14 h-14 bg-primary-container text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform z-50">
+<span class="material-symbols-outlined text-[28px]" data-icon="add">add</span>
+</button>
+<script>
+        // Micro-interaction for sidebar tabs
+        const navLinks = document.querySelectorAll('nav a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                navLinks.forEach(l => {
+                    l.classList.remove('bg-primary-container', 'text-on-primary-container');
+                    l.classList.add('text-surface-variant');
+                });
+                link.classList.remove('text-surface-variant');
+                link.classList.add('bg-primary-container', 'text-on-primary-container');
+            });
+        });
+
+        // Tab selection animation
+        const profileTabs = document.querySelectorAll('nav button');
+        profileTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                profileTabs.forEach(t => {
+                    t.classList.remove('text-primary', 'font-bold', 'border-b-2', 'border-primary');
+                    t.classList.add('text-on-surface-variant');
+                    const icon = t.querySelector('.material-symbols-outlined');
+                    if(icon) icon.style.fontVariationSettings = "'FILL' 0";
+                });
+                tab.classList.add('text-primary', 'font-bold', 'border-b-2', 'border-primary');
+                tab.classList.remove('text-on-surface-variant');
+                const icon = tab.querySelector('.material-symbols-outlined');
+                if(icon) icon.style.fontVariationSettings = "'FILL' 1";
+            });
+        });
+    </script>
+</body></html>

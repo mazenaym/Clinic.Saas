@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { Role } from '../../core/models';
@@ -21,28 +21,30 @@ export class ShellComponent {
   readonly auth = inject(AuthService);
   readonly ui = inject(UiService);
   private readonly router = inject(Router);
+  readonly menuOpen = signal(false);
+  readonly todayLabel = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
   private readonly clinicNav: NavItem[] = [
-    { label: 'لوحة اليوم', icon: '⌂', path: '/dashboard' },
-    { label: 'المواعيد', icon: '◷', path: '/appointments', roles: ['Admin', 'Doctor', 'Reception'] },
-    { label: 'الحجز الأونلاين', icon: '↗', path: '/online-bookings', roles: ['Admin', 'Reception'] },
-    { label: 'المرضى', icon: '+', path: '/patients', roles: ['Admin', 'Doctor', 'Reception'] },
-    { label: 'الكشف', icon: '✎', path: '/visits', roles: ['Admin', 'Doctor'] },
-    { label: 'الروشتات', icon: 'Rx', path: '/prescriptions', roles: ['Admin', 'Doctor'] },
-    { label: 'الفواتير التشغيلية', icon: '$', path: '/billing', roles: ['Admin', 'Reception'] },
-    { label: 'التقارير', icon: '#', path: '/reports', roles: ['Admin', 'Reception'] },
-    { label: 'تشغيل العيادة', icon: '▦', path: '/operations', roles: ['Admin'] },
-    { label: 'المستخدمون', icon: '●', path: '/users', roles: ['Admin'] },
+    { label: 'لوحة القيادة', icon: '▦', path: '/dashboard' },
+    { label: 'المرضى', icon: '♙', path: '/patients', roles: ['Admin', 'Doctor', 'Reception'] },
+    { label: 'المواعيد', icon: '▣', path: '/appointments', roles: ['Admin', 'Doctor', 'Reception'] },
+    { label: 'الحجز الإلكتروني', icon: '↗', path: '/online-bookings', roles: ['Admin', 'Reception'] },
+    { label: 'الزيارات', icon: '✚', path: '/visits', roles: ['Admin', 'Doctor'] },
+    { label: 'الوصفات الطبية', icon: 'Rx', path: '/prescriptions', roles: ['Admin', 'Doctor'] },
+    { label: 'الفواتير', icon: '▤', path: '/billing', roles: ['Admin', 'Reception'] },
+    { label: 'التقارير', icon: '▥', path: '/reports', roles: ['Admin', 'Reception'] },
+    { label: 'الإعدادات', icon: '⚙', path: '/operations', roles: ['Admin'] },
+    { label: 'المستخدمون', icon: '♟', path: '/users', roles: ['Admin'] },
   ];
 
   private readonly platformNav: NavItem[] = [
-    { label: 'لوحة المنصة', icon: '◇', path: '/platform/dashboard' },
-    { label: 'العيادات', icon: '▦', path: '/platform/clinics' },
-    { label: 'الاشتراكات', icon: '$', path: '/platform/subscriptions' },
-    { label: 'الخطط', icon: '#', path: '/platform/plans' },
-    { label: 'تقارير المنصة', icon: '◷', path: '/platform/reports' },
-    { label: 'سجل العمليات', icon: '!', path: '/platform/audit-logs' },
-    { label: 'إعدادات المنصة', icon: '*', path: '/platform/settings' },
+    { label: 'لوحة المنصة', icon: '▦', path: '/platform/dashboard' },
+    { label: 'العيادات', icon: '✚', path: '/platform/clinics' },
+    { label: 'الاشتراكات', icon: '▤', path: '/platform/subscriptions' },
+    { label: 'الخطط', icon: '▥', path: '/platform/plans' },
+    { label: 'تقارير المنصة', icon: '▣', path: '/platform/reports' },
+    { label: 'سجل العمليات', icon: '◷', path: '/platform/audit-logs' },
+    { label: 'إعدادات المنصة', icon: '⚙', path: '/platform/settings' },
   ];
 
   readonly isSuperAdmin = computed(() => this.auth.user()?.role === 'SuperAdmin');
@@ -52,25 +54,28 @@ export class ShellComponent {
   });
   readonly sessionState = computed(() => {
     const expiresAt = this.auth.session()?.expiresAt;
-    if (!expiresAt) return 'غير معروف';
+    if (!expiresAt) return 'جلسة آمنة';
     const minutes = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 60_000));
-    return minutes <= 2 ? 'تتجدد الآن تلقائيا' : `تتجدد تلقائيا خلال ${minutes} دقيقة`;
+    return minutes <= 2 ? 'يتم تجديد الجلسة الآن' : `جلسة آمنة · ${minutes} د`;
   });
   readonly roleLabel = computed(() => this.roleInArabic(this.auth.user()?.role));
-  readonly workspaceLabel = computed(() => (this.isSuperAdmin() ? 'المنصة' : 'العيادة'));
-  readonly workspaceName = computed(() => (this.isSuperAdmin() ? 'ClinicFlow Platform' : this.auth.tenant()?.name || 'ClinicFlow'));
+  readonly workspaceName = computed(() => (this.isSuperAdmin() ? 'منصة ClinicFlow' : this.auth.tenant()?.name || 'ClinicFlow'));
 
-  logout() {
+  closeMenu() {
+    this.menuOpen.set(false);
+  }
+
+  async logout() {
     this.auth.clear();
-    this.router.navigateByUrl('/auth', { replaceUrl: true });
+    await this.router.navigateByUrl('/auth', { replaceUrl: true });
   }
 
   private roleInArabic(role?: Role) {
     const labels: Record<Role, string> = {
       SuperAdmin: 'مدير المنصة',
-      Admin: 'مدير العيادة',
+      Admin: 'مدير النظام',
       Doctor: 'طبيب',
-      Reception: 'استقبال',
+      Reception: 'موظف استقبال',
     };
     return role ? labels[role] : '';
   }

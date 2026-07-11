@@ -1,45 +1,58 @@
 @if (auth.isAuthenticated()) {
-  <aside class="sidebar" aria-label="التنقل الرئيسي">
+  <button class="menu-button" type="button" aria-label="فتح القائمة الرئيسية" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">☰</button>
+  @if (menuOpen()) {
+    <button class="sidebar-backdrop" type="button" aria-label="إغلاق القائمة" (click)="closeMenu()"></button>
+  }
+
+  <aside class="sidebar" [class.open]="menuOpen()" aria-label="التنقل الرئيسي">
     <div class="brand">
-      <span class="brand-mark">CF</span>
+      <span class="brand-mark" aria-hidden="true">✚</span>
       <div>
         <strong>ClinicFlow</strong>
-        <small>{{ isSuperAdmin() ? 'إدارة المنصة' : (auth.tenant()?.name || 'نظام العيادات') }}</small>
+        <small>{{ isSuperAdmin() ? 'إدارة المنصة' : 'خطة العيادة' }}</small>
       </div>
     </div>
 
     <nav>
       @for (item of visibleNav(); track item.path) {
-        <a [routerLink]="item.path" routerLinkActive="active">
-          <span class="nav-icon">{{ item.icon }}</span>
+        <a [routerLink]="item.path" routerLinkActive="active" (click)="closeMenu()">
+          <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
         </a>
       }
     </nav>
-    <small class="nav-hint">مرر القائمة لعرض باقي الأقسام</small>
+
+    <div class="sidebar-footer">
+      <a class="help-link" href="mailto:support@clinicflow.com"><span aria-hidden="true">?</span> المساعدة</a>
+      <button type="button" class="logout-button" (click)="logout()"><span aria-hidden="true">↪</span> تسجيل الخروج</button>
+    </div>
   </aside>
 
   <main class="workspace">
     <header class="topbar">
-      <div class="clinic-heading">
-        <span class="eyebrow">{{ workspaceLabel() }}</span>
-        <h1>{{ workspaceName() }}</h1>
+      <div class="workspace-heading">
+        <small>{{ todayLabel }}</small>
+        <strong>{{ workspaceName() }}</strong>
       </div>
 
-      <div class="user-pill">
-        <div>
-          <span>{{ auth.user()?.fullName }}</span>
-          <small>{{ roleLabel() }} · {{ sessionState() }}</small>
+      <div class="topbar-actions">
+        <a routerLink="/patients" class="quick-action" aria-label="إضافة مريض أو البحث في المرضى">إجراء سريع <span aria-hidden="true">＋</span></a>
+        <span class="notification" aria-label="الإشعارات">♢<i></i></span>
+        <div class="user-pill">
+          <span class="avatar" aria-hidden="true">{{ auth.user()?.fullName?.charAt(0) || 'C' }}</span>
+          <div>
+            <strong>{{ auth.user()?.fullName }}</strong>
+            <small>{{ roleLabel() }} · {{ sessionState() }}</small>
+          </div>
         </div>
-        <button type="button" class="secondary" (click)="logout()">تسجيل الخروج</button>
       </div>
     </header>
 
     @if (ui.message()) {
-      <p class="toast success">{{ ui.message() }}</p>
+      <p class="toast success" role="status">{{ ui.message() }}</p>
     }
     @if (ui.error()) {
-      <p class="toast error">{{ ui.error() }}</p>
+      <p class="toast error" role="alert">{{ ui.error() }}</p>
     }
 
     <router-outlet />

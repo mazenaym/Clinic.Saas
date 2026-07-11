@@ -20,6 +20,7 @@ export class AuthComponent {
   readonly ui = inject(UiService);
   readonly mode = signal<'login' | 'register'>('login');
   readonly helperMessage = signal('');
+  readonly showPassword = signal(false);
   readonly plans = enumValues.plans;
 
   login = { email: '', password: '', subdomain: '' };

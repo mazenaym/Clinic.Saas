@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ClinicFlow - لوحة القيادة</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#191b24",
+                    "inverse-primary": "#b3c5ff",
+                    "surface": "#faf8ff",
+                    "primary-container": "#0066ff",
+                    "secondary-container": "#c5dcfd",
+                    "background": "#faf8ff",
+                    "tertiary-fixed": "#ffdbd0",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#dae1ff",
+                    "on-background": "#191b24",
+                    "surface-container-high": "#e6e7f4",
+                    "tertiary": "#a33200",
+                    "on-tertiary-fixed": "#390c00",
+                    "surface-bright": "#faf8ff",
+                    "on-primary-container": "#f8f7ff",
+                    "secondary-fixed-dim": "#b1c8e9",
+                    "on-tertiary-container": "#fff6f4",
+                    "surface-variant": "#e1e2ee",
+                    "on-secondary-fixed": "#021c36",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#324863",
+                    "inverse-on-surface": "#eff0fd",
+                    "primary": "#0050cb",
+                    "surface-dim": "#d8d9e6",
+                    "secondary-fixed": "#d2e4ff",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "secondary": "#4a607c",
+                    "tertiary-fixed-dim": "#ffb59d",
+                    "tertiary-container": "#cc4204",
+                    "outline-variant": "#c2c6d8",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e1e2ee",
+                    "on-surface-variant": "#424656",
+                    "on-tertiary-fixed-variant": "#832600",
+                    "on-primary-fixed-variant": "#003fa4",
+                    "on-primary-fixed": "#001849",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#ecedfa",
+                    "on-error": "#ffffff",
+                    "error": "#ba1a1a",
+                    "outline": "#727687",
+                    "surface-container-low": "#f2f3ff",
+                    "inverse-surface": "#2e303a",
+                    "surface-tint": "#0054d6",
+                    "on-secondary-container": "#4b617d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "lg": "24px",
+                    "unit": "8px",
+                    "container-margin": "24px",
+                    "sm": "8px",
+                    "md": "16px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "body-base": ["IBM Plex Sans Arabic"],
+                    "display-lg": ["IBM Plex Sans Arabic"],
+                    "headline-md": ["IBM Plex Sans Arabic"],
+                    "label-bold": ["IBM Plex Sans Arabic"],
+                    "body-sm": ["IBM Plex Sans Arabic"],
+                    "utility-mono": ["IBM Plex Sans Arabic"]
+            },
+            "fontSize": {
+                    "body-base": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-bold": ["14px", {"lineHeight": "18px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "utility-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            background-color: #F9FAFB;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .sidebar-active {
+            background-color: #0066ff !important;
+            color: #f8f7ff !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e1e2ee;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface overflow-x-hidden">
+<!-- Shell: SideNavBar -->
+<aside class="fixed top-0 right-0 h-full w-[280px] bg-on-surface dark:bg-inverse-surface z-50 transition-all duration-300 ease-in-out border-l border-outline-variant flex flex-col rtl shadow-md">
+<!-- Logo Header -->
+<div class="px-6 py-8 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+</div>
+<div>
+<h1 class="text-headline-md font-bold text-white tracking-tight">ClinicFlow</h1>
+<p class="text-primary-fixed-dim text-utility-mono opacity-80">خطة بريميوم</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+<a class="sidebar-active flex items-center gap-3 px-4 py-3 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-base">لوحة القيادة</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white hover:bg-primary/20 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-body-base">المرضى</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white hover:bg-primary/20 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">event</span>
+<span class="font-body-base">المواعيد</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white hover:bg-primary/20 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span class="font-body-base">الزيارات</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white hover:bg-primary/20 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-base">التقارير</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white hover:bg-primary/20 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-base">الإعدادات</span>
+</a>
+</nav>
+<!-- Subscription Card -->
+<div class="px-6 py-6 border-t border-outline/20">
+<div class="bg-primary/10 rounded-xl p-4 border border-primary/20">
+<div class="flex items-center justify-between mb-2">
+<span class="text-white text-label-bold">الخطة البريميوم</span>
+<span class="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full">نشط</span>
+</div>
+<div class="w-full bg-outline/20 h-1 rounded-full mb-3 overflow-hidden">
+<div class="bg-primary h-full w-3/4"></div>
+</div>
+<p class="text-[11px] text-surface-variant mb-4">تم استخدام 750 من أصل 1000 مريض</p>
+<button class="w-full bg-primary-container text-white py-2 rounded-lg text-label-bold hover:bg-primary transition-colors">ترقية الخطة</button>
+</div>
+</div>
+<!-- Footer -->
+<div class="px-4 pb-6 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-surface-variant hover:text-white hover:bg-primary/20 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-base">المساعدة</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error/10 rounded-lg mx-2 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-base">تسجيل الخروج</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="mr-[280px] min-h-screen">
+<!-- Shell: TopNavBar -->
+<header class="sticky top-0 z-40 w-full h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-lg rtl">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pr-10 pl-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-body-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="بحث عن مريض أو موعد..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-1">
+<div class="px-3 py-1.5 bg-surface-container rounded-lg flex items-center gap-2 cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span class="text-label-bold text-on-surface-variant">اليوم، 24 مايو</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container text-on-surface-variant relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="text-left rtl">
+<p class="text-label-bold text-on-surface leading-tight">د. أحمد خالد</p>
+<p class="text-[11px] text-on-surface-variant">مدير النظام</p>
+</div>
+<img class="w-10 h-10 rounded-full border-2 border-primary/20 object-cover group-hover:border-primary transition-all" data-alt="A professional headshot of a Middle Eastern male doctor in his 40s, wearing a clean white lab coat and a stethoscope. He has a friendly, authoritative smile. The background is a blurred, high-end modern medical office with soft blue and white ambient lighting. The style is sharp, clean, and corporate, matching a premium medical SaaS aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJtRdXy6Epki7nN7wxTSHGwdV7-rFsW5BAHgO9Hqh2-1NYUhCNdrj7IEzsT3643IG0p_mJKKcks1-aIShWkK8fO-1ZjC77VBWmaF75ivV11IUhKyB9PdVFmxvp8u1UYgHOb8_Yjvw7qkvm32QwMOZ5yzf5Cl_BfOHCcxW8dAkhVTCJ9ovXR2VPoGRaSalskkDMw7oS7HmkPKB8SOwaESLU2qaXTgcwmZ2m4Ol-vazlEutKsk9W2E0oF4mHfRr4qCv9tQ6zArQSShvL"/>
+</div>
+<button class="bg-primary text-white px-5 py-2 rounded-lg text-label-bold flex items-center gap-2 hover:bg-primary-container transition-all active:scale-95 shadow-sm">
+<span class="material-symbols-outlined">add_circle</span>
+                    إجراء سريع
+                </button>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-lg space-y-lg">
+<!-- Page Header & Filter -->
+<div class="flex items-center justify-between">
+<div>
+<h2 class="text-display-lg text-on-surface">نظرة عامة على العيادة</h2>
+<p class="text-body-base text-on-surface-variant">مرحباً بك مجدداً، إليك ملخص نشاط اليوم</p>
+</div>
+<div class="flex bg-surface-container p-1 rounded-xl border border-outline-variant">
+<button class="px-4 py-2 rounded-lg text-label-bold bg-white shadow-sm text-primary">اليوم</button>
+<button class="px-4 py-2 rounded-lg text-label-bold text-on-surface-variant hover:text-on-surface transition-colors">هذا الأسبوع</button>
+<button class="px-4 py-2 rounded-lg text-label-bold text-on-surface-variant hover:text-on-surface transition-colors">هذا الشهر</button>
+</div>
+</div>
+<!-- KPI Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md">
+<!-- KPI 1 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-all group">
+<div class="flex items-center justify-between mb-4">
+<div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">group</span>
+</div>
+<span class="text-success text-label-bold flex items-center gap-1 text-emerald-600">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                            5%+
+                        </span>
+</div>
+<p class="text-body-sm text-on-surface-variant">إجمالي المرضى</p>
+<h3 class="text-display-lg mt-1">1,240</h3>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-all group">
+<div class="flex items-center justify-between mb-4">
+<div class="w-12 h-12 bg-secondary-container/30 rounded-xl flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">event_available</span>
+</div>
+<span class="text-error text-label-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+                            2%-
+                        </span>
+</div>
+<p class="text-body-sm text-on-surface-variant">مواعيد اليوم</p>
+<h3 class="text-display-lg mt-1">42</h3>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-all group">
+<div class="flex items-center justify-between mb-4">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-xl flex items-center justify-center text-tertiary group-hover:bg-tertiary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">hourglass_empty</span>
+</div>
+<span class="text-on-surface-variant text-[10px] px-2 py-0.5 bg-surface-container rounded-full">مباشر</span>
+</div>
+<p class="text-body-sm text-on-surface-variant">المرضى المنتظرون</p>
+<h3 class="text-display-lg mt-1">8</h3>
+</div>
+<!-- KPI 4 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-all group">
+<div class="flex items-center justify-between mb-4">
+<div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<span class="text-emerald-600 text-label-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                            12%+
+                        </span>
+</div>
+<p class="text-body-sm text-on-surface-variant">إيراد اليوم</p>
+<div class="flex items-baseline gap-1 mt-1">
+<h3 class="text-display-lg">5,400</h3>
+<span class="text-label-bold text-on-surface-variant">ر.س</span>
+</div>
+</div>
+</div>
+<!-- Main Layout Grid (Asymmetric Bento-ish) -->
+<div class="grid grid-cols-12 gap-lg">
+<!-- Revenue Trend (Area Chart Placeholder) -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h4 class="text-headline-md">اتجاه الإيرادات الأسبوعي</h4>
+<div class="flex gap-2">
+<span class="flex items-center gap-1 text-[12px] text-on-surface-variant">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+                                هذا الأسبوع
+                            </span>
+<span class="flex items-center gap-1 text-[12px] text-on-surface-variant">
+<span class="w-3 h-3 rounded-full bg-outline-variant"></span>
+                                الأسبوع الماضي
+                            </span>
+</div>
+</div>
+<div class="relative h-64 w-full bg-surface-container-low/50 rounded-lg overflow-hidden border border-outline-variant/30 flex items-end px-4 gap-4">
+<!-- Simplified Visual Chart Placeholder -->
+<div class="flex-1 bg-primary/10 h-[40%] rounded-t-sm relative group cursor-pointer hover:bg-primary/20 transition-all">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">1,200</div>
+</div>
+<div class="flex-1 bg-primary/20 h-[60%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary/40 h-[50%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary/10 h-[80%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary/60 h-[70%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary/80 h-[95%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary/30 h-[45%] rounded-t-sm"></div>
+</div>
+<div class="flex justify-between mt-4 px-2 text-utility-mono text-on-surface-variant">
+<span>السبت</span><span>الأحد</span><span>الإثنين</span><span>الثلاثاء</span><span>الأربعاء</span><span>الخميس</span><span>الجمعة</span>
+</div>
+</div>
+<!-- Recent Activity Feed -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm">
+<h4 class="text-headline-md mb-6">النشاط الأخير</h4>
+<div class="space-y-6">
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary-container text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">add</span>
+</div>
+<div class="w-[2px] flex-1 bg-outline-variant my-1"></div>
+</div>
+<div class="pb-2">
+<p class="text-label-bold">تم إضافة مريض جديد</p>
+<p class="text-body-sm text-on-surface-variant">سارة منصور • منذ دقيقتين</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+</div>
+<div class="w-[2px] flex-1 bg-outline-variant my-1"></div>
+</div>
+<div class="pb-2">
+<p class="text-label-bold">تم تأكيد الدفع</p>
+<p class="text-body-sm text-on-surface-variant">فاتورة رقم #12401 • منذ 15 دقيقة</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">schedule</span>
+</div>
+<div class="w-[2px] flex-1 bg-outline-variant my-1"></div>
+</div>
+<div class="pb-2">
+<p class="text-label-bold">تغيير موعد</p>
+<p class="text-body-sm text-on-surface-variant">محمد العتيبي • منذ ساعة</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">report</span>
+</div>
+</div>
+<div>
+<p class="text-label-bold">اكتمال التقرير الطبي</p>
+<p class="text-body-sm text-on-surface-variant">د. ريم سليمان • منذ ساعتين</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 text-primary text-label-bold hover:underline">عرض جميع الأنشطة</button>
+</div>
+<!-- Waiting Queue Table -->
+<div class="col-span-12 lg:col-span-9 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+<div class="px-lg py-md border-b border-outline-variant flex items-center justify-between">
+<h4 class="text-headline-md">قائمة انتظار الاستقبال</h4>
+<button class="text-primary text-label-bold flex items-center gap-1">
+                            تحديث القائمة
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-right">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant text-label-bold">
+<th class="px-lg py-4">اسم المريض</th>
+<th class="px-lg py-4">الطبيب المعالج</th>
+<th class="px-lg py-4">وقت الانتظار</th>
+<th class="px-lg py-4 text-center">الحالة</th>
+<th class="px-lg py-4"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-lg py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">نم</div>
+<span class="text-on-surface font-medium">ناصر محمد</span>
+</div>
+</td>
+<td class="px-lg py-4 text-on-surface-variant">د. أحمد خالد</td>
+<td class="px-lg py-4 text-on-surface-variant">12 دقيقة</td>
+<td class="px-lg py-4 text-center">
+<span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[12px] font-medium">في الانتظار</span>
+</td>
+<td class="px-lg py-4 text-left">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-lg py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container/30 text-secondary flex items-center justify-center text-[10px] font-bold">فخ</div>
+<span class="text-on-surface font-medium">فهد خلف</span>
+</div>
+</td>
+<td class="px-lg py-4 text-on-surface-variant">د. ريم سليمان</td>
+<td class="px-lg py-4 text-on-surface-variant">25 دقيقة</td>
+<td class="px-lg py-4 text-center">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[12px] font-medium">مع الطبيب</span>
+</td>
+<td class="px-lg py-4 text-left">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-lg py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold"> ل س</div>
+<span class="text-on-surface font-medium">ليلى سالم</span>
+</div>
+</td>
+<td class="px-lg py-4 text-on-surface-variant">د. أحمد خالد</td>
+<td class="px-lg py-4 text-on-surface-variant">5 دقائق</td>
+<td class="px-lg py-4 text-center">
+<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[12px] font-medium">تم الفحص</span>
+</td>
+<td class="px-lg py-4 text-left">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-lg py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed text-tertiary flex items-center justify-center text-[10px] font-bold"> س م</div>
+<span class="text-on-surface font-medium">سلمان مرزوق</span>
+</div>
+</td>
+<td class="px-lg py-4 text-on-surface-variant">د. خالد عيسى</td>
+<td class="px-lg py-4 text-on-surface-variant">40 دقيقة</td>
+<td class="px-lg py-4 text-center">
+<span class="bg-error/10 text-error px-3 py-1 rounded-full text-[12px] font-medium">متأخر</span>
+</td>
+<td class="px-lg py-4 text-left">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Appointments Timeline -->
+<div class="col-span-12 lg:col-span-3 bg-surface-container-lowest p-lg rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h4 class="text-headline-md">جدول اليوم</h4>
+<span class="text-utility-mono text-primary font-bold">8 مواعيد متبقية</span>
+</div>
+<div class="space-y-6 relative before:content-[''] before:absolute before:right-3 before:top-2 before:bottom-2 before:w-[1px] before:bg-outline-variant">
+<div class="relative pr-8">
+<div class="absolute right-[-4px] top-1.5 w-2 h-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<p class="text-utility-mono text-primary font-bold">10:30 ص</p>
+<div class="bg-surface-container-low p-3 rounded-lg mt-1 border border-outline-variant/30">
+<p class="text-label-bold">استشارة عامة</p>
+<p class="text-[12px] text-on-surface-variant">هيا الشمري • غرفة 4</p>
+</div>
+</div>
+<div class="relative pr-8">
+<div class="absolute right-[-4px] top-1.5 w-2 h-2 rounded-full bg-outline ring-4 ring-surface"></div>
+<p class="text-utility-mono text-on-surface-variant">11:15 ص</p>
+<div class="bg-surface-container-low/50 p-3 rounded-lg mt-1 border border-outline-variant/20">
+<p class="text-label-bold opacity-60">متابعة نتائج</p>
+<p class="text-[12px] text-on-surface-variant opacity-60">وليد قاسم • غرفة 2</p>
+</div>
+</div>
+<div class="relative pr-8">
+<div class="absolute right-[-4px] top-1.5 w-2 h-2 rounded-full bg-outline ring-4 ring-surface"></div>
+<p class="text-utility-mono text-on-surface-variant">12:00 م</p>
+<div class="bg-surface-container-low/50 p-3 rounded-lg mt-1 border border-outline-variant/20">
+<p class="text-label-bold opacity-60">فحص دوري</p>
+<p class="text-[12px] text-on-surface-variant opacity-60">أماني كمال • غرفة 1</p>
+</div>
+</div>
+<div class="relative pr-8">
+<div class="absolute right-[-4px] top-1.5 w-2 h-2 rounded-full bg-outline ring-4 ring-surface"></div>
+<p class="text-utility-mono text-on-surface-variant">01:30 م</p>
+<div class="bg-surface-container-low/50 p-3 rounded-lg mt-1 border border-outline-variant/20">
+<p class="text-label-bold opacity-60">استشارة تخصصية</p>
+<p class="text-[12px] text-on-surface-variant opacity-60">باسم جلال • غرفة 4</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-2 border border-primary/20 text-primary text-label-bold rounded-lg hover:bg-primary/5 transition-colors">عرض التقويم الكامل</button>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB Action (Contextual: Only for main screens) -->
+<button class="fixed bottom-lg left-lg w-14 h-14 bg-primary-container text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<script>
+        // Simple micro-interactions
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('click', function(e) {
+                if(this.classList.contains('active:scale-95')) return;
+                this.classList.add('active:scale-95');
+                setTimeout(() => this.classList.remove('active:scale-95'), 150);
+            });
+        });
+
+        // Hover animation for the KPI cards
+        const kpiCards = document.querySelectorAll('.grid-cols-4 > div');
+        kpiCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+    </script>
+</body></html>

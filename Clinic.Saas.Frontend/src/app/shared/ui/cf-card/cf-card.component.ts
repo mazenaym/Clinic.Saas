@@ -26,13 +26,14 @@ import { Component, Input } from '@angular/core';
       border: var(--cf-border);
       border-radius: var(--cf-radius-card);
       background: var(--cf-color-surface);
+      box-shadow: var(--cf-shadow-card);
     }
 
     h3 {
       margin: 0;
       color: var(--cf-color-ink);
       font-size: var(--cf-font-18);
-      font-weight: var(--cf-weight-medium);
+      font-weight: var(--cf-weight-bold);
     }
 
     p {

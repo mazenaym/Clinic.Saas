@@ -20,14 +20,14 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
       padding: var(--cf-space-8);
       border: var(--cf-border);
       border-radius: var(--cf-radius-card);
-      background: #FBFDFC;
+      background: var(--cf-color-surface-low);
       text-align: center;
     }
 
     strong {
       color: var(--cf-color-ink);
       font-size: var(--cf-font-18);
-      font-weight: var(--cf-weight-medium);
+      font-weight: var(--cf-weight-bold);
     }
 
     p {

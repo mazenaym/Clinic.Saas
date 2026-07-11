@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>تسجيل العيادة | ClinicFlow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#191b24",
+                    "inverse-primary": "#b3c5ff",
+                    "surface": "#faf8ff",
+                    "primary-container": "#0066ff",
+                    "secondary-container": "#c5dcfd",
+                    "background": "#faf8ff",
+                    "tertiary-fixed": "#ffdbd0",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#dae1ff",
+                    "on-background": "#191b24",
+                    "surface-container-high": "#e6e7f4",
+                    "tertiary": "#a33200",
+                    "on-tertiary-fixed": "#390c00",
+                    "surface-bright": "#faf8ff",
+                    "on-primary-container": "#f8f7ff",
+                    "secondary-fixed-dim": "#b1c8e9",
+                    "on-tertiary-container": "#fff6f4",
+                    "surface-variant": "#e1e2ee",
+                    "on-secondary-fixed": "#021c36",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#324863",
+                    "inverse-on-surface": "#eff0fd",
+                    "primary": "#0050cb",
+                    "surface-dim": "#d8d9e6",
+                    "secondary-fixed": "#d2e4ff",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "secondary": "#4a607c",
+                    "tertiary-fixed-dim": "#ffb59d",
+                    "tertiary-container": "#cc4204",
+                    "outline-variant": "#c2c6d8",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e1e2ee",
+                    "on-surface-variant": "#424656",
+                    "on-tertiary-fixed-variant": "#832600",
+                    "on-primary-fixed-variant": "#003fa4",
+                    "on-primary-fixed": "#001849",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#ecedfa",
+                    "on-error": "#ffffff",
+                    "error": "#ba1a1a",
+                    "outline": "#727687",
+                    "surface-container-low": "#f2f3ff",
+                    "inverse-surface": "#2e303a",
+                    "surface-tint": "#0054d6",
+                    "on-secondary-container": "#4b617d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "12px",
+                    "xl": "16px",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "lg": "24px",
+                    "unit": "8px",
+                    "container-margin": "24px",
+                    "sm": "8px",
+                    "md": "16px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "body-base": ["IBM Plex Sans Arabic"],
+                    "display-lg": ["IBM Plex Sans Arabic"],
+                    "headline-md": ["IBM Plex Sans Arabic"],
+                    "label-bold": ["IBM Plex Sans Arabic"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            background-color: #faf8ff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-active { color: #0066ff; }
+        .step-inactive { color: #727687; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(225, 226, 238, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 md:p-lg overflow-x-hidden">
+<!-- Global Layout Container (Bento Style) -->
+<main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-lg h-full lg:h-[870px] min-h-[600px]">
+<!-- Left Section: Decorative/Visual Content (Web Only) -->
+<section class="hidden lg:flex lg:col-span-5 relative rounded-xl overflow-hidden shadow-xl bg-surface-container-highest">
+<div class="absolute inset-0 z-10 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent"></div>
+<div class="absolute inset-0 w-full h-full" data-alt="A professional, hyper-realistic photo of a modern medical clinic interior. The space is filled with soft, natural light coming through large windows, highlighting clean white surfaces and sophisticated blue accents that match the ClinicFlow brand. Minimalist furniture and advanced medical technology are visible in a serene, high-end healthcare environment. The mood is clinical yet warm and trustworthy." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB4J6paYUvDPMsx83cvJ4jOWXWe2e-Cye5aNi5I-c1bYCPza9o_g2ewDJJWDbi0z8YQcjLOa-eZkWOSLejYkhq-lBV6DLPG77Swoz-TBxaHG0DR2FmOJm2Qnb2BKKeMeF29V0Wi-01bBNC0W7NIvAQca8eX1YauU8vGpsIFZQ0h8vGX-YcCiz3OZfZ3eGUIGXIpF6nZJJyC3xLh3-ZmzLosfp6UawiI_H3bvPwa7RQVgQG0fVinxfouNAhr5H55VrOcwjruA-wywlHR')"></div>
+<div class="absolute bottom-0 right-0 p-xl z-20 w-full">
+<h2 class="font-headline-md text-display-lg text-white mb-sm">نظام إدارة العيادات الأذكى</h2>
+<p class="font-body-base text-body-base text-white/80">انضم إلى آلاف الأطباء الذين يثقون بـ ClinicFlow لإدارة عياداتهم بكفاءة واحترافية عالية.</p>
+<div class="mt-lg flex gap-md">
+<div class="flex items-center gap-xs bg-white/10 backdrop-blur-md px-md py-xs rounded-full">
+<span class="material-symbols-outlined text-white text-[20px]">verified</span>
+<span class="text-white text-body-sm font-label-bold">أمان عالي</span>
+</div>
+<div class="flex items-center gap-xs bg-white/10 backdrop-blur-md px-md py-xs rounded-full">
+<span class="material-symbols-outlined text-white text-[20px]">bolt</span>
+<span class="text-white text-body-sm font-label-bold">أداء سريع</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Section: Onboarding Form -->
+<section class="lg:col-span-7 bg-white rounded-xl shadow-sm border border-outline-variant flex flex-col overflow-hidden">
+<!-- Stepper Component -->
+<div class="w-full px-lg py-xl border-b border-outline-variant bg-surface-container-low">
+<div class="flex justify-between items-center relative max-w-lg mx-auto">
+<!-- Progress Line -->
+<div class="absolute top-1/2 left-0 right-0 h-[2px] bg-outline-variant -translate-y-1/2 z-0"></div>
+<div class="absolute top-1/2 right-0 h-[2px] bg-primary-container -translate-y-1/2 z-0 transition-all duration-500" style="width: 25%;"></div>
+<!-- Step 1: Clinic Data -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-10 h-10 rounded-full bg-primary-container text-white flex items-center justify-center font-label-bold shadow-md">
+                            1
+                        </div>
+<span class="font-label-bold text-primary text-body-sm whitespace-nowrap">بيانات العيادة</span>
+</div>
+<!-- Step 2: Admin Account -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-10 h-10 rounded-full bg-white border-2 border-outline-variant text-outline flex items-center justify-center font-label-bold">
+                            2
+                        </div>
+<span class="font-label-bold text-outline text-body-sm whitespace-nowrap">حساب المدير</span>
+</div>
+<!-- Step 3: Settings -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-10 h-10 rounded-full bg-white border-2 border-outline-variant text-outline flex items-center justify-center font-label-bold">
+                            3
+                        </div>
+<span class="font-label-bold text-outline text-body-sm whitespace-nowrap">الإعدادات</span>
+</div>
+<!-- Step 4: Confirmation -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-10 h-10 rounded-full bg-white border-2 border-outline-variant text-outline flex items-center justify-center font-label-bold">
+                            4
+                        </div>
+<span class="font-label-bold text-outline text-body-sm whitespace-nowrap">التأكيد</span>
+</div>
+</div>
+</div>
+<!-- Form Content -->
+<div class="flex-1 overflow-y-auto p-lg lg:p-xl space-y-lg">
+<header>
+<h1 class="font-headline-md text-display-lg text-on-surface mb-xs">لنبدأ بتهيئة عيادتك</h1>
+<p class="font-body-base text-on-surface-variant">أدخل البيانات الأساسية لعيادتك لنتمكن من تخصيص تجربتك.</p>
+</header>
+<form class="space-y-lg">
+<!-- Clinic Name -->
+<div class="space-y-xs">
+<label class="block font-label-bold text-on-surface text-body-base" for="clinic-name">اسم العيادة</label>
+<input class="w-full px-md py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-outline/50" id="clinic-name" placeholder="مثال: مجمع الشفاء الطبي" type="text"/>
+</div>
+<!-- Subdomain (Asymmetric Layout) -->
+<div class="space-y-xs">
+<label class="block font-label-bold text-on-surface text-body-base" for="subdomain">النطاق الفرعي (الرابط الخاص)</label>
+<div class="flex gap-2">
+<div class="flex-1 relative">
+<div class="absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant font-utility-mono ltr" dir="ltr">.clinicflow.com</div>
+<input class="w-full pl-[110px] pr-md py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-left font-utility-mono" dir="ltr" id="subdomain" placeholder="clinic-name" type="text"/>
+</div>
+<button class="px-lg py-3 bg-secondary-fixed-dim text-on-secondary-fixed font-label-bold rounded-lg hover:bg-secondary-fixed transition-colors" type="button">تحقق</button>
+</div>
+<p class="text-[12px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                            هذا هو الرابط الذي ستستخدمه للدخول إلى نظامك.
+                        </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- Clinic Specialty -->
+<div class="space-y-xs">
+<label class="block font-label-bold text-on-surface text-body-base" for="specialty">تخصص العيادة</label>
+<div class="relative">
+<select class="w-full px-md py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none bg-white transition-all" id="specialty">
+<option disabled="" selected="" value="">اختر التخصص</option>
+<option value="general">طب عام</option>
+<option value="dental">طب الأسنان</option>
+<option value="peds">طب الأطفال</option>
+<option value="derma">الجلدية والتجميل</option>
+<option value="ortho">العظام</option>
+</select>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+</div>
+</div>
+<!-- Phone Contact -->
+<div class="space-y-xs">
+<label class="block font-label-bold text-on-surface text-body-base" for="phone">هاتف التواصل</label>
+<div class="flex gap-2">
+<input class="flex-1 px-md py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none text-left" dir="ltr" id="phone" placeholder="5XXXXXXXX" type="tel"/>
+<div class="w-20 bg-surface-container px-2 py-3 rounded-lg border border-outline-variant text-center font-utility-mono text-body-sm flex items-center justify-center" dir="ltr">+966</div>
+</div>
+</div>
+</div>
+</form>
+</div>
+<!-- Footer Actions -->
+<div class="p-lg border-t border-outline-variant bg-surface-container-lowest flex justify-end items-center">
+<button class="group flex items-center gap-md px-xl py-lg bg-primary-container text-white font-label-bold rounded-lg shadow-lg shadow-primary-container/20 hover:scale-[1.02] active:scale-[0.98] transition-all" type="submit">
+<span>المتابعة</span>
+<span class="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Floating Atmosphere Effects -->
+<div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none overflow-hidden opacity-30">
+<div class="absolute -top-24 -left-24 w-96 h-96 bg-primary-fixed-dim/20 rounded-full blur-[100px]"></div>
+<div class="absolute bottom-48 right-0 w-64 h-64 bg-secondary-fixed/20 rounded-full blur-[80px]"></div>
+</div>
+<script>
+        // Micro-interaction for input highlighting
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('scale-[1.01]');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('scale-[1.01]');
+            });
+        });
+
+        // Simple Subdomain Validation Mockup
+        const checkBtn = document.querySelector('button:contains("تحقق")');
+        if(checkBtn) {
+            checkBtn.addEventListener('click', function() {
+                this.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span>';
+                setTimeout(() => {
+                    this.innerHTML = '<span class="material-symbols-outlined text-green-500">check_circle</span>';
+                    this.classList.replace('bg-secondary-fixed-dim', 'bg-green-100');
+                }, 800);
+            });
+        }
+        
+        // Polyfill for :contains selector in vanilla JS
+        document.querySelectorAll('button').forEach(btn => {
+            if(btn.textContent.includes('تحقق')) {
+                btn.addEventListener('click', function() {
+                    const originalContent = this.innerHTML;
+                    this.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">refresh</span>';
+                    this.disabled = true;
+                    setTimeout(() => {
+                        this.innerHTML = '<span class="material-symbols-outlined text-green-600 text-[20px]">check_circle</span>';
+                        this.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
+                        this.disabled = false;
+                    }, 1200);
+                });
+            }
+        });
+    </script>
+</body></html>

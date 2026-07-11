@@ -27,8 +27,8 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
     h2 {
       margin: 0;
       color: var(--cf-color-ink);
-      font-size: var(--cf-font-24);
-      font-weight: var(--cf-weight-medium);
+      font-size: var(--cf-font-32);
+      font-weight: var(--cf-weight-bold);
       letter-spacing: 0;
     }
 
@@ -49,6 +49,10 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
       .cf-page-header {
         display: grid;
         align-items: stretch;
+      }
+
+      h2 {
+        font-size: var(--cf-font-24);
       }
     }
   `],

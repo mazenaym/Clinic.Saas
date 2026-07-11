@@ -20,6 +20,11 @@ export class DashboardComponent implements OnInit {
   readonly patients = signal<Patient[]>([]);
   readonly revenue = signal<DailyRevenue | null>(null);
   readonly isSuperAdmin = computed(() => this.auth.user()?.role === 'SuperAdmin');
+  readonly canViewRevenue = computed(() => this.auth.user()?.role === 'Admin');
+  readonly pendingAppointments = computed(() => this.appointments().filter((item) => {
+    const status = item.status?.toLowerCase() ?? '';
+    return !status.includes('complete') && !status.includes('cancel') && !status.includes('مكتمل') && !status.includes('ملغي');
+  }).length);
 
   readonly dashboardTitle = computed(() => {
     const role = this.auth.user()?.role;
@@ -43,11 +48,14 @@ export class DashboardComponent implements OnInit {
   async ngOnInit() {
     if (this.isSuperAdmin()) return;
 
-    await Promise.all([
+    const requests: Promise<unknown>[] = [
       firstValueFrom(this.api.appointments(this.today)).then((x) => this.appointments.set(x ?? [])).catch(() => this.appointments.set([])),
       firstValueFrom(this.api.patients()).then((x) => this.patients.set(x ?? [])).catch(() => this.patients.set([])),
-      firstValueFrom(this.api.dailyRevenue(this.today)).then((x) => this.revenue.set(x)).catch(() => this.revenue.set(null)),
-    ]);
+    ];
+    if (this.canViewRevenue()) {
+      requests.push(firstValueFrom(this.api.dailyRevenue(this.today)).then((x) => this.revenue.set(x)).catch(() => this.revenue.set(null)));
+    }
+    await Promise.all(requests);
   }
 
   statusVariant(status: string): CfBadgeVariant {

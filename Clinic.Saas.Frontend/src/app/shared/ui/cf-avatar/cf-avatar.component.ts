@@ -15,6 +15,7 @@ import { Component, Input } from '@angular/core';
       color: var(--cf-color-primary);
       font-size: var(--cf-font-13);
       font-weight: var(--cf-weight-medium);
+      border: 2px solid rgba(0, 80, 203, .12);
     }
   `],
 })

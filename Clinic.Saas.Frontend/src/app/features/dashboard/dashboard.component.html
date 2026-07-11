@@ -16,10 +16,14 @@
   </div>
 
   <div class="grid">
-    <cf-metric-card class="span-3" label="مواعيد اليوم" [value]="appointments().length" />
-    <cf-metric-card class="span-3" label="إجمالي المرضى" [value]="patients().length" />
-    <cf-metric-card class="span-3" label="زيارات مكتملة" [value]="revenue()?.completedVisits || 0" />
-    <cf-metric-card class="span-3" label="صافي الإيراد" [value]="((revenue()?.netRevenue || 0) | number: '1.0-0') + ' ج.م'" />
+    <cf-metric-card class="span-3" icon="▣" label="مواعيد اليوم" [value]="appointments().length" />
+    <cf-metric-card class="span-3" icon="♙" label="إجمالي المرضى" [value]="patients().length" />
+    <cf-metric-card class="span-3" icon="✓" label="زيارات مكتملة" [value]="revenue()?.completedVisits || 0" />
+    @if (canViewRevenue()) {
+      <cf-metric-card class="span-3" icon="▤" label="صافي الإيراد" [value]="((revenue()?.netRevenue || 0) | number: '1.0-0') + ' ج.م'" />
+    } @else {
+      <cf-metric-card class="span-3" icon="◷" label="مواعيد تحتاج متابعة" [value]="pendingAppointments()" />
+    }
   </div>
 
   <div class="grid">
