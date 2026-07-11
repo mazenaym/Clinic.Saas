@@ -28,6 +28,7 @@ import {
   Prescription,
   Procedure,
   PlatformDashboardSummary,
+  PlatformRevenueAnalytics,
   PlatformPlan,
   PlatformReports,
   PlatformSettings,
@@ -358,6 +359,10 @@ export class ApiService {
 
   getPlatformDashboardSummary() {
     return this.get<PlatformDashboardSummary>('/platform/dashboard/summary');
+  }
+
+  getPlatformRevenueAnalytics(filters: { from?: string; to?: string; year?: number; tenantId?: string; planId?: string } = {}) {
+    return this.get<PlatformRevenueAnalytics>('/platform/revenue/analytics', this.cleanParams(filters));
   }
 
   getClinics(filters: Record<string, string | number | boolean | undefined | null> = {}) {

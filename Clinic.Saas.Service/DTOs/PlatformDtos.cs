@@ -138,6 +138,23 @@ public record PlatformReportsFilterDto(
     Guid? TenantId,
     Guid? PlanId);
 
+public sealed record PlatformRevenueAnalyticsDto(
+    decimal CurrentMonthRevenue,
+    decimal PreviousMonthRevenue,
+    decimal CurrentMonthChangePercentage,
+    decimal CurrentYearRevenue,
+    decimal PreviousYearRevenue,
+    decimal CurrentYearChangePercentage,
+    DateTime FromUtc,
+    DateTime ToUtc,
+    IReadOnlyList<PlatformWeeklyRevenueDto> WeeklyRevenue,
+    IReadOnlyList<PlatformMonthlyRevenueDto> MonthlyRevenue);
+
+public sealed record PlatformWeeklyRevenueDto(DateTime WeekStartUtc, DateTime WeekEndUtc, int Year, int WeekNumber, string Label, decimal Revenue, int PaymentsCount, int ClinicsCount);
+public sealed record PlatformMonthlyRevenueDto(int Year, int Month, string MonthKey, string MonthLabel, decimal Revenue, int PaymentsCount, int ClinicsCount);
+
+public sealed record PlatformRevenueAnalyticsFilterDto(DateTime? From, DateTime? To, int? Year, Guid? TenantId, Guid? PlanId);
+
 public record PlatformSettingsDto(
     int TrialDurationDays,
     int ExpiringSoonThresholdDays,

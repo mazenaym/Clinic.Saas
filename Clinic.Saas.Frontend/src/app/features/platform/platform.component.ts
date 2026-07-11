@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { AdminClinic, PlatformDashboardSummary, PlatformPlan, PlatformReports, PlatformSettings, TenantSubscription } from '../../core/models';
+import { AdminClinic, PlatformDashboardSummary, PlatformMonthlyRevenue, PlatformPlan, PlatformReports, PlatformRevenueAnalytics, PlatformSettings, PlatformWeeklyRevenue, TenantSubscription } from '../../core/models';
 import { UiService } from '../../core/ui.service';
 
 @Component({
@@ -34,6 +34,36 @@ import { UiService } from '../../core/ui.service';
       width: auto;
       min-height: auto;
     }
+    .executive-kpis { display:grid; grid-template-columns:repeat(6,minmax(145px,1fr)); gap:12px; margin-bottom:16px; }
+    .executive-kpi { min-height:104px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; gap:6px; }
+    .executive-kpi span { color:#64748b; font-size:.82rem; }
+    .executive-kpi strong { font-size:clamp(1.25rem,2vw,1.8rem); line-height:1.1; }
+    .kpi-note { font-size:.72rem; color:#64748b; } .kpi-note.positive { color:#047857; } .kpi-note.negative { color:#b91c1c; }
+    .analytics-panel { padding:16px; margin-bottom:16px; }
+    .compact-filters { display:flex; flex-wrap:wrap; align-items:end; gap:10px; }
+    .compact-filters label { flex:1 1 130px; max-width:190px; }
+    .chart-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:14px; margin-bottom:16px; }
+    .chart-card { padding:18px; min-width:0; border:1px solid #cbd5e1; }
+    .chart-card h3 { margin:0; font-size:1.05rem; color:#111827; }
+    .chart-card p { margin:5px 0 12px; font-size:.76rem; color:#64748b; }
+    .revenue-chart { display:flex; align-items:stretch; gap:8px; height:205px; overflow-x:auto; padding:16px 12px 8px; background:#f7f8fc; border:1px solid #e1e7f0; border-radius:10px; }
+    .revenue-bar { min-width:38px; height:100%; flex:1; display:flex; flex-direction:column; justify-content:flex-end; text-align:center; font-size:.68rem; color:#475569; }
+    .revenue-bar i { display:flex; flex:none; box-sizing:border-box; width:82%; min-height:3px; margin:4px auto 7px; border-radius:4px 4px 0 0; background:#075fd8; box-shadow:inset 0 0 0 1px rgba(4,49,119,.12); align-items:flex-start; justify-content:center; padding-top:7px; font-style:normal; overflow:visible; }
+    .revenue-bar:nth-child(3n + 2) i { background:#2878df; }
+    .revenue-bar:nth-child(3n) i { background:#4d8fe4; }
+    .revenue-bar.zero i { background:#dbe4f3; box-shadow:none; padding-top:0; }
+    .bar-value { color:#fff; font-size:.67rem; line-height:1.15; font-weight:800; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.25); }
+    .bar-value span, .bar-value small { display:block; }
+    .bar-value small { margin-top:2px; font-size:.58rem; font-weight:700; }
+    .zero-value { min-height:15px; color:#64748b; font-size:.65rem; font-weight:700; white-space:nowrap; }
+    .weekly-chart { gap:10px; }
+    .weekly-chart .revenue-bar { min-width:42px; }
+    .weekly-chart .bar-label { font-size:.64rem; }
+    .bar-label { min-height:16px; color:#475569; font-weight:600; white-space:nowrap; }
+    .analytics-error { color:#b91c1c; display:flex; align-items:center; gap:12px; }
+    @media (max-width:1200px) { .executive-kpis { grid-template-columns:repeat(3,1fr); } }
+    @media (max-width:800px) { .chart-grid { grid-template-columns:1fr; } .revenue-chart { height:155px; } }
+    @media (max-width:560px) { .executive-kpis { grid-template-columns:repeat(2,1fr); } .executive-kpi { min-height:92px; padding:12px; } .compact-filters label { max-width:none; } }
   `],
 })
 export class PlatformComponent implements OnInit {
@@ -51,6 +81,11 @@ export class PlatformComponent implements OnInit {
   readonly auditLogs = signal<Record<string, unknown>[]>([]);
   readonly editingPlanId = signal<string | null>(null);
   readonly plansLoading = signal(false);
+  readonly revenue = signal<PlatformRevenueAnalytics | null>(null);
+  readonly revenueLoading = signal(false);
+  readonly revenueError = signal('');
+  revenueFilter: { year?: number; from?: string; to?: string; tenantId?: string; planId?: string } = {};
+  readonly years = Array.from({length: 7}, (_, i) => new Date().getUTCFullYear() - i);
 
   readonly title = computed(() => {
     const labels: Record<string, string> = {
@@ -116,9 +151,10 @@ export class PlatformComponent implements OnInit {
       section === 'clinics' || section === 'dashboard' || section === 'reports' || section === 'subscriptions'
         ? firstValueFrom(this.api.getClinics(this.filter)).then((x) => this.clinics.set(x ?? [])).catch(() => this.clinics.set([]))
         : Promise.resolve(),
-      section === 'plans' || section === 'clinics' || section === 'subscriptions' || section === 'reports'
+      section === 'plans' || section === 'clinics' || section === 'subscriptions' || section === 'reports' || section === 'dashboard'
         ? this.loadPlans()
         : Promise.resolve(),
+      section === 'dashboard' ? this.loadRevenue() : Promise.resolve(),
       section === 'subscriptions' || section === 'reports'
         ? firstValueFrom(this.api.getSubscriptions(this.filter)).then((x) => this.subscriptions.set(x ?? [])).catch(() => this.subscriptions.set([]))
         : Promise.resolve(),
@@ -133,6 +169,18 @@ export class PlatformComponent implements OnInit {
         : Promise.resolve(),
     ]);
   }
+
+  async loadRevenue() {
+    this.revenueLoading.set(true); this.revenueError.set('');
+    try { this.revenue.set(await firstValueFrom(this.api.getPlatformRevenueAnalytics(this.revenueFilter))); }
+    catch { this.revenue.set(null); this.revenueError.set('تعذر تحميل تحليلات الإيرادات.'); }
+    finally { this.revenueLoading.set(false); }
+  }
+  async resetRevenueFilters() { this.revenueFilter = {}; await this.loadRevenue(); }
+  barHeight(value: number, values: number[]) { const max=Math.max(...values, 0); return max ? Math.max(3, Math.round(value/max*140)) : 3; }
+  seriesBarHeight(value: number, rows: PlatformMonthlyRevenue[] | PlatformWeeklyRevenue[]) { return this.barHeight(value, rows.map(row => row.revenue)); }
+  average(revenue: number, count: number) { return count ? revenue/count : 0; }
+  compactMoney(value: number) { return new Intl.NumberFormat('ar-EG', { notation: 'compact', maximumFractionDigits: 1 }).format(value); }
 
   async runExpiryCheck() {
     await this.ui.run(async () => {

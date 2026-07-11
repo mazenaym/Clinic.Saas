@@ -469,6 +469,15 @@ export interface PlatformRevenueReport {
   averagePayment: number;
 }
 
+export interface PlatformRevenueAnalytics {
+  currentMonthRevenue: number; previousMonthRevenue: number; currentMonthChangePercentage: number;
+  currentYearRevenue: number; previousYearRevenue: number; currentYearChangePercentage: number;
+  fromUtc: string; toUtc: string;
+  weeklyRevenue: PlatformWeeklyRevenue[]; monthlyRevenue: PlatformMonthlyRevenue[];
+}
+export interface PlatformWeeklyRevenue { weekStartUtc: string; weekEndUtc: string; year: number; weekNumber: number; label: string; revenue: number; paymentsCount: number; clinicsCount: number; }
+export interface PlatformMonthlyRevenue { year: number; month: number; monthKey: string; monthLabel: string; revenue: number; paymentsCount: number; clinicsCount: number; }
+
 export interface PlatformSubscriptionStatusReport {
   active: number;
   trial: number;

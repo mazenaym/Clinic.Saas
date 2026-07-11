@@ -2,6 +2,7 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
+using System.Globalization;
 
 namespace Clinic.Saas.Infrastructure.Services;
 
@@ -34,18 +35,6 @@ SELECT COUNT(1) FROM dbo.Users;
 SELECT COUNT(1) FROM dbo.Patients WHERE IsDeleted = 0;
 SELECT COUNT(1) FROM dbo.Appointments WHERE IsDeleted = 0;
 
-SELECT COALESCE(SUM(Amount), 0)
-FROM dbo.SubscriptionPayments
-WHERE PaymentStatus = @Paid
-  AND PaidAtUtc >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
-  AND PaidAtUtc < DATEADD(month, 1, DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1));
-
-SELECT COALESCE(SUM(Amount), 0)
-FROM dbo.SubscriptionPayments
-WHERE PaymentStatus = @Paid
-  AND PaidAtUtc >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), 1, 1)
-  AND PaidAtUtc < DATEADD(year, 1, DATEFROMPARTS(YEAR(SYSUTCDATETIME()), 1, 1));
-
 SELECT COUNT(1)
 FROM dbo.TenantSubscriptions
 WHERE Status IN (@Trial, @Active, @PastDue)
@@ -70,10 +59,9 @@ WHERE Status = @Expired;";
         var totalUsers = await multi.ReadSingleAsync<int>();
         var totalPatients = await multi.ReadSingleAsync<int>();
         var totalAppointments = await multi.ReadSingleAsync<int>();
-        var monthlyRevenue = await multi.ReadSingleAsync<decimal>();
-        var annualRevenue = await multi.ReadSingleAsync<decimal>();
         var expiringSoonCount = await multi.ReadSingleAsync<int>();
         var expiredCount = await multi.ReadSingleAsync<int>();
+        var analytics = await GetRevenueAnalyticsAsync(new(null, null, null, null, null));
 
         return new PlatformDashboardSummaryDto(
             counts.TotalClinics,
@@ -84,13 +72,65 @@ WHERE Status = @Expired;";
             totalUsers,
             totalPatients,
             totalAppointments,
-            monthlyRevenue,
-            annualRevenue,
+            analytics.CurrentMonthRevenue,
+            analytics.CurrentYearRevenue,
             expiringSoonCount,
             expiredCount,
             await GetRecentClinicsAsync(),
             await _subscriptions.GetExpiringSoonSubscriptionsAsync(7));
     }
+
+    public async Task<PlatformRevenueAnalyticsDto> GetRevenueAnalyticsAsync(PlatformRevenueAnalyticsFilterDto filter)
+    {
+        if (filter.From.HasValue != filter.To.HasValue) throw new ArgumentException("Both from and to must be provided together.");
+        if (filter.Year is < 1 or > 9999) throw new ArgumentException("Year is invalid.");
+        var now = DateTime.UtcNow;
+        var from = filter.From?.ToUniversalTime() ?? (filter.Year.HasValue ? new DateTime(filter.Year.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc) : new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-11));
+        var toExclusive = filter.To?.ToUniversalTime().Date.AddDays(1) ?? (filter.Year.HasValue ? from.AddYears(1) : new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1));
+        if (from >= toExclusive) throw new ArgumentException("from must be before or equal to to.");
+
+        var currentMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var currentYear = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var weeklyRangeStart = filter.From.HasValue || filter.Year.HasValue ? from : now.Date.AddDays(-(((int)now.DayOfWeek + 6) % 7)).AddDays(-77);
+        var mondayOffset = ((int)weeklyRangeStart.DayOfWeek + 6) % 7;
+        var firstMonday = weeklyRangeStart.Date.AddDays(-mondayOffset);
+        const string sql = @"
+SELECT YEAR(sp.PaidAtUtc) [Year], MONTH(sp.PaidAtUtc) [Month],
+       SUM(sp.Amount - COALESCE(sp.RefundedAmount, 0)) Revenue, COUNT(1) PaymentsCount, COUNT(DISTINCT sp.TenantId) ClinicsCount
+FROM dbo.SubscriptionPayments sp
+LEFT JOIN dbo.TenantSubscriptions ts ON ts.Id = sp.SubscriptionId
+WHERE sp.PaymentStatus = @Paid AND sp.PaidAtUtc >= @FromUtc AND sp.PaidAtUtc < @ToUtc
+ AND (@TenantId IS NULL OR sp.TenantId=@TenantId) AND (@PlanId IS NULL OR ts.PlanId=@PlanId)
+GROUP BY YEAR(sp.PaidAtUtc), MONTH(sp.PaidAtUtc);
+SELECT DATEADD(day, -(DATEDIFF(day, CONVERT(date,'19000101'), CAST(sp.PaidAtUtc AS date)) % 7), CAST(sp.PaidAtUtc AS date)) WeekStartUtc,
+       SUM(sp.Amount - COALESCE(sp.RefundedAmount, 0)) Revenue, COUNT(1) PaymentsCount, COUNT(DISTINCT sp.TenantId) ClinicsCount
+FROM dbo.SubscriptionPayments sp LEFT JOIN dbo.TenantSubscriptions ts ON ts.Id=sp.SubscriptionId
+WHERE sp.PaymentStatus=@Paid AND sp.PaidAtUtc>=@WeekFrom AND sp.PaidAtUtc<@ToUtc
+ AND (@TenantId IS NULL OR sp.TenantId=@TenantId) AND (@PlanId IS NULL OR ts.PlanId=@PlanId)
+GROUP BY DATEADD(day, -(DATEDIFF(day, CONVERT(date,'19000101'), CAST(sp.PaidAtUtc AS date)) % 7), CAST(sp.PaidAtUtc AS date));
+SELECT
+ SUM(CASE WHEN PaidAtUtc>=@CurrentMonth AND PaidAtUtc<DATEADD(month,1,@CurrentMonth) THEN Amount-COALESCE(RefundedAmount,0) ELSE 0 END) CurrentMonthRevenue,
+ SUM(CASE WHEN PaidAtUtc>=DATEADD(month,-1,@CurrentMonth) AND PaidAtUtc<@CurrentMonth THEN Amount-COALESCE(RefundedAmount,0) ELSE 0 END) PreviousMonthRevenue,
+ SUM(CASE WHEN PaidAtUtc>=@CurrentYear AND PaidAtUtc<DATEADD(year,1,@CurrentYear) THEN Amount-COALESCE(RefundedAmount,0) ELSE 0 END) CurrentYearRevenue,
+ SUM(CASE WHEN PaidAtUtc>=DATEADD(year,-1,@CurrentYear) AND PaidAtUtc<@CurrentYear THEN Amount-COALESCE(RefundedAmount,0) ELSE 0 END) PreviousYearRevenue
+FROM dbo.SubscriptionPayments sp LEFT JOIN dbo.TenantSubscriptions ts ON ts.Id=sp.SubscriptionId
+WHERE sp.PaymentStatus=@Paid AND (@TenantId IS NULL OR sp.TenantId=@TenantId) AND (@PlanId IS NULL OR ts.PlanId=@PlanId);";
+        using var connection = await _connectionFactory.CreateOpenConnectionAsync();
+        using var multi = await connection.QueryMultipleAsync(sql, new { Paid=SubscriptionPaymentStatus.Paid, FromUtc=from, ToUtc=toExclusive, WeekFrom=firstMonday, filter.TenantId, filter.PlanId, CurrentMonth=currentMonth, CurrentYear=currentYear });
+        var monthlyRows=(await multi.ReadAsync<MonthlyAggregate>()).ToDictionary(x=>(x.Year,x.Month));
+        var weeklyRows=(await multi.ReadAsync<WeeklyAggregate>()).ToDictionary(x=>x.WeekStartUtc.Date);
+        var totals=await multi.ReadSingleAsync<RevenueTotals>();
+        var months=new List<PlatformMonthlyRevenueDto>();
+        for(var cursor=new DateTime(from.Year,from.Month,1);cursor<toExclusive;cursor=cursor.AddMonths(1)) { monthlyRows.TryGetValue((cursor.Year,cursor.Month),out var row); months.Add(new(cursor.Year,cursor.Month,cursor.ToString("yyyy-MM"),cursor.ToString("MMM yyyy",CultureInfo.InvariantCulture),row?.Revenue??0,row?.PaymentsCount??0,row?.ClinicsCount??0)); }
+        var weeks=new List<PlatformWeeklyRevenueDto>();
+        for(var cursor=firstMonday;cursor<toExclusive;cursor=cursor.AddDays(7)) { weeklyRows.TryGetValue(cursor.Date,out var row); var isoYear=ISOWeek.GetYear(cursor); var week=ISOWeek.GetWeekOfYear(cursor); weeks.Add(new(cursor,cursor.AddDays(6),isoYear,week,$"W{week:00} {isoYear}",row?.Revenue??0,row?.PaymentsCount??0,row?.ClinicsCount??0)); }
+        return new(totals.CurrentMonthRevenue,totals.PreviousMonthRevenue,Change(totals.CurrentMonthRevenue,totals.PreviousMonthRevenue),totals.CurrentYearRevenue,totals.PreviousYearRevenue,Change(totals.CurrentYearRevenue,totals.PreviousYearRevenue),from,toExclusive.AddTicks(-1),weeks,months);
+    }
+
+    private static decimal Change(decimal current, decimal previous) => previous == 0 ? (current == 0 ? 0 : 100) : Math.Round((current-previous)/previous*100,2);
+    private sealed class MonthlyAggregate { public int Year {get;set;} public int Month {get;set;} public decimal Revenue {get;set;} public int PaymentsCount {get;set;} public int ClinicsCount {get;set;} }
+    private sealed class WeeklyAggregate { public DateTime WeekStartUtc {get;set;} public decimal Revenue {get;set;} public int PaymentsCount {get;set;} public int ClinicsCount {get;set;} }
+    private sealed class RevenueTotals { public decimal CurrentMonthRevenue {get;set;} public decimal PreviousMonthRevenue {get;set;} public decimal CurrentYearRevenue {get;set;} public decimal PreviousYearRevenue {get;set;} }
 
     public async Task<IReadOnlyList<AdminClinicDto>> GetClinicsOverviewAsync(PlatformClinicFilterDto filter)
     {

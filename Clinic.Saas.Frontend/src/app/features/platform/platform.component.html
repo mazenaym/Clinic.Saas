@@ -7,16 +7,32 @@
   </div>
 
   @if (section() === 'dashboard') {
-    <div class="grid">
-      <article class="metric card span-3"><span>إجمالي العيادات</span><strong>{{ summary()?.totalClinics || 0 }}</strong></article>
-      <article class="metric card span-3"><span>العيادات النشطة</span><strong>{{ summary()?.activeClinics || 0 }}</strong></article>
-      <article class="metric card span-3"><span>العيادات التجريبية</span><strong>{{ summary()?.trialClinics || 0 }}</strong></article>
-      <article class="metric card span-3"><span>العيادات الموقوفة</span><strong>{{ summary()?.suspendedClinics || 0 }}</strong></article>
-      <article class="metric card span-3"><span>الاشتراكات المنتهية</span><strong>{{ summary()?.expiredSubscriptionsCount || 0 }}</strong></article>
-      <article class="metric card span-3"><span>قربت تنتهي</span><strong>{{ summary()?.expiringSoonCount || 0 }}</strong></article>
-      <article class="metric card span-3"><span>إيراد الشهر</span><strong>{{ summary()?.monthlySubscriptionRevenue || 0 | number:'1.0-0' }}</strong></article>
-      <article class="metric card span-3"><span>إيراد السنة</span><strong>{{ summary()?.annualSubscriptionRevenue || 0 | number:'1.0-0' }}</strong></article>
+    <div class="executive-kpis" dir="rtl">
+      <article class="card executive-kpi"><span>الإيراد المحصل هذا الشهر</span><strong>{{ revenue()?.currentMonthRevenue ?? summary()?.monthlySubscriptionRevenue ?? 0 | number:'1.0-0' }} ج.م</strong><small class="kpi-note">دفعات محصلة فعليًا</small></article>
+      <article class="card executive-kpi"><span>الإيراد المحصل الشهر السابق</span><strong>{{ revenue()?.previousMonthRevenue ?? 0 | number:'1.0-0' }} ج.م</strong><small class="kpi-note" [class.positive]="(revenue()?.currentMonthChangePercentage ?? 0) >= 0" [class.negative]="(revenue()?.currentMonthChangePercentage ?? 0) < 0">{{ (revenue()?.currentMonthChangePercentage ?? 0) >= 0 ? '▲' : '▼' }} {{ revenue()?.currentMonthChangePercentage ?? 0 | number:'1.0-1' }}% شهريًا</small></article>
+      <article class="card executive-kpi"><span>إيراد السنة الحالية</span><strong>{{ revenue()?.currentYearRevenue ?? summary()?.annualSubscriptionRevenue ?? 0 | number:'1.0-0' }} ج.م</strong><small class="kpi-note" [class.positive]="(revenue()?.currentYearChangePercentage ?? 0) >= 0" [class.negative]="(revenue()?.currentYearChangePercentage ?? 0) < 0">{{ (revenue()?.currentYearChangePercentage ?? 0) >= 0 ? '▲' : '▼' }} {{ revenue()?.currentYearChangePercentage ?? 0 | number:'1.0-1' }}% سنويًا</small></article>
+      <article class="card executive-kpi"><span>الاشتراكات النشطة</span><strong>{{ summary()?.activeClinics || 0 }}</strong><small class="kpi-note">من {{ summary()?.totalClinics || 0 }} عيادة</small></article>
+      <article class="card executive-kpi"><span>تنتهي قريبًا</span><strong>{{ summary()?.expiringSoonCount || 0 }}</strong><small class="kpi-note">تحتاج إلى متابعة</small></article>
+      <article class="card executive-kpi"><span>الاشتراكات المنتهية</span><strong>{{ summary()?.expiredSubscriptionsCount || 0 }}</strong><small class="kpi-note">غير نشطة حاليًا</small></article>
     </div>
+    <section class="panel analytics-panel" dir="rtl">
+      <form class="compact-filters" (ngSubmit)="loadRevenue()">
+        <label>السنة<select name="revenueYear" [(ngModel)]="revenueFilter.year"><option [ngValue]="undefined">آخر 12 شهراً</option>@for (year of years; track year) {<option [ngValue]="year">{{ year }}</option>}</select></label>
+        <label>من<input name="revenueFrom" type="date" [(ngModel)]="revenueFilter.from"></label>
+        <label>إلى<input name="revenueTo" type="date" [(ngModel)]="revenueFilter.to"></label>
+        <label>العيادة<select name="revenueTenant" [(ngModel)]="revenueFilter.tenantId"><option value="">كل العيادات</option>@for (clinic of clinics(); track clinic.id) {<option [value]="clinic.id">{{ clinic.name }}</option>}</select></label>
+        <label>الخطة<select name="revenuePlan" [(ngModel)]="revenueFilter.planId"><option value="">كل الخطط</option>@for (plan of plans(); track plan.id) {<option [value]="plan.id">{{ plan.name }}</option>}</select></label>
+        <div class="actions"><button>تطبيق</button><button type="button" class="secondary" (click)="resetRevenueFilters()">إعادة ضبط</button></div>
+      </form>
+      @if (revenueLoading()) { <p class="empty">جار تحميل الإيرادات...</p> }
+      @if (revenueError()) { <p class="analytics-error">{{ revenueError() }} <button type="button" (click)="loadRevenue()">إعادة المحاولة</button></p> }
+    </section>
+    @if (revenue(); as data) {
+      <div class="chart-grid" dir="rtl">
+        <section class="card chart-card"><h3>إيرادات الاشتراكات الشهرية</h3><p>آخر 12 شهرًا · المبالغ بالجنيه المصري</p><div class="revenue-chart">@for (row of data.monthlyRevenue; track row.monthKey) {<div class="revenue-bar" [class.zero]="row.revenue === 0" [title]="row.monthLabel + ': ' + row.revenue + ' ج.م · ' + row.paymentsCount + ' دفعة · ' + row.clinicsCount + ' عيادة'">@if (row.revenue === 0) {<b class="zero-value">0 ج.م</b>}<i [style.height.px]="seriesBarHeight(row.revenue, data.monthlyRevenue)">@if (row.revenue > 0) {<b class="bar-value"><span>{{ row.revenue | number:'1.0-0' }}</span><small>ج.م</small></b>}</i><span class="bar-label">{{ row.month }}/{{ row.year % 100 }}</span></div>}</div></section>
+        <section class="card chart-card"><h3>إيرادات الاشتراكات الأسبوعية</h3><p>آخر 12 أسبوعًا · المبالغ بالجنيه المصري</p><div class="revenue-chart weekly-chart">@for (row of data.weeklyRevenue; track row.weekStartUtc) {<div class="revenue-bar" [class.zero]="row.revenue === 0" [title]="row.label + ': ' + row.revenue + ' ج.م · ' + row.paymentsCount + ' دفعة · ' + row.clinicsCount + ' عيادة'"><i [style.height.px]="seriesBarHeight(row.revenue, data.weeklyRevenue)">@if (row.revenue > 0) {<b class="bar-value"><span>{{ row.revenue | number:'1.0-0' }}</span><small>ج.م</small></b>}</i><span class="bar-label">أسبوع {{ row.weekNumber }}</span></div>}</div></section>
+      </div>
+    }
   }
 
   @if (section() === 'clinics' || section() === 'dashboard') {
