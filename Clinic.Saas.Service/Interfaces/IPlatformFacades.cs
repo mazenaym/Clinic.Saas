@@ -1,5 +1,4 @@
 using Clinic.Saas.Domain.Enums;
-using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Service.DTOs;
 
 namespace Clinic.Saas.Service.Interfaces;
@@ -17,7 +16,7 @@ public interface IPlatformClinicsFacade
     Task<BaseResponse<AdminClinicDto>> CreateAsync(CreateClinicDto dto);
     Task<BaseResponse<AdminClinicDto>> UpdateAsync(Guid id, UpdateClinicDto dto);
     Task<BaseResponse<AdminClinicDto>> SetLegacyStatusAsync(Guid id, bool isActive);
-    Task<BaseResponse<Subscription>> CreateLegacySubscriptionAsync(Guid clinicId, CreateSubscriptionDto dto);
+    Task<BaseResponse<AdminClinicDto>> CreateLegacySubscriptionAsync(Guid clinicId, CreateSubscriptionDto dto);
     Task<BaseResponse<AdminClinicDto>> BootstrapAsync(BootstrapSuperAdminDto dto);
 }
 

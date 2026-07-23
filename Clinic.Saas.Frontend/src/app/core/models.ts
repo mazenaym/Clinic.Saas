@@ -102,7 +102,6 @@ export interface Visit {
   doctorName: string;
   clinicalNotes?: string;
   prescriptions?: Prescription[];
-  payment?: Payment;
   rowVersion?: string;
 }
 
@@ -127,20 +126,6 @@ export interface PrescriptionItem {
   duration: string;
   route?: string;
   instructions?: string;
-}
-
-export interface Payment {
-  id: string;
-  invoiceNumber: string;
-  totalAmount: number;
-  discountAmount: number;
-  paidAmount: number;
-  remainingAmount: number;
-  paymentMethod: string;
-  status: string;
-  createdAt: string;
-  patientName: string;
-  rowVersion?: string;
 }
 
 export interface PatientChart {

@@ -5,12 +5,13 @@ using Clinic.Saas.Infrastructure.Services;
 using Clinic.Saas.Service.Interfaces;
 using Clinic.Saas.Service.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Clinic.Saas.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IHostEnvironment env)
     {
         services.AddSingleton<DapperContext>();
         services.AddScoped<IDbConnectionFactory, DapperConnectionFactory>();
@@ -25,7 +26,6 @@ public static class DependencyInjection
         services.AddScoped<IDrugCatalogRepository, DrugCatalogRepository>();
         services.AddScoped<IProcedureRepository, ProcedureRepository>();
         services.AddScoped<IClinicSettingsRepository, ClinicSettingsRepository>();
-        services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
@@ -37,8 +37,12 @@ public static class DependencyInjection
         services.AddScoped<IPlanService, PlatformPlanService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IPlatformDashboardService, PlatformDashboardService>();
-        services.AddScoped<IEmailSender, NoopEmailSender>();
-        services.AddScoped<IWhatsAppSender, NoopWhatsAppSender>();
+
+        if (env.IsDevelopment())
+        {
+            services.AddScoped<IEmailSender, NoopEmailSender>();
+            services.AddScoped<IWhatsAppSender, NoopWhatsAppSender>();
+        }
 
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();

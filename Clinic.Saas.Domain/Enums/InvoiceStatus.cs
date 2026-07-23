@@ -5,5 +5,6 @@ public enum InvoiceStatus : short
     Draft = 1,
     PartiallyPaid = 2,
     Paid = 3,
-    Cancelled = 4
+    Cancelled = 4,
+    Refunded = 5
 }

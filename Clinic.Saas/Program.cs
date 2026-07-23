@@ -14,11 +14,49 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var configuredStorageRoot = builder.Configuration["FileStorage:RootPath"];
+if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(configuredStorageRoot))
+    throw new InvalidOperationException("FileStorage:RootPath must point to durable storage in Production.");
+var storageRoot = string.IsNullOrWhiteSpace(configuredStorageRoot)
+    ? (builder.Environment.IsEnvironment("Testing")
+        ? Path.Combine(Path.GetTempPath(), "ClinicSaas.Tests", "storage")
+        : Path.Combine(builder.Environment.ContentRootPath, ".data", "media"))
+    : (Path.IsPathRooted(configuredStorageRoot)
+        ? configuredStorageRoot
+        : Path.Combine(builder.Environment.ContentRootPath, configuredStorageRoot));
+storageRoot = Path.GetFullPath(storageRoot);
+if (builder.Environment.IsProduction())
+{
+    var publishRoot = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+    if (storageRoot.StartsWith(publishRoot, StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("FileStorage:RootPath must not be inside the published application directory.");
+}
+Directory.CreateDirectory(storageRoot);
+var storageProbe = Path.Combine(storageRoot, $".write-test-{Guid.NewGuid():N}");
+try { File.WriteAllText(storageProbe, "ok"); File.Delete(storageProbe); }
+catch (Exception ex) { throw new InvalidOperationException("FileStorage:RootPath is not writable.", ex); }
+builder.Configuration["FileStorage:RootPath"] = storageRoot;
+var configuredPdfFont = builder.Configuration["Pdf:FontPath"];
+if (builder.Environment.IsProduction() && string.IsNullOrWhiteSpace(configuredPdfFont))
+    throw new InvalidOperationException("Pdf:FontPath must point to a deployed Arabic Unicode font in Production.");
+if (!string.IsNullOrWhiteSpace(configuredPdfFont))
+{
+    var pdfFontPath = Path.GetFullPath(Path.IsPathRooted(configuredPdfFont)
+        ? configuredPdfFont
+        : Path.Combine(builder.Environment.ContentRootPath, configuredPdfFont));
+    if (!File.Exists(pdfFontPath)) throw new InvalidOperationException("Pdf:FontPath does not exist.");
+    builder.Configuration["Pdf:FontPath"] = pdfFontPath;
+}
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<BaseResponseProblemDetailsFilter>();
 });
-builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = ["application/json", "application/problem+json", "text/plain", "text/css", "text/html", "application/javascript"];
+});
 builder.Services.AddClinicProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddRateLimiter(options => options.AddPolicy("bootstrap", context =>
@@ -66,7 +104,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddInfrastructure();
+builder.Services.AddInfrastructure(builder.Environment);
 builder.Services.AddApplication();
 if (!builder.Environment.IsEnvironment("Testing"))
 {
@@ -108,6 +146,15 @@ if (app.Environment.IsEnvironment("Testing")) app.UseDeveloperExceptionPage();
 else app.UseClinicProblemDetails();
 
 app.UseResponseCompression();
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        return Task.CompletedTask;
+    });
+    await next();
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();

@@ -32,6 +32,18 @@ namespace Clinic.Saas.Service.Interfaces
 
         Task<long?> GetLengthAsync(string storageKey, CancellationToken cancellationToken = default) =>
             Task.FromResult<long?>(null);
+
+        Task<Stream?> OpenThumbnailAsync(string storageKey, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Stream?>(null);
+
+        Task<string?> StageDeleteAsync(string storageKey, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        Task<bool> RestoreStagedDeleteAsync(string deletionToken, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        Task<bool> CommitStagedDeleteAsync(string deletionToken, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     public sealed record StoredImage(string StorageKey, string ContentType, long Length);

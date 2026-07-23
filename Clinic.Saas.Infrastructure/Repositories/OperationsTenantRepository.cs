@@ -21,7 +21,7 @@ public class OperationsTenantRepository : IOperationsTenantRepository
 SELECT
     COALESCE(t.SubscriptionState, N'Trial') AS State,
     t.TrialEndsAt,
-    (SELECT TOP 1 EndDate FROM dbo.Subscriptions WHERE TenantId = t.Id AND Status IN (1,4) ORDER BY EndDate DESC) AS SubscriptionEndsAt,
+    (SELECT TOP 1 EndsAtUtc FROM dbo.TenantSubscriptions WHERE TenantId = t.Id AND Status IN (1,4) ORDER BY EndsAtUtc DESC) AS SubscriptionEndsAt,
     COALESCE(t.MaxUsers, 2) AS MaxUsers,
     COALESCE(t.MaxPatientsPerMonth, 200) AS MaxPatientsPerMonth
 FROM dbo.Tenants t

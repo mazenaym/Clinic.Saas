@@ -108,7 +108,8 @@ public class UsersController : ControllerBase
         {
             TenantId = _currentUser.TenantId.Value,
             UserId = id,
-            Password = dto
+            Password = dto,
+            CallerRole = _currentUser.Role!.Value
         });
 
         if (result.Success)

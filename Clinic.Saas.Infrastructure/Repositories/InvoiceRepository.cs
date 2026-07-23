@@ -1,5 +1,6 @@
 using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Enums;
+using Clinic.Saas.Domain.Exceptions;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.Interfaces;
 using Dapper;
@@ -45,13 +46,13 @@ INSERT INTO dbo.Invoices
 (
     Id, TenantId, PatientId, VisitId, InvoiceNumber, Subtotal, DiscountAmount,
     TaxAmount, GrandTotal, PaidAmount, RemainingAmount, Status, Notes,
-    CreatedAt, UpdatedAt, CreatedBy
+    CreatedAt, UpdatedAt, CreatedBy, InsuranceCompany, InsuranceNumber, ReceiptUrl
 )
 VALUES
 (
     @Id, @TenantId, @PatientId, @VisitId, @InvoiceNumber, @Subtotal, @DiscountAmount,
     @TaxAmount, @GrandTotal, @PaidAmount, @RemainingAmount, @Status, @Notes,
-    @CreatedAt, @UpdatedAt, @CreatedBy
+    @CreatedAt, @UpdatedAt, @CreatedBy, @InsuranceCompany, @InsuranceNumber, @ReceiptUrl
 );";
 
             await connection.ExecuteAsync(invoiceSql, invoice, transaction);
@@ -374,6 +375,297 @@ ORDER BY OutstandingAmount DESC, PatientName;";
         };
     }
 
+    public async Task<IEnumerable<Invoice>> GetByPatientAsync(Guid tenantId, Guid patientId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = InvoiceSelect + @"
+WHERE i.TenantId = @TenantId
+  AND i.PatientId = @PatientId
+ORDER BY i.CreatedAt DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        var invoices = await connection.QueryAsync<Invoice>(sql, new
+        {
+            TenantId = tenantId,
+            PatientId = patientId
+        });
+
+        foreach (var invoice in invoices)
+        {
+            invoice.Items = (await connection.QueryAsync<InvoiceItem>(
+                "SELECT * FROM dbo.InvoiceItems WHERE TenantId = @TenantId AND InvoiceId = @Id ORDER BY SortOrder",
+                new { TenantId = tenantId, Id = invoice.Id })).ToList();
+        }
+
+        return invoices;
+    }
+
+    public async Task<IEnumerable<Invoice>> GetByDateAsync(Guid tenantId, DateTime date)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = InvoiceSelect + @"
+WHERE i.TenantId = @TenantId
+  AND CAST(i.CreatedAt AS date) = @InvoiceDate
+ORDER BY i.CreatedAt DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        var invoices = await connection.QueryAsync<Invoice>(sql, new
+        {
+            TenantId = tenantId,
+            InvoiceDate = date.Date
+        });
+
+        foreach (var invoice in invoices)
+        {
+            invoice.Items = (await connection.QueryAsync<InvoiceItem>(
+                "SELECT * FROM dbo.InvoiceItems WHERE TenantId = @TenantId AND InvoiceId = @Id ORDER BY SortOrder",
+                new { TenantId = tenantId, Id = invoice.Id })).ToList();
+        }
+
+        return invoices;
+    }
+
+    public async Task UpdateAsync(Guid tenantId, Invoice entity)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Invoices
+SET InvoiceNumber = @InvoiceNumber,
+    Subtotal = @Subtotal,
+    DiscountAmount = @DiscountAmount,
+    TaxAmount = @TaxAmount,
+    GrandTotal = @GrandTotal,
+    PaidAmount = @PaidAmount,
+    RemainingAmount = @RemainingAmount,
+    Status = @Status,
+    InsuranceCompany = @InsuranceCompany,
+    InsuranceNumber = @InsuranceNumber,
+    ReceiptUrl = @ReceiptUrl,
+    Notes = @Notes,
+    UpdatedAt = @UpdatedAt
+WHERE Id = @Id
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            entity.Id,
+            TenantId = tenantId,
+            entity.RowVersion,
+            entity.InvoiceNumber,
+            entity.Subtotal,
+            entity.DiscountAmount,
+            entity.TaxAmount,
+            entity.GrandTotal,
+            entity.PaidAmount,
+            entity.RemainingAmount,
+            entity.Status,
+            entity.InsuranceCompany,
+            entity.InsuranceNumber,
+            entity.ReceiptUrl,
+            entity.Notes,
+            entity.UpdatedAt
+        });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows);
+    }
+
+    public async Task<bool> UpdateWithItemsAsync(Guid tenantId, Invoice entity)
+    {
+        EnsureTenantId(tenantId);
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+
+        try
+        {
+            await ValidateReferencesAsync(connection, transaction, tenantId, entity.PatientId, entity.VisitId);
+
+            const string updateInvoiceSql = @"
+UPDATE dbo.Invoices
+SET PatientId = @PatientId,
+    VisitId = @VisitId,
+    Subtotal = @Subtotal,
+    DiscountAmount = @DiscountAmount,
+    TaxAmount = @TaxAmount,
+    GrandTotal = @GrandTotal,
+    PaidAmount = @PaidAmount,
+    RemainingAmount = @RemainingAmount,
+    [Status] = @Status,
+    InsuranceCompany = @InsuranceCompany,
+    InsuranceNumber = @InsuranceNumber,
+    ReceiptUrl = @ReceiptUrl,
+    Notes = @Notes,
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND RowVersion = @RowVersion;";
+
+            var rows = await connection.ExecuteAsync(updateInvoiceSql, new
+            {
+                TenantId = tenantId,
+                entity.Id,
+                entity.RowVersion,
+                entity.PatientId,
+                entity.VisitId,
+                entity.Subtotal,
+                entity.DiscountAmount,
+                entity.TaxAmount,
+                entity.GrandTotal,
+                entity.PaidAmount,
+                entity.RemainingAmount,
+                entity.Status,
+                entity.InsuranceCompany,
+                entity.InsuranceNumber,
+                entity.ReceiptUrl,
+                entity.Notes
+            }, transaction);
+
+            if (rows == 0)
+            {
+                await ThrowIfConcurrencyConflictAsync(connection, tenantId, entity.Id, rows, transaction);
+                transaction.Rollback();
+                return false;
+            }
+
+            const string deleteItemsSql = @"
+DELETE ii
+FROM dbo.InvoiceItems ii
+INNER JOIN dbo.Invoices i ON i.Id = ii.InvoiceId
+WHERE i.TenantId = @TenantId
+  AND i.Id = @InvoiceId;";
+
+            await connection.ExecuteAsync(deleteItemsSql, new
+            {
+                TenantId = tenantId,
+                InvoiceId = entity.Id
+            }, transaction);
+
+            if (entity.Items.Any())
+            {
+                const string insertItemSql = @"
+INSERT INTO dbo.InvoiceItems
+(
+    Id, TenantId, InvoiceId, ProcedureId, Description, ServiceType, Quantity,
+    UnitPrice, DiscountAmount, TaxAmount, LineTotal, SortOrder
+)
+VALUES
+(
+    @Id, @TenantId, @InvoiceId, @ProcedureId, @Description, @ServiceType, @Quantity,
+    @UnitPrice, @DiscountAmount, @TaxAmount, @LineTotal, @SortOrder
+);";
+
+                foreach (var item in entity.Items)
+                {
+                    if (item.Id == Guid.Empty)
+                    {
+                        item.Id = Guid.NewGuid();
+                    }
+
+                    item.TenantId = tenantId;
+                    item.InvoiceId = entity.Id;
+                    await connection.ExecuteAsync(insertItemSql, item, transaction);
+                }
+            }
+
+            transaction.Commit();
+            return true;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public async Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason, byte[] rowVersion)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+UPDATE dbo.Invoices
+SET Status = @Status,
+    Notes = CONCAT(COALESCE(Notes, ''), @Reason),
+    UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND RowVersion = @RowVersion;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        var rows = await connection.ExecuteAsync(sql, new
+        {
+            TenantId = tenantId,
+            Id = id,
+            Status = InvoiceStatus.Refunded,
+            Reason = $" Refund: {reason}",
+            RowVersion = rowVersion
+        });
+
+        await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows);
+        return rows > 0;
+    }
+
+    public async Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion)
+    {
+        EnsureTenantId(tenantId);
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+
+        try
+        {
+            const string lockInvoiceSql = @"
+SELECT COUNT(1)
+FROM dbo.Invoices WITH (UPDLOCK, HOLDLOCK)
+WHERE TenantId = @TenantId
+  AND Id = @Id
+  AND RowVersion = @RowVersion;";
+
+            var matched = await connection.ExecuteScalarAsync<int>(
+                lockInvoiceSql,
+                new { TenantId = tenantId, Id = id, RowVersion = rowVersion },
+                transaction);
+
+            if (matched == 0)
+            {
+                await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, 0, transaction);
+                transaction.Rollback();
+                return;
+            }
+
+            const string sql = @"
+DELETE ii
+FROM dbo.InvoiceItems ii
+INNER JOIN dbo.Invoices i ON i.Id = ii.InvoiceId
+WHERE i.Id = @Id
+  AND i.TenantId = @TenantId;
+
+DELETE ip
+FROM dbo.InvoicePayments ip
+INNER JOIN dbo.Invoices i ON i.Id = ip.InvoiceId
+WHERE i.Id = @Id
+  AND i.TenantId = @TenantId;
+
+DELETE FROM dbo.Invoices
+WHERE Id = @Id
+  AND TenantId = @TenantId
+  AND RowVersion = @RowVersion;";
+
+            var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id, RowVersion = rowVersion }, transaction);
+            await ThrowIfConcurrencyConflictAsync(connection, tenantId, id, rows, transaction);
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
     public async Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt)
     {
         EnsureTenantId(tenantId);
@@ -383,6 +675,69 @@ ORDER BY OutstandingAmount DESC, PatientName;";
         var invoiceNumber = await GenerateInvoiceNumberAsync(connection, transaction, tenantId, createdAt);
         transaction.Commit();
         return invoiceNumber;
+    }
+
+    public async Task<IEnumerable<InvoiceDebtRow>> GetDebtTrackingAsync(Guid tenantId)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT i.PatientId, pt.FullName, pt.PhoneNumber, SUM(i.RemainingAmount) AS TotalDebt
+FROM dbo.Invoices i
+INNER JOIN dbo.Patients pt ON pt.Id = i.PatientId AND pt.TenantId = i.TenantId
+WHERE i.TenantId = @TenantId
+  AND i.RemainingAmount > 0
+  AND i.Status <> @CancelledStatus
+GROUP BY i.PatientId, pt.FullName, pt.PhoneNumber
+ORDER BY TotalDebt DESC;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        return await connection.QueryAsync<InvoiceDebtRow>(sql, new { TenantId = tenantId, CancelledStatus = InvoiceStatus.Cancelled });
+    }
+
+    public async Task<IEnumerable<MonthlyRevenueRow>> GetMonthlyRevenueAsync(Guid tenantId, DateTime start, DateTime end)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT CAST(CreatedAt AS date) AS [Date],
+       SUM(PaidAmount) AS PaidAmount,
+       SUM(RemainingAmount) AS RemainingAmount,
+       COUNT(1) AS InvoiceCount
+FROM dbo.Invoices
+WHERE TenantId = @TenantId
+  AND CreatedAt >= @Start
+  AND CreatedAt < @End
+GROUP BY CAST(CreatedAt AS date)
+ORDER BY [Date];";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        return await connection.QueryAsync<MonthlyRevenueRow>(sql, new
+        {
+            TenantId = tenantId,
+            Start = start,
+            End = end
+        });
+    }
+
+    public async Task<IEnumerable<DailyPaymentMethodTotal>> GetDailyPaymentMethodTotalsAsync(Guid tenantId, DateTime date)
+    {
+        EnsureTenantId(tenantId);
+
+        const string sql = @"
+SELECT ip.PaymentMethod, SUM(ip.Amount) AS TotalAmount
+FROM dbo.InvoicePayments ip
+INNER JOIN dbo.Invoices i ON i.TenantId = ip.TenantId AND i.Id = ip.InvoiceId
+WHERE ip.TenantId = @TenantId
+  AND CAST(ip.PaidAt AS date) = @PaymentDate
+GROUP BY ip.PaymentMethod;";
+
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        return await connection.QueryAsync<DailyPaymentMethodTotal>(sql, new
+        {
+            TenantId = tenantId,
+            PaymentDate = date.Date
+        });
     }
 
     private static async Task<string> GenerateInvoiceNumberAsync(IDbConnection connection, IDbTransaction transaction, Guid tenantId, DateTime createdAt)
@@ -486,5 +841,32 @@ ORDER BY PaidAt DESC;";
         public Guid Id { get; set; }
         public decimal GrandTotal { get; set; }
         public decimal PaidAmount { get; set; }
+    }
+
+    private static async Task ThrowIfConcurrencyConflictAsync(
+        IDbConnection connection,
+        Guid tenantId,
+        Guid id,
+        int rows,
+        IDbTransaction? transaction = null)
+    {
+        if (rows > 0)
+        {
+            return;
+        }
+
+        const string existsSql = @"
+SELECT COUNT(1)
+FROM dbo.Invoices
+WHERE TenantId = @TenantId
+  AND Id = @Id;";
+
+        var exists = await connection.ExecuteScalarAsync<int>(existsSql, new { TenantId = tenantId, Id = id }, transaction);
+        if (exists > 0)
+        {
+            throw new ConcurrencyConflictException("Invoice was modified by another request.");
+        }
+
+        throw new RecordNotFoundException("Invoice was not found.");
     }
 }

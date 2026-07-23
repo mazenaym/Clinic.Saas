@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -21,7 +21,7 @@ type ChartTab = 'overview' | 'visits' | 'prescriptions' | 'appointments' | 'ledg
   imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
   templateUrl: './patient-chart.component.html',
 })
-export class PatientChartComponent implements OnInit {
+export class PatientChartComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
@@ -76,6 +76,8 @@ export class PatientChartComponent implements OnInit {
     if (requestedTab) this.activeTab.set(requestedTab);
     await this.load();
   }
+
+  ngOnDestroy() { Object.values(this.documentPreviews()).forEach((url) => URL.revokeObjectURL(url)); }
 
   async load() {
     const patientId = this.route.snapshot.paramMap.get('id');
@@ -218,7 +220,7 @@ export class PatientChartComponent implements OnInit {
       this.documents.set(documents);
       const images = documents.filter((doc) => doc.fileType?.startsWith('image/'));
       const entries = await Promise.all(images.map(async (doc) => {
-        const blob = await firstValueFrom(this.api.viewPatientDocument(patientId, doc.id)).catch(() => null);
+        const blob = await firstValueFrom(this.api.patientDocumentThumbnail(patientId, doc.id)).catch(() => null);
         return blob ? [doc.id, URL.createObjectURL(blob)] as const : null;
       }));
       this.documentPreviews.set(Object.fromEntries(entries.filter((x): x is readonly [string, string] => x !== null)));

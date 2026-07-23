@@ -2,10 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthSession, Role, User } from './models';
+import { MediaService } from './media.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly media = inject(MediaService);
   private readonly storageKey = 'clinicflow.session';
   private refreshPromise: Promise<AuthSession> | null = null;
   private refreshTimer: number | null = null;
@@ -17,12 +19,15 @@ export class AuthService {
 
   constructor() {
     this.scheduleRefresh();
+    const current = this.session();
+    this.media.onSessionChanged(current?.user.id, current?.tenant.id);
   }
 
   setSession(session: AuthSession) {
     this.sessionVersion++;
     localStorage.setItem(this.storageKey, JSON.stringify(session));
     this.session.set(session);
+    this.media.onSessionChanged(session.user.id, session.tenant.id);
     this.scheduleRefresh();
   }
 
@@ -31,6 +36,7 @@ export class AuthService {
     this.refreshPromise = null;
     localStorage.removeItem(this.storageKey);
     this.session.set(null);
+    this.media.clearMediaCache();
     this.clearRefreshTimer();
   }
 

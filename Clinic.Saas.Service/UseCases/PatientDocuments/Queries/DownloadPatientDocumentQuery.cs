@@ -100,6 +100,13 @@ namespace Clinic.Saas.Service.UseCases.PatientDocuments.Queries
                     safe = safe.Replace(invalidChar, '_');
                 }
 
+                safe = new string(safe.Where(c => !char.IsControl(c) && c is not '\r' and not '\n').ToArray()).Trim();
+                if (safe.Length > 180)
+                {
+                    var extension = Path.GetExtension(safe);
+                    safe = safe[..Math.Min(160, safe.Length)] + extension[..Math.Min(extension.Length, 20)];
+                }
+
                 return string.IsNullOrWhiteSpace(safe) ? "document" : safe;
             }
         }

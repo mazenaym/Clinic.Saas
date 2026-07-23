@@ -94,15 +94,15 @@ public class RegisterClinicCommand
                 UpdatedAt = now
             };
 
-            var subscription = new Subscription
+            var subscription = new CreateSubscriptionRequest
             {
+                TenantId = tenant.Id,
                 Plan = command.Request.Plan,
                 StartDate = now,
                 EndDate = now.AddDays(14),
                 AmountPaid = 0,
                 Status = SubscriptionStatus.Trial,
-                Notes = "Self-service trial",
-                CreatedAt = now
+                Notes = "Self-service trial"
             };
 
             var settings = new ClinicSettingsDto

@@ -87,16 +87,16 @@ public class CreateClinicCommand
                 UpdatedAt = now
             };
 
-            var subscription = new Subscription
+            var subscription = new CreateSubscriptionRequest
             {
+                TenantId = tenant.Id,
                 Plan = command.Clinic.Plan,
                 StartDate = command.Clinic.SubscriptionStartDate ?? now,
                 EndDate = command.Clinic.SubscriptionEndDate ?? now.AddDays(14),
                 AmountPaid = command.Clinic.SubscriptionAmountPaid,
                 Status = command.Clinic.SubscriptionStatus,
                 PaymentRef = command.Clinic.PaymentRef,
-                Notes = command.Clinic.Notes,
-                CreatedAt = now
+                Notes = command.Clinic.Notes
             };
 
             var settings = new ClinicSettingsDto

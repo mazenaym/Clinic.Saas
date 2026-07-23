@@ -38,24 +38,24 @@
       </div>
       <label>الإجمالي<input name="totalAmount" type="number" [(ngModel)]="form['totalAmount']" /></label>
       <label>المدفوع<input name="paidAmount" type="number" [(ngModel)]="form['paidAmount']" /></label>
-      <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة خدمة</button>@if (editingPaymentId()) { <button type="button" class="secondary" (click)="cancelEdit()">إلغاء التعديل</button> }<button [disabled]="ui.busy()">{{ editingPaymentId() ? 'تحديث الدفع' : 'تسجيل الدفع' }}</button></div>
+      <div class="actions span-all"><button type="button" class="secondary" (click)="addItem()">إضافة خدمة</button>@if (editingInvoiceId()) { <button type="button" class="secondary" (click)="cancelEdit()">إلغاء التعديل</button> }<button [disabled]="ui.busy()">{{ editingInvoiceId() ? 'تحديث الفاتورة' : 'تسجيل الفاتورة' }}</button></div>
     </form>
   </section>
 
   <section class="panel">
     <h3>بحث وتعديل فاتورة</h3>
     <div class="actions">
-      <input placeholder="Payment ID" [(ngModel)]="lookupPaymentId" />
-      <button type="button" (click)="loadPayment()">عرض للتعديل</button>
+      <input placeholder="Invoice ID" [(ngModel)]="lookupInvoiceId" />
+      <button type="button" (click)="loadInvoice()">عرض للتعديل</button>
     </div>
-    @if (selectedPayment()) {
-      <p class="inline-help">تم تحميل الفاتورة في النموذج بالأعلى. بعد التعديل اضغط تحديث الدفع.</p>
+    @if (selectedInvoice()) {
+      <p class="inline-help">تم تحميل الفاتورة في النموذج بالأعلى. بعد التعديل اضغط تحديث الفاتورة.</p>
     }
-    @if (patientPayments().length) {
-      <h4>مدفوعات المريض</h4>
+    @if (patientInvoices().length) {
+      <h4>فواتير المريض</h4>
       <table><thead><tr><th>الفاتورة</th><th>الإجمالي</th><th>المدفوع</th><th>إجراءات</th></tr></thead><tbody>
-        @for (payment of patientPayments(); track payment['id']) {
-          <tr><td>{{ payment['invoiceNumber'] }}</td><td>{{ payment['totalAmount'] }}</td><td>{{ payment['paidAmount'] }}</td><td class="actions"><button type="button" (click)="downloadReceipt(payment['id'] + '')">تحميل الإيصال</button><button type="button" class="danger" (click)="refund(payment['id'] + '')">Refund</button></td></tr>
+        @for (inv of patientInvoices(); track inv.id) {
+          <tr><td>{{ inv.invoiceNumber }}</td><td>{{ inv.grandTotal }}</td><td>{{ inv.paidAmount }}</td><td class="actions"><button type="button" (click)="downloadReceipt(inv.id)">تحميل الإيصال</button><button type="button" class="danger" (click)="refund(inv.id)">إعادة</button></td></tr>
         }
       </tbody></table>
     }

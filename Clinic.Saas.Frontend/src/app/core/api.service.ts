@@ -145,6 +145,10 @@ export class ApiService {
     return this.blob(`/patient-documents/${documentId}/view`, { patientId });
   }
 
+  patientDocumentThumbnail(patientId: string, documentId: string) {
+    return this.blob(`/patient-documents/${documentId}/thumbnail`, { patientId });
+  }
+
   downloadPatientDocument(patientId: string, documentId: string) {
     return this.blob(`/patient-documents/${documentId}/download`, { patientId });
   }
@@ -303,18 +307,6 @@ export class ApiService {
     return this.post<boolean>(`/procedures/${id}/deactivate`, {});
   }
 
-  createPayment(payload: Record<string, unknown>) {
-    return this.post('/billing/payments', payload);
-  }
-
-  getDailyRevenueReport(date: string) {
-    return this.dailyRevenue(date);
-  }
-
-  dailyRevenue(date: string) {
-    return this.get<DailyRevenue>('/billing/reports/daily-revenue', { date });
-  }
-
   createInvoice(payload: CreateInvoicePayload) {
     return this.post<Invoice>('/invoices', payload);
   }
@@ -329,32 +321,36 @@ export class ApiService {
     return this.post<Invoice>(`/invoices/${invoiceId}/payments`, payload);
   }
 
-  payment(id: string) {
-    return this.get<Record<string, unknown>>(`/billing/payments/${id}`);
+  updateInvoice(id: string, payload: Record<string, unknown>) {
+    return this.put<boolean>(`/invoices/${id}`, payload);
   }
 
-  patientPayments(patientId: string) {
-    return this.get<Record<string, unknown>[]>(`/billing/patients/${patientId}/payments`);
+  refundInvoice(id: string, reason?: string, rowVersion?: string) {
+    return this.post<boolean>(`/invoices/${id}/refund`, { reason, rowVersion });
   }
 
-  updatePayment(id: string, payload: Record<string, unknown>) {
-    return this.put<boolean>(`/billing/payments/${id}`, payload);
-  }
-
-  refundPayment(id: string, reason?: string, rowVersion?: string) {
-    return this.post<boolean>(`/billing/payments/${id}/refund`, { reason, rowVersion });
+  patientInvoices(patientId: string) {
+    return this.get<Invoice[]>(`/invoices/patient/${patientId}`);
   }
 
   receiptPdf(id: string) {
-    return this.blob(`/billing/payments/${id}/receipt`);
+    return this.blob(`/invoices/${id}/receipt`);
   }
 
   debts() {
-    return this.get<Record<string, unknown>[]>('/billing/debts');
+    return this.get<Record<string, unknown>[]>('/invoices/debt-tracking');
   }
 
   monthlyRevenue(year: number, month: number) {
-    return this.get<Record<string, unknown>[]>('/billing/reports/monthly-revenue', { year: String(year), month: String(month) });
+    return this.get<Record<string, unknown>[]>('/invoices/monthly-revenue', { year: String(year), month: String(month) });
+  }
+
+  dailyRevenue(date: string) {
+    return this.get<DailyRevenue>('/invoices/daily-revenue', { date });
+  }
+
+  getDailyRevenueReport(date: string) {
+    return this.dailyRevenue(date);
   }
 
   getFinancialDuesReport(filters: { from?: string; to?: string; doctorId?: string } = {}) {

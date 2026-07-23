@@ -3,7 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { DailyRevenue, Patient, Visit, enumValues } from '../../core/models';
+import { DailyRevenue, Invoice, Patient, Visit, enumValues } from '../../core/models';
 import { UiService } from '../../core/ui.service';
 import { CfConfirmDialogService } from '../../shared/ui';
 
@@ -21,10 +21,10 @@ export class BillingComponent implements OnInit {
   readonly report = signal<DailyRevenue | null>(null);
   readonly monthly = signal<Record<string, unknown>[]>([]);
   readonly debts = signal<Record<string, unknown>[]>([]);
-  readonly selectedPayment = signal<Record<string, unknown> | null>(null);
-  readonly patientPayments = signal<Record<string, unknown>[]>([]);
-  readonly editingPaymentId = signal('');
-  lookupPaymentId = '';
+  readonly selectedInvoice = signal<Invoice | null>(null);
+  readonly patientInvoices = signal<Invoice[]>([]);
+  readonly editingInvoiceId = signal('');
+  lookupInvoiceId = '';
   encounterSearch = '';
   readonly methods = enumValues.paymentMethod;
   readonly serviceTypes = enumValues.serviceType;
@@ -54,7 +54,7 @@ export class BillingComponent implements OnInit {
   async patientChanged() {
     this.form['visitId'] = '';
     this.encounterSearch = '';
-    await Promise.all([this.loadEncounters(), this.loadPatientPayments()]);
+    await Promise.all([this.loadEncounters(), this.loadPatientInvoices()]);
   }
   async loadEncounters() {
     const patientId = this.form['patientId'];
@@ -79,50 +79,62 @@ export class BillingComponent implements OnInit {
     await this.ui.run(async () => {
       this.applyDefaultLookups();
       this.recalculate();
-      const id = this.editingPaymentId();
+      const id = this.editingInvoiceId();
       if (id) {
-        await firstValueFrom(this.api.updatePayment(id, { ...this.form, rowVersion: this.form['rowVersion'] || this.paymentRowVersion(id) }));
+        await firstValueFrom(this.api.updateInvoice(id, { ...this.form, rowVersion: this.form['rowVersion'] || this.invoiceRowVersion(id) }));
       } else {
-        await firstValueFrom(this.api.createPayment(this.form));
+        const payload = {
+          patientId: this.form['patientId'],
+          visitId: this.form['visitId'],
+          notes: this.form['notes'],
+          items: this.items().map((item: any) => ({
+            description: item.serviceName,
+            serviceType: item.serviceType,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discountAmount: item.discountAmount || 0,
+            taxAmount: item.taxAmount || 0,
+          })),
+        };
+        await firstValueFrom(this.api.createInvoice(payload));
       }
       this.cancelEdit();
       await this.loadReport();
       await this.loadExtras();
-    }, this.editingPaymentId() ? 'تم تحديث الدفع' : 'تم تسجيل الدفع');
+    }, this.editingInvoiceId() ? 'تم تحديث الفاتورة' : 'تم تسجيل الفاتورة');
   }
 
-  async loadPayment() {
-    if (!this.lookupPaymentId) return;
-    const data = await firstValueFrom(this.api.payment(this.lookupPaymentId));
-    this.selectedPayment.set(data);
-    const payment = (data['payment'] || data || {}) as Record<string, any>;
-    const items = (data['items'] || payment['items']) as any[] | undefined;
+  async loadInvoice() {
+    if (!this.lookupInvoiceId) return;
+    const data = await firstValueFrom(this.api.getInvoiceById(this.lookupInvoiceId));
+    this.selectedInvoice.set(data);
     this.form = {
       ...this.emptyForm(),
-      ...payment,
-      paymentMethod: Number(payment['paymentMethod'] ?? 1),
-      rowVersion: payment['rowVersion'] || data['rowVersion'],
-      items: items?.map((item) => ({
-        serviceName: item.serviceName,
-        serviceType: Number(item.serviceType),
+      patientId: data.patientId,
+      visitId: data.visitId || '',
+      notes: data.notes || '',
+      rowVersion: data.rowVersion,
+      items: data.items?.map((item) => ({
+        serviceName: item.description,
+        serviceType: item.serviceType || 1,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        discountPct: item.discountPct,
+        discountPct: item.discountAmount || 0,
       })) || this.emptyForm()['items'],
     };
-    this.editingPaymentId.set(this.lookupPaymentId);
+    this.editingInvoiceId.set(this.lookupInvoiceId);
   }
 
-  async loadPatientPayments() {
+  async loadPatientInvoices() {
     const patientId = this.form['patientId'];
     if (!patientId) return;
-    this.patientPayments.set(await firstValueFrom(this.api.patientPayments(patientId)).catch(() => []));
+    this.patientInvoices.set(await firstValueFrom(this.api.patientInvoices(patientId)).catch(() => []));
   }
 
   cancelEdit() {
-    this.editingPaymentId.set('');
-    this.selectedPayment.set(null);
-    this.lookupPaymentId = '';
+    this.editingInvoiceId.set('');
+    this.selectedInvoice.set(null);
+    this.lookupInvoiceId = '';
     this.form = this.emptyForm();
   }
 
@@ -145,25 +157,23 @@ export class BillingComponent implements OnInit {
 
   async refund(id: string) {
     const reason = await this.dialog.prompt({
-      title: 'رد دفعة',
-      message: 'اكتب سبب رد الدفعة قبل المتابعة.',
+      title: 'رد فاتورة',
+      message: 'اكتب سبب رد الفاتورة قبل المتابعة.',
       inputLabel: 'سبب الرد',
-      confirmLabel: 'رد الدفعة',
+      confirmLabel: 'رد الفاتورة',
     });
     if (!reason) return;
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.refundPayment(id, reason, this.paymentRowVersion(id)));
+      await firstValueFrom(this.api.refundInvoice(id, reason, this.invoiceRowVersion(id)));
       await this.loadExtras();
       await this.loadReport();
-    }, 'تم رد الدفع');
+    }, 'تم رد الفاتورة');
   }
 
-  private paymentRowVersion(id: string) {
-    const selected = this.selectedPayment();
-    if (selected?.['id'] === id) return selected['rowVersion'] as string | undefined;
-    const nested = selected?.['payment'] as Record<string, unknown> | undefined;
-    if (nested?.['id'] === id) return nested['rowVersion'] as string | undefined;
-    return this.patientPayments().find((payment) => payment['id'] === id)?.['rowVersion'] as string | undefined;
+  private invoiceRowVersion(id: string) {
+    const selected = this.selectedInvoice();
+    if (selected?.id === id) return selected.rowVersion;
+    return this.patientInvoices().find((inv) => inv.id === id)?.rowVersion;
   }
 
   private downloadBlob(blob: Blob, filename: string) {

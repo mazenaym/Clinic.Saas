@@ -19,6 +19,7 @@ namespace Clinic.Saas.api.Controllers
         private readonly GetPatientDocumentsQuery.Handler _getDocuments;
         private readonly DownloadPatientDocumentQuery.Handler _downloadDocument;
         private readonly DeletePatientDocumentCommand.Handler _deleteDocument;
+        private readonly GetPatientDocumentThumbnailQuery.Handler _thumbnail;
         private readonly ICurrentUserService _currentUser;
         private readonly IAuditService _auditService;
 
@@ -27,6 +28,7 @@ namespace Clinic.Saas.api.Controllers
             GetPatientDocumentsQuery.Handler getDocuments,
             DownloadPatientDocumentQuery.Handler downloadDocument,
             DeletePatientDocumentCommand.Handler deleteDocument,
+            GetPatientDocumentThumbnailQuery.Handler thumbnail,
             ICurrentUserService currentUser,
             IAuditService auditService)
         {
@@ -34,6 +36,7 @@ namespace Clinic.Saas.api.Controllers
             _getDocuments = getDocuments;
             _downloadDocument = downloadDocument;
             _deleteDocument = deleteDocument;
+            _thumbnail = thumbnail;
             _currentUser = currentUser;
             _auditService = auditService;
         }
@@ -139,6 +142,8 @@ namespace Clinic.Saas.api.Controllers
             var result = await _deleteDocument.Handle(new(_currentUser.TenantId.Value, patientId, documentId));
             if (result.Success)
                 await this.AuditAsync(_auditService, _currentUser, "Delete", "PatientDocument", documentId, new { documentId, patientId });
+            else
+                await this.AuditAsync(_auditService, _currentUser, "DeleteFailed", "PatientDocument", documentId, new { documentId, patientId, result.StatusCode, result.Message });
             return StatusCode(result.StatusCode, result);
         }
 
@@ -164,11 +169,24 @@ namespace Clinic.Saas.api.Controllers
 
             await this.AuditAsync(_auditService, _currentUser, "View", "PatientDocument", documentId, new { documentId, patientId });
 
-            Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("inline")
+            var inline = result.Data.FileType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) ||
+                         result.Data.FileType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+            Response.Headers.ContentDisposition = new ContentDispositionHeaderValue(inline ? "inline" : "attachment")
             {
                 FileNameStar = result.Data.FileName
             }.ToString();
 
+            return File(result.Data.FileStream, result.Data.FileType, enableRangeProcessing: true);
+        }
+
+        [HttpGet("{documentId:guid}/thumbnail")]
+        public async Task<IActionResult> Thumbnail(Guid patientId, Guid documentId)
+        {
+            if (!_currentUser.TenantId.HasValue) return Unauthorized();
+            var result = await _thumbnail.Handle(new(_currentUser.TenantId.Value, patientId, documentId));
+            if (!result.Success || result.Data is null) return StatusCode(result.StatusCode, result);
+            Response.Headers.CacheControl = "private,max-age=300";
+            Response.Headers.XContentTypeOptions = "nosniff";
             return File(result.Data.FileStream, result.Data.FileType, enableRangeProcessing: true);
         }
     }

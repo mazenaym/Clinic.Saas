@@ -70,6 +70,6 @@ public sealed class BootstrapSecurityTests
         public Task<BaseResponse<AdminClinicDto>> CreateAsync(CreateClinicDto dto) => throw new NotSupportedException();
         public Task<BaseResponse<AdminClinicDto>> UpdateAsync(Guid id, UpdateClinicDto dto) => throw new NotSupportedException();
         public Task<BaseResponse<AdminClinicDto>> SetLegacyStatusAsync(Guid id, bool isActive) => throw new NotSupportedException();
-        public Task<BaseResponse<Subscription>> CreateLegacySubscriptionAsync(Guid clinicId, CreateSubscriptionDto dto) => throw new NotSupportedException();
+        public Task<BaseResponse<AdminClinicDto>> CreateLegacySubscriptionAsync(Guid clinicId, CreateSubscriptionDto dto) => throw new NotSupportedException();
     }
 }

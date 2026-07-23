@@ -1,9 +1,9 @@
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
-namespace Clinic.Saas.Service.UseCases.Payments.Queries;
+namespace Clinic.Saas.Service.UseCases.Invoices.Queries;
 
-public class GetDebtTrackingQuery
+public class GetInvoiceDebtTrackingQuery
 {
     public class Query
     {
@@ -12,22 +12,22 @@ public class GetDebtTrackingQuery
 
     public class Handler
     {
-        private readonly IPaymentRepository _repository;
+        private readonly IInvoiceRepository _repository;
 
-        public Handler(IPaymentRepository repository)
+        public Handler(IInvoiceRepository repository)
         {
             _repository = repository;
         }
 
-        public async Task<BaseResponse<List<PaymentDebtDto>>> Handle(Query query)
+        public async Task<BaseResponse<List<InvoiceDebtDto>>> Handle(Query query)
         {
             var rows = await _repository.GetDebtTrackingAsync(query.TenantId);
 
-            return new BaseResponse<List<PaymentDebtDto>>
+            return new BaseResponse<List<InvoiceDebtDto>>
             {
                 Success = true,
                 Message = "OK",
-                Data = rows.Select(x => new PaymentDebtDto
+                Data = rows.Select(x => new InvoiceDebtDto
                 {
                     PatientId = x.PatientId,
                     FullName = x.FullName,

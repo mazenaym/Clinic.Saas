@@ -55,22 +55,6 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
             .ForMember(dest => dest.RowVersion, opt => opt.MapFrom(src => src.RowVersion.ToBase64RowVersion()));
 
-        CreateMap<Payment, PaymentDto>()
-            .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => src.PaymentMethod.ToString()))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
-            .ForMember(dest => dest.RemainingAmount, opt => opt.MapFrom(src => src.RemainingAmount))
-            .ForMember(dest => dest.RowVersion, opt => opt.MapFrom(src => src.RowVersion.ToBase64RowVersion()));
-
-        CreateMap<Payment, PaymentDetailsDto>()
-            .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => src.PaymentMethod.ToString()))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
-            .ForMember(dest => dest.RemainingAmount, opt => opt.MapFrom(src => src.RemainingAmount))
-            .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
-            .ForMember(dest => dest.RowVersion, opt => opt.MapFrom(src => src.RowVersion.ToBase64RowVersion()));
-
-        CreateMap<PaymentItem, PaymentItemDto>()
-            .ForMember(dest => dest.ServiceType, opt => opt.MapFrom(src => src.ServiceType.ToString()));
-
         CreateMap<User, UserDto>()
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()));
 

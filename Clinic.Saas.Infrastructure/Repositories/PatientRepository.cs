@@ -179,12 +179,12 @@ WHERE TenantId = @TenantId
   AND PatientId = @PatientId
   AND IsActive = 1
 UNION ALL
-SELECT 'Payment',
+SELECT 'Invoice',
        Id,
        CreatedAt,
        InvoiceNumber,
-       CONCAT(N'Paid ', PaidAmount, N' / Total ', TotalAmount)
-FROM dbo.Payments
+       CONCAT(N'Paid ', PaidAmount, N' / Total ', GrandTotal)
+FROM dbo.Invoices
 WHERE TenantId = @TenantId
   AND PatientId = @PatientId
 ORDER BY [Date] DESC;";
@@ -280,7 +280,7 @@ SELECT
     COALESCE(SUM(PaidAmount), 0) AS TotalPaid,
     COALESCE(SUM(RemainingAmount), 0) AS TotalOutstanding,
     MAX(CreatedAt) AS LastPaymentAt
-FROM dbo.Payments
+FROM dbo.Invoices
 WHERE TenantId = @TenantId
   AND PatientId = @PatientId;
 
@@ -332,12 +332,12 @@ FROM
       AND PatientId = @PatientId
       AND IsActive = 1
     UNION ALL
-    SELECT 'Payment',
+    SELECT 'Invoice',
            Id,
            CreatedAt,
-           N'Payment',
+           N'Invoice',
            NULL
-    FROM dbo.Payments
+    FROM dbo.Invoices
     WHERE TenantId = @TenantId
       AND PatientId = @PatientId
 ) timeline

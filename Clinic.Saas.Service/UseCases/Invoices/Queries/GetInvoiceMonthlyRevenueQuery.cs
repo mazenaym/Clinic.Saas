@@ -1,9 +1,9 @@
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
-namespace Clinic.Saas.Service.UseCases.Payments.Queries;
+namespace Clinic.Saas.Service.UseCases.Invoices.Queries;
 
-public class GetMonthlyRevenueQuery
+public class GetInvoiceMonthlyRevenueQuery
 {
     public class Query
     {
@@ -14,9 +14,9 @@ public class GetMonthlyRevenueQuery
 
     public class Handler
     {
-        private readonly IPaymentRepository _repository;
+        private readonly IInvoiceRepository _repository;
 
-        public Handler(IPaymentRepository repository)
+        public Handler(IInvoiceRepository repository)
         {
             _repository = repository;
         }

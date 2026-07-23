@@ -2,22 +2,22 @@ using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
 
-namespace Clinic.Saas.Service.UseCases.Payments.Queries;
+namespace Clinic.Saas.Service.UseCases.Invoices.Queries;
 
 public class GetReceiptPdfQuery
 {
     public class Query
     {
         public Guid TenantId { get; set; }
-        public Guid PaymentId { get; set; }
+        public Guid InvoiceId { get; set; }
     }
 
     public class Handler
     {
-        private readonly IPaymentRepository _repository;
+        private readonly IInvoiceRepository _repository;
         private readonly IPdfDocumentService _pdf;
 
-        public Handler(IPaymentRepository repository, IPdfDocumentService pdf)
+        public Handler(IInvoiceRepository repository, IPdfDocumentService pdf)
         {
             _repository = repository;
             _pdf = pdf;
@@ -25,13 +25,13 @@ public class GetReceiptPdfQuery
 
         public async Task<BaseResponse<ReceiptPdfDto>> Handle(Query query)
         {
-            var payment = await _repository.GetByIdAsync(query.TenantId, query.PaymentId);
-            if (payment is null)
+            var invoice = await _repository.GetByIdAsync(query.TenantId, query.InvoiceId);
+            if (invoice is null)
             {
                 return new BaseResponse<ReceiptPdfDto>
                 {
                     Success = false,
-                    Message = "Payment not found.",
+                    Message = "Invoice not found.",
                     StatusCode = 404
                 };
             }
@@ -43,16 +43,15 @@ public class GetReceiptPdfQuery
                 Data = new ReceiptPdfDto
                 {
                     Content = _pdf.Generate("إيصال دفع", [
-                        ("رقم الفاتورة", payment.InvoiceNumber),
-                        ("التاريخ", payment.CreatedAt.ToString("yyyy-MM-dd")),
-                        ("الإجمالي", payment.TotalAmount.ToString("N2")),
-                        ("المدفوع", payment.PaidAmount.ToString("N2")),
-                        ("المتبقي", payment.RemainingAmount.ToString("N2"))]),
-                    FileName = $"receipt-{payment.InvoiceNumber}.pdf"
+                        ("رقم الفاتورة", invoice.InvoiceNumber),
+                        ("التاريخ", invoice.CreatedAt.ToString("yyyy-MM-dd")),
+                        ("الإجمالي", invoice.GrandTotal.ToString("N2")),
+                        ("المدفوع", invoice.PaidAmount.ToString("N2")),
+                        ("المتبقي", invoice.RemainingAmount.ToString("N2"))]),
+                    FileName = $"receipt-{invoice.InvoiceNumber}.pdf"
                 },
                 StatusCode = 200
             };
         }
-
     }
 }

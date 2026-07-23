@@ -1,4 +1,3 @@
-using Clinic.Saas.Domain.Entities;
 using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Service.DTOs;
 using Clinic.Saas.Service.Interfaces;
@@ -33,12 +32,12 @@ public class CreateClinicSubscriptionCommand
             _validator = validator;
         }
 
-        public async Task<BaseResponse<Subscription>> Handle(Command command)
+        public async Task<BaseResponse<AdminClinicDto>> Handle(Command command)
         {
             var validation = await _validator.ValidateAsync(command.Subscription);
             if (!validation.IsValid)
             {
-                return new BaseResponse<Subscription>
+                return new BaseResponse<AdminClinicDto>
                 {
                     Success = false,
                     Message = "Subscription data is invalid",
@@ -50,7 +49,7 @@ public class CreateClinicSubscriptionCommand
             var clinic = await _repository.GetClinicByIdAsync(command.ClinicId);
             if (clinic is null)
             {
-                return new BaseResponse<Subscription>
+                return new BaseResponse<AdminClinicDto>
                 {
                     Success = false,
                     Message = "Clinic was not found",
@@ -62,7 +61,7 @@ public class CreateClinicSubscriptionCommand
                 .FirstOrDefault(x => x.Code.Equals(MapPlatformPlanCode(command.Subscription.Plan), StringComparison.OrdinalIgnoreCase));
             if (plan is null)
             {
-                return new BaseResponse<Subscription>
+                return new BaseResponse<AdminClinicDto>
                 {
                     Success = false,
                     Message = "Matching platform subscription plan was not found",
@@ -82,7 +81,7 @@ public class CreateClinicSubscriptionCommand
 
             if (renewed is null)
             {
-                return new BaseResponse<Subscription>
+                return new BaseResponse<AdminClinicDto>
                 {
                     Success = false,
                     Message = "Clinic was not found",
@@ -90,24 +89,12 @@ public class CreateClinicSubscriptionCommand
                 };
             }
 
-            var created = new Subscription
-            {
-                TenantId = command.ClinicId,
-                Plan = command.Subscription.Plan,
-                StartDate = renewed.StartsAtUtc,
-                EndDate = renewed.EndsAtUtc,
-                AmountPaid = renewed.ActualPaidAmount ?? command.Subscription.AmountPaid,
-                Status = renewed.Status,
-                PaymentRef = command.Subscription.PaymentRef,
-                Notes = command.Subscription.Notes,
-                CreatedAt = renewed.RenewedAtUtc ?? DateTime.UtcNow
-            };
-
-            return new BaseResponse<Subscription>
+            var updated = await _repository.GetClinicByIdAsync(command.ClinicId);
+            return new BaseResponse<AdminClinicDto>
             {
                 Success = true,
                 Message = "Subscription added successfully",
-                Data = created,
+                Data = updated!,
                 StatusCode = 201
             };
         }

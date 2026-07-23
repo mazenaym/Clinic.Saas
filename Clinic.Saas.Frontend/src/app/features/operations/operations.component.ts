@@ -1,9 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ClinicSettings, TenantSubscriptionStatus } from '../../core/models';
 import { UiService } from '../../core/ui.service';
+import { MediaService } from '../../core/media.service';
 
 type Tab = 'reports' | 'profile' | 'inventory' | 'labs' | 'settings' | 'portal';
 
@@ -12,8 +13,9 @@ type Tab = 'reports' | 'profile' | 'inventory' | 'labs' | 'settings' | 'portal';
   imports: [FormsModule],
   templateUrl: './operations.component.html',
 })
-export class OperationsComponent implements OnInit {
+export class OperationsComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
+  readonly media = inject(MediaService);
   readonly ui = inject(UiService);
   readonly tab = signal<Tab>('reports');
   readonly tenantStatus = signal<TenantSubscriptionStatus | null>(null);
@@ -56,11 +58,15 @@ export class OperationsComponent implements OnInit {
 
   passwordForm = { currentPassword: '', newPassword: '' };
   preferenceForm: Record<string, unknown> = { language: 'ar', theme: 'light', avatarUrl: '' };
-  readonly avatarPreview = signal<string | null>(null);
   readonly logoPreview = signal<string | null>(null);
+  private logoFile: File | null = null;
 
   async ngOnInit() {
     await this.load();
+  }
+
+  ngOnDestroy() {
+    if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
   }
 
   async load() {
@@ -77,8 +83,6 @@ export class OperationsComponent implements OnInit {
         this.preferences.set(x);
         this.preferenceForm = { ...this.preferenceForm, ...x };
       }).catch(() => undefined),
-      firstValueFrom(this.api.avatar()).then((blob) => this.avatarPreview.set(URL.createObjectURL(blob))).catch(() => undefined),
-      firstValueFrom(this.api.clinicLogo()).then((blob) => this.logoPreview.set(URL.createObjectURL(blob))).catch(() => undefined),
     ]);
   }
 
@@ -102,25 +106,22 @@ export class OperationsComponent implements OnInit {
     }, 'تم حفظ تفضيلات الحساب');
   }
 
-  async uploadAvatar(event: Event) {
+  selectLogo(event: Event) {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0]; if (!file) return;
-    await this.ui.run(async () => {
-      await firstValueFrom(this.api.uploadAvatar(file));
-      if (this.avatarPreview()) URL.revokeObjectURL(this.avatarPreview()!);
-      this.avatarPreview.set(URL.createObjectURL(await firstValueFrom(this.api.avatar())));
-      input.value = '';
-    }, 'تم رفع وضغط صورة الحساب');
+    const file = input.files?.[0] ?? null;
+    this.logoFile = file;
+    if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
+    this.logoPreview.set(file ? URL.createObjectURL(file) : null);
   }
 
-  async uploadLogo(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0]; if (!file) return;
+  async uploadLogo() {
+    if (!this.logoFile) { this.ui.error.set('لم يتم اختيار صورة.'); return; }
     await this.ui.run(async () => {
-      await firstValueFrom(this.api.uploadClinicLogo(file));
+      await this.media.uploadTenantLogo(this.logoFile!);
       if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
-      this.logoPreview.set(URL.createObjectURL(await firstValueFrom(this.api.clinicLogo())));
-      input.value = '';
-    }, 'تم رفع وضغط شعار العيادة');
+      this.logoPreview.set(null); this.logoFile = null;
+    }, 'تم تحديث شعار العيادة بنجاح.');
   }
+
+  async deleteLogo() { await this.ui.run(() => this.media.deleteTenantLogo(), 'تم حذف شعار العيادة.'); }
 }

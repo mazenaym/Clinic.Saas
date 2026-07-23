@@ -233,6 +233,15 @@ WHERE TenantId = @TenantId
         return rows > 0;
     }
 
+    public async Task<bool> ClearAvatarAsync(Guid tenantId, Guid userId)
+    {
+        const string sql = @"UPDATE dbo.Users
+SET AvatarUrl = NULL, UpdatedAt = SYSUTCDATETIME()
+WHERE TenantId = @TenantId AND Id = @UserId;";
+        using var connection = await _connectionFactory.CreateOpenTenantConnectionAsync(tenantId);
+        return await connection.ExecuteAsync(sql, new { TenantId = tenantId, UserId = userId }) == 1;
+    }
+
     public async Task<bool> IsEmailTakenByAnotherUserAsync(Guid tenantId, Guid userId, string email)
     {
         EnsureTenantId(tenantId);

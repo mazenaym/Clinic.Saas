@@ -91,7 +91,7 @@ export class InvoicesComponent implements OnInit {
       this.invoice.set(created);
       this.paymentForm.amount = created.remainingAmount;
       await this.loadPatientLedger(payload.patientId);
-      await this.router.navigate(['/billing/invoices', created.id], { replaceUrl: true });
+      await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
     }, 'تم إنشاء الفاتورة');
   }
 

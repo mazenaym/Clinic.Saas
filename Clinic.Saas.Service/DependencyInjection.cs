@@ -21,8 +21,6 @@ using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
-using Clinic.Saas.Service.UseCases.Payments.Commands;
-using Clinic.Saas.Service.UseCases.Payments.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
 using Clinic.Saas.Service.UseCases.Procedures.Commands;
@@ -115,21 +113,18 @@ public static class DependencyInjection
         services.AddScoped<UpdateProcedureCommand.Handler>();
         services.AddScoped<SetProcedureActiveCommand.Handler>();
 
-        services.AddScoped<CreatePaymentCommand.Handler>();
-        services.AddScoped<GetPaymentByIdQuery.Handler>();
-        services.AddScoped<GetPatientPaymentsQuery.Handler>();
-        services.AddScoped<UpdatePaymentCommand.Handler>();
-        services.AddScoped<RefundPaymentCommand.Handler>();
-        services.AddScoped<GetReceiptPdfQuery.Handler>();
-        services.AddScoped<GetDebtTrackingQuery.Handler>();
-        services.AddScoped<GetMonthlyRevenueQuery.Handler>();
-        services.AddScoped<GetDailyRevenueReportQuery.Handler>();
-
         services.AddScoped<CreateInvoiceCommand.Handler>();
         services.AddScoped<GetInvoiceByIdQuery.Handler>();
         services.AddScoped<GetInvoicePdfQuery.Handler>();
         services.AddScoped<AddInvoicePaymentCommand.Handler>();
         services.AddScoped<GetFinancialDuesReportQuery.Handler>();
+        services.AddScoped<UpdateInvoiceCommand.Handler>();
+        services.AddScoped<RefundInvoiceCommand.Handler>();
+        services.AddScoped<GetPatientInvoicesQuery.Handler>();
+        services.AddScoped<GetInvoiceDebtTrackingQuery.Handler>();
+        services.AddScoped<GetInvoiceMonthlyRevenueQuery.Handler>();
+        services.AddScoped<GetInvoiceDailyRevenueReportQuery.Handler>();
+        services.AddScoped<GetReceiptPdfQuery.Handler>();
 
         services.AddScoped<LoginCommand.Handler>();
         services.AddScoped<RefreshTokenCommand.Handler>();
@@ -157,6 +152,7 @@ public static class DependencyInjection
         services.AddScoped<GetPatientDocumentsQuery.Handler>();
         services.AddScoped<DownloadPatientDocumentQuery.Handler>();
         services.AddScoped<DeletePatientDocumentCommand.Handler>();
+        services.AddScoped<GetPatientDocumentThumbnailQuery.Handler>();
 
         return services;
     }

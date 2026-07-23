@@ -29,13 +29,14 @@ SELECT COUNT(1) FROM dbo.Users;
 SELECT COUNT(1) FROM dbo.Patients WHERE IsDeleted = 0;
 
 SELECT
-    SUM(CASE WHEN [Status] = 1 THEN 1 ELSE 0 END) AS ActiveSubscriptions,
-    SUM(CASE WHEN [Status] = 4 THEN 1 ELSE 0 END) AS TrialSubscriptions,
-    SUM(CASE WHEN [Status] = 2 THEN 1 ELSE 0 END) AS ExpiredSubscriptions,
-    COALESCE(SUM(AmountPaid), 0) AS TotalRevenue,
-    COALESCE(SUM(CASE WHEN CreatedAt >= @MonthStart THEN AmountPaid ELSE 0 END), 0) AS MonthlyRevenue,
-    COALESCE(SUM(CASE WHEN CAST(CreatedAt AS date) = @Today THEN AmountPaid ELSE 0 END), 0) AS TodayRevenue
-FROM dbo.Subscriptions;";
+    SUM(CASE WHEN ts.[Status] = 1 THEN 1 ELSE 0 END) AS ActiveSubscriptions,
+    SUM(CASE WHEN ts.[Status] = 4 THEN 1 ELSE 0 END) AS TrialSubscriptions,
+    SUM(CASE WHEN ts.[Status] = 3 THEN 1 ELSE 0 END) AS ExpiredSubscriptions,
+    COALESCE(SUM(CASE WHEN sp.PaymentStatus = 2 THEN sp.Amount ELSE 0 END), 0) AS TotalRevenue,
+    COALESCE(SUM(CASE WHEN sp.PaymentStatus = 2 AND sp.PaidAtUtc >= @MonthStart THEN sp.Amount ELSE 0 END), 0) AS MonthlyRevenue,
+    COALESCE(SUM(CASE WHEN sp.PaymentStatus = 2 AND CAST(sp.PaidAtUtc AS date) = @Today THEN sp.Amount ELSE 0 END), 0) AS TodayRevenue
+FROM dbo.TenantSubscriptions ts
+LEFT JOIN dbo.SubscriptionPayments sp ON sp.SubscriptionId = ts.Id;";
 
         using var connection = _context.CreateConnection();
         using var multi = await connection.QueryMultipleAsync(statsSql, new
@@ -156,7 +157,7 @@ VALUES
         return created ?? throw new InvalidOperationException("Platform tenant was not found after bootstrap.");
     }
 
-    public async Task<AdminClinicDto> CreateClinicAsync(Tenant tenant, User owner, Subscription subscription, ClinicSettingsDto settings)
+    public async Task<AdminClinicDto> CreateClinicAsync(Tenant tenant, User owner, CreateSubscriptionRequest subscription, ClinicSettingsDto settings)
     {
         if (tenant.Id == Guid.Empty)
         {
@@ -168,14 +169,7 @@ VALUES
             owner.Id = Guid.NewGuid();
         }
 
-        if (subscription.Id == Guid.Empty)
-        {
-            subscription.Id = Guid.NewGuid();
-        }
-
         owner.TenantId = tenant.Id;
-        subscription.TenantId = tenant.Id;
-        subscription.Plan = tenant.Plan;
 
         using var connection = _context.CreateConnection();
         connection.Open();
@@ -204,10 +198,24 @@ VALUES
 );";
 
             const string subscriptionSql = @"
-INSERT INTO dbo.Subscriptions
-(Id, TenantId, [Plan], StartDate, EndDate, AmountPaid, [Status], PaymentRef, Notes, CreatedAt)
+DECLARE @PlanId UNIQUEIDENTIFIER = (
+    SELECT TOP 1 p.Id FROM dbo.SubscriptionPlans p
+    WHERE p.IsActive = 1
+      AND ((@Plan = 1 AND p.Code IN (N'TRIAL', N'BASIC_MONTHLY'))
+        OR (@Plan = 2 AND p.Code = N'PRO_MONTHLY')
+        OR (@Plan = 3 AND p.Code = N'ANNUAL'))
+    ORDER BY CASE WHEN @Plan = 1 AND p.Code = N'TRIAL' THEN 0 ELSE 1 END
+);
+DECLARE @TenantSubId UNIQUEIDENTIFIER = NEWID();
+INSERT INTO dbo.TenantSubscriptions
+(Id, TenantId, PlanId, Status, StartsAtUtc, EndsAtUtc, AutoRenew, GracePeriodDays, Notes, CreatedByUserId, CreatedAtUtc)
 VALUES
-(@Id, @TenantId, @Plan, @StartDate, @EndDate, @AmountPaid, @Status, @PaymentRef, @Notes, @CreatedAt);";
+(@TenantSubId, @TenantId, @PlanId, @Status, @StartDate, @EndDate, 0, 0, @Notes, @CreatedBy, @CreatedAt);
+
+INSERT INTO dbo.SubscriptionPayments
+(Id, TenantId, SubscriptionId, Amount, Currency, PaymentStatus, PaymentMethod, PaidAtUtc, CreatedAtUtc, Notes, CreatedByUserId)
+VALUES
+(NEWID(), @TenantId, @TenantSubId, @AmountPaid, N'EGP', 2, @PaymentRef, @StartDate, @CreatedAt, @Notes, @CreatedBy);";
 
             const string settingsSql = @"
 INSERT INTO dbo.ClinicSettings
@@ -223,7 +231,19 @@ VALUES
 
             await connection.ExecuteAsync(tenantSql, tenant, transaction);
             await connection.ExecuteAsync(userSql, owner, transaction);
-            await connection.ExecuteAsync(subscriptionSql, subscription, transaction);
+            await connection.ExecuteAsync(subscriptionSql, new
+            {
+                Plan = (short)subscription.Plan,
+                TenantId = tenant.Id,
+                Status = (short)subscription.Status,
+                subscription.StartDate,
+                subscription.EndDate,
+                subscription.AmountPaid,
+                subscription.PaymentRef,
+                subscription.Notes,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = owner.Id
+            }, transaction);
             await connection.ExecuteAsync(settingsSql, new
             {
                 Id = Guid.NewGuid(),
@@ -285,23 +305,46 @@ WHERE Id = @ClinicId;";
         await connection.ExecuteAsync(sql, new { ClinicId = clinicId, IsActive = isActive });
     }
 
-    public async Task<Subscription> AddSubscriptionAsync(Subscription subscription)
+    public async Task AddSubscriptionAsync(CreateSubscriptionRequest subscription)
     {
-        if (subscription.Id == Guid.Empty)
-        {
-            subscription.Id = Guid.NewGuid();
-        }
-
         const string sql = @"
-INSERT INTO dbo.Subscriptions
-(Id, TenantId, [Plan], StartDate, EndDate, AmountPaid, [Status], PaymentRef, Notes, CreatedAt)
-VALUES
-(@Id, @TenantId, @Plan, @StartDate, @EndDate, @AmountPaid, @Status, @PaymentRef, @Notes, @CreatedAt);
+DECLARE @PlanId UNIQUEIDENTIFIER = (
+    SELECT TOP 1 p.Id FROM dbo.SubscriptionPlans p
+    WHERE p.IsActive = 1
+      AND ((@Plan = 1 AND p.Code IN (N'TRIAL', N'BASIC_MONTHLY'))
+        OR (@Plan = 2 AND p.Code = N'PRO_MONTHLY')
+        OR (@Plan = 3 AND p.Code = N'ANNUAL'))
+    ORDER BY CASE WHEN @Plan = 1 AND p.Code = N'TRIAL' THEN 0 ELSE 1 END
+);
+DECLARE @TenantSubId UNIQUEIDENTIFIER = NEWID();
 
-SELECT * FROM dbo.Subscriptions WHERE Id = @Id;";
+UPDATE dbo.TenantSubscriptions
+SET Status = 5, CancelledAtUtc = @Now, UpdatedAtUtc = @Now
+WHERE TenantId = @TenantId AND Status IN (1, 2, 4);
+
+INSERT INTO dbo.TenantSubscriptions
+(Id, TenantId, PlanId, Status, StartsAtUtc, EndsAtUtc, AutoRenew, GracePeriodDays, Notes, CreatedByUserId, CreatedAtUtc)
+VALUES
+(@TenantSubId, @TenantId, @PlanId, @Status, @StartDate, @EndDate, 0, 0, @Notes, NULL, @Now);
+
+INSERT INTO dbo.SubscriptionPayments
+(Id, TenantId, SubscriptionId, Amount, Currency, PaymentStatus, PaymentMethod, PaidAtUtc, CreatedAtUtc, Notes, CreatedByUserId)
+VALUES
+(NEWID(), @TenantId, @TenantSubId, @AmountPaid, N'EGP', 2, @PaymentRef, @StartDate, @Now, @Notes, NULL);";
 
         using var connection = _context.CreateConnection();
-        return await connection.QuerySingleAsync<Subscription>(sql, subscription);
+        await connection.ExecuteAsync(sql, new
+        {
+            Plan = (short)subscription.Plan,
+            subscription.TenantId,
+            Status = (short)subscription.Status,
+            subscription.StartDate,
+            subscription.EndDate,
+            subscription.AmountPaid,
+            subscription.PaymentRef,
+            subscription.Notes,
+            Now = DateTime.UtcNow
+        });
     }
 
     private static Task<IEnumerable<AdminClinicDto>> GetClinicsInternalAsync(IDbConnection connection, string orderBy)
@@ -335,23 +378,30 @@ SELECT
     COALESCE(u.UsersCount, 0) AS UsersCount,
     COALESCE(p.PatientsCount, 0) AS PatientsCount,
     COALESCE(a.AppointmentsCount, 0) AS AppointmentsCount,
-    COALESCE(pay.ClinicRevenue, 0) AS ClinicRevenue,
-    s.Id AS SubscriptionId,
-    s.[Status] AS SubscriptionStatus,
-    s.StartDate AS SubscriptionStartDate,
-    s.EndDate AS SubscriptionEndDate,
-    s.AmountPaid AS SubscriptionAmountPaid
+    COALESCE(inv.ClinicRevenue, 0) AS ClinicRevenue,
+    ts.Id AS SubscriptionId,
+    ts.Status AS SubscriptionStatus,
+    ts.StartsAtUtc AS SubscriptionStartDate,
+    ts.EndsAtUtc AS SubscriptionEndDate,
+    COALESCE(subscriptionPayments.TotalPaidAmount, 0) AS SubscriptionAmountPaid
 FROM dbo.Tenants t
 OUTER APPLY
 (
     SELECT TOP (1) *
-    FROM dbo.Subscriptions latest
+    FROM dbo.TenantSubscriptions latest
     WHERE latest.TenantId = t.Id
-    ORDER BY latest.EndDate DESC, latest.CreatedAt DESC
-) s
+    ORDER BY latest.EndsAtUtc DESC, latest.CreatedAtUtc DESC
+) ts
+OUTER APPLY
+(
+    SELECT COALESCE(SUM(payment.Amount), 0) AS TotalPaidAmount
+    FROM dbo.SubscriptionPayments payment
+    WHERE payment.SubscriptionId = ts.Id
+      AND payment.PaymentStatus = 2
+) subscriptionPayments
 OUTER APPLY (SELECT COUNT(1) AS UsersCount FROM dbo.Users WHERE TenantId = t.Id) u
 OUTER APPLY (SELECT COUNT(1) AS PatientsCount FROM dbo.Patients WHERE TenantId = t.Id AND IsDeleted = 0) p
 OUTER APPLY (SELECT COUNT(1) AS AppointmentsCount FROM dbo.Appointments WHERE TenantId = t.Id AND IsDeleted = 0) a
-OUTER APPLY (SELECT COALESCE(SUM(PaidAmount), 0) AS ClinicRevenue FROM dbo.Payments WHERE TenantId = t.Id) pay
+OUTER APPLY (SELECT COALESCE(SUM(GrandTotal), 0) AS ClinicRevenue FROM dbo.Invoices WHERE TenantId = t.Id) inv
 ";
 }

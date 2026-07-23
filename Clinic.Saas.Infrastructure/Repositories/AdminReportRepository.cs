@@ -30,12 +30,13 @@ ORDER BY t.CreatedAt DESC;";
     public async Task<IEnumerable<SubscriptionRevenueDto>> GetSubscriptionRevenueAsync()
     {
         const string sql = @"
-SELECT YEAR(CreatedAt) AS [Year],
-       MONTH(CreatedAt) AS [Month],
-       SUM(AmountPaid) AS Revenue,
+SELECT YEAR(sp.PaidAtUtc) AS [Year],
+       MONTH(sp.PaidAtUtc) AS [Month],
+       SUM(sp.Amount) AS Revenue,
        COUNT(1) AS SubscriptionCount
-FROM dbo.Subscriptions
-GROUP BY YEAR(CreatedAt), MONTH(CreatedAt)
+FROM dbo.SubscriptionPayments sp
+WHERE sp.PaymentStatus = 2
+GROUP BY YEAR(sp.PaidAtUtc), MONTH(sp.PaidAtUtc)
 ORDER BY [Year] DESC, [Month] DESC;";
 
         using var connection = await _connectionFactory.CreateOpenConnectionAsync();
@@ -45,12 +46,14 @@ ORDER BY [Year] DESC, [Month] DESC;";
     public async Task<IEnumerable<ExpiringSubscriptionDto>> GetExpiringSubscriptionsAsync(int days)
     {
         const string sql = @"
-SELECT t.Name, t.Subdomain, s.[Plan], s.EndDate, s.Status
-FROM dbo.Subscriptions s
-INNER JOIN dbo.Tenants t ON t.Id = s.TenantId
-WHERE s.EndDate >= SYSUTCDATETIME()
-  AND s.EndDate < DATEADD(day, @Days, SYSUTCDATETIME())
-ORDER BY s.EndDate;";
+SELECT t.Name, t.Subdomain, sp.Name AS Plan, ts.EndsAtUtc AS EndDate, CAST(ts.Status AS nvarchar(20)) AS Status
+FROM dbo.TenantSubscriptions ts
+INNER JOIN dbo.Tenants t ON t.Id = ts.TenantId
+LEFT JOIN dbo.SubscriptionPlans sp ON sp.Id = ts.PlanId
+WHERE ts.EndsAtUtc >= SYSUTCDATETIME()
+  AND ts.EndsAtUtc < DATEADD(day, @Days, SYSUTCDATETIME())
+  AND ts.Status IN (1, 4)
+ORDER BY ts.EndsAtUtc;";
 
         using var connection = await _connectionFactory.CreateOpenConnectionAsync();
         return await connection.QueryAsync<ExpiringSubscriptionDto>(sql, new { Days = days });

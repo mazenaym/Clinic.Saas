@@ -10,6 +10,15 @@ public interface IInvoiceRepository
     Task<PatientFinancialLedgerData> GetPatientLedgerAsync(Guid tenantId, Guid patientId);
     Task<FinancialDuesReportData> GetFinancialDuesAsync(Guid tenantId, DateTime? from, DateTime? toExclusive, Guid? doctorId);
     Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt);
+    Task<IEnumerable<Invoice>> GetByPatientAsync(Guid tenantId, Guid patientId);
+    Task<IEnumerable<Invoice>> GetByDateAsync(Guid tenantId, DateTime date);
+    Task UpdateAsync(Guid tenantId, Invoice entity);
+    Task<bool> UpdateWithItemsAsync(Guid tenantId, Invoice entity);
+    Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason, byte[] rowVersion);
+    Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion);
+    Task<IEnumerable<InvoiceDebtRow>> GetDebtTrackingAsync(Guid tenantId);
+    Task<IEnumerable<MonthlyRevenueRow>> GetMonthlyRevenueAsync(Guid tenantId, DateTime start, DateTime end);
+    Task<IEnumerable<DailyPaymentMethodTotal>> GetDailyPaymentMethodTotalsAsync(Guid tenantId, DateTime date);
 }
 
 public class PatientFinancialLedgerData
@@ -58,4 +67,26 @@ public class FinancialDuesPatientRow
     public decimal PaidAmount { get; set; }
     public decimal OutstandingAmount { get; set; }
     public DateTime? LastPaymentDate { get; set; }
+}
+
+public class InvoiceDebtRow
+{
+    public Guid PatientId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+    public decimal TotalDebt { get; set; }
+}
+
+public class MonthlyRevenueRow
+{
+    public DateTime Date { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public int InvoiceCount { get; set; }
+}
+
+public class DailyPaymentMethodTotal
+{
+    public short PaymentMethod { get; set; }
+    public decimal TotalAmount { get; set; }
 }

@@ -3,8 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AuthService } from '../../core/auth.service';
 import { Role } from '../../core/models';
 import { UiService } from '../../core/ui.service';
-import { ApiService } from '../../core/api.service';
-import { firstValueFrom } from 'rxjs';
+import { MediaService } from '../../core/media.service';
 
 interface NavItem {
   label: string;
@@ -23,14 +22,13 @@ export class ShellComponent implements OnDestroy {
   readonly auth = inject(AuthService);
   readonly ui = inject(UiService);
   private readonly router = inject(Router);
-  private readonly api = inject(ApiService);
-  readonly avatarUrl = signal<string | null>(null);
-  readonly logoUrl = signal<string | null>(null);
+  readonly media = inject(MediaService);
   readonly menuOpen = signal(false);
   readonly todayLabel = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
   private readonly clinicNav: NavItem[] = [
     { label: 'لوحة القيادة', icon: '▦', path: '/dashboard' },
+    { label: 'حسابي', icon: '●', path: '/account', roles: ['Admin', 'Doctor', 'Reception'] },
     { label: 'المرضى', icon: '♙', path: '/patients', roles: ['Admin', 'Doctor', 'Reception'] },
     { label: 'المواعيد', icon: '▣', path: '/appointments', roles: ['Admin', 'Doctor', 'Reception'] },
     { label: 'الحجز الإلكتروني', icon: '↗', path: '/online-bookings', roles: ['Admin', 'Reception'] },
@@ -66,22 +64,10 @@ export class ShellComponent implements OnDestroy {
   readonly roleLabel = computed(() => this.roleInArabic(this.auth.user()?.role));
   readonly workspaceName = computed(() => (this.isSuperAdmin() ? 'منصة ClinicFlow' : this.auth.tenant()?.name || 'ClinicFlow'));
 
-  constructor() { void this.loadMedia(); }
+  ngOnDestroy() { this.media.clearMediaCache(); }
 
-  ngOnDestroy() {
-    if (this.avatarUrl()) URL.revokeObjectURL(this.avatarUrl()!);
-    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl()!);
-  }
-
-  private async loadMedia() {
-    if (this.isSuperAdmin()) return;
-    const [avatar, logo] = await Promise.all([
-      firstValueFrom(this.api.avatar()).catch(() => null),
-      firstValueFrom(this.api.clinicLogo()).catch(() => null),
-    ]);
-    if (avatar) this.avatarUrl.set(URL.createObjectURL(avatar));
-    if (logo) this.logoUrl.set(URL.createObjectURL(logo));
-  }
+  avatarFailed() { this.media.avatarLoadFailed(); }
+  logoFailed() { this.media.logoLoadFailed(); }
 
   closeMenu() {
     this.menuOpen.set(false);

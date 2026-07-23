@@ -344,7 +344,7 @@ OUTER APPLY
 OUTER APPLY (SELECT COUNT(1) AS UsersCount FROM dbo.Users WHERE TenantId = t.Id) u
 OUTER APPLY (SELECT COUNT(1) AS PatientsCount FROM dbo.Patients WHERE TenantId = t.Id AND IsDeleted = 0) p
 OUTER APPLY (SELECT COUNT(1) AS AppointmentsCount FROM dbo.Appointments WHERE TenantId = t.Id AND IsDeleted = 0) a
-OUTER APPLY (SELECT COALESCE(SUM(PaidAmount), 0) AS ClinicRevenue FROM dbo.Payments WHERE TenantId = t.Id) pay
+OUTER APPLY (SELECT COALESCE(SUM(GrandTotal), 0) AS ClinicRevenue FROM dbo.Invoices WHERE TenantId = t.Id) pay
 ";
 
     private sealed class DashboardCounts

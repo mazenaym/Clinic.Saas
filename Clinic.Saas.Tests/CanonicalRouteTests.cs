@@ -24,7 +24,6 @@ public sealed class CanonicalRouteTests
         { typeof(DrugCatalogController), "api/drug-catalog" },
         { typeof(ProceduresController), "api/procedures" },
         { typeof(InvoicesController), "api/invoices" },
-        { typeof(BillingController), "api/billing" },
         { typeof(ReportsController), "api/reports" },
         { typeof(PlatformDashboardController), "api/platform/dashboard" },
         { typeof(PlatformClinicsController), "api/platform/clinics" },
@@ -112,11 +111,11 @@ public sealed class CanonicalRouteTests
     }
 
     [Theory]
-    [InlineData(nameof(BillingController.MonthlyRevenue))]
-    [InlineData(nameof(BillingController.DailyRevenue))]
+    [InlineData(nameof(InvoicesController.MonthlyRevenue))]
+    [InlineData(nameof(InvoicesController.DailyRevenue))]
     public void Revenue_reports_restore_admin_financial_policy(string methodName)
     {
-        var authorization = Authorization(typeof(BillingController).GetMethod(methodName)!);
+        var authorization = Authorization(typeof(InvoicesController).GetMethod(methodName)!);
 
         Assert.Equal("Admin", authorization.Roles);
         Assert.Equal(Permissions.ReportsFinancialView, authorization.Policy);

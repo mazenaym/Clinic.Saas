@@ -1,0 +1,37 @@
+<section class="page">
+  <div class="page-head"><div><h2>إعدادات الحساب</h2><p>إدارة الصورة الشخصية والتفضيلات وأمان الحساب.</p></div></div>
+  <div class="grid">
+    <section class="panel span-6 media-settings-card">
+      <div><h3>الصورة الشخصية</h3><p class="muted">JPG أو PNG أو WebP، بحد أقصى 8 ميجابايت. يتم ضغط الصورة تلقائيًا.</p></div>
+      <div class="media-settings-preview avatar-preview">
+        @if (previewUrl() || media.currentAvatarUrl()) { <img [src]="previewUrl() || media.currentAvatarUrl()" alt="الصورة الشخصية" /> }
+        @else { <strong>{{ auth.user()?.fullName?.charAt(0) || 'C' }}</strong> }
+      </div>
+      @if (media.avatarLoading()) { <p class="inline-help">جاري معالجة الصورة...</p> }
+      @if (media.avatarError()) { <p class="inline-help error-text">{{ media.avatarError() }}</p> }
+      <div class="actions">
+        <label class="button-link secondary-link file-action">{{ media.currentAvatarUrl() ? 'تغيير الصورة' : 'رفع صورة' }}<input type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="selectAvatar($event)" /></label>
+        @if (previewUrl()) { <button type="button" (click)="uploadAvatar()" [disabled]="media.avatarLoading()">حفظ الصورة</button> }
+        @if (media.currentAvatarUrl()) { <button type="button" class="danger" (click)="deleteAvatar()" [disabled]="media.avatarLoading()">حذف الصورة</button> }
+      </div>
+    </section>
+
+    <section class="panel span-6">
+      <h3>تفضيلات الحساب</h3>
+      <form class="form-grid" (ngSubmit)="savePreferences()">
+        <label>اللغة<select name="language" [(ngModel)]="preferenceForm['language']"><option value="ar">العربية</option><option value="en">English</option></select></label>
+        <label>المظهر<select name="theme" [(ngModel)]="preferenceForm['theme']"><option value="light">فاتح</option><option value="dark">داكن</option></select></label>
+        <button class="span-all" [disabled]="ui.busy()">حفظ التفضيلات</button>
+      </form>
+    </section>
+
+    <section class="panel span-6">
+      <h3>تغيير كلمة المرور</h3>
+      <form class="form-grid" (ngSubmit)="changePassword()">
+        <label class="span-all">كلمة المرور الحالية<input name="currentPassword" type="password" [(ngModel)]="passwordForm.currentPassword" required /></label>
+        <label class="span-all">كلمة المرور الجديدة<input name="newPassword" type="password" [(ngModel)]="passwordForm.newPassword" required /></label>
+        <button class="span-all" [disabled]="ui.busy()">تغيير كلمة المرور</button>
+      </form>
+    </section>
+  </div>
+</section>

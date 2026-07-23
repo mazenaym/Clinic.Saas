@@ -6,10 +6,10 @@
 
   <aside class="sidebar" [class.open]="menuOpen()" aria-label="التنقل الرئيسي">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">✚</span>
+      <span class="brand-mark" aria-hidden="true">@if (media.currentTenantLogoUrl()) { <img [src]="media.currentTenantLogoUrl()" (error)="logoFailed()" alt="" /> } @else { ✚ }</span>
       <div>
-        <strong>ClinicFlow</strong>
-        <small>{{ isSuperAdmin() ? 'إدارة المنصة' : 'خطة العيادة' }}</small>
+        <strong>{{ media.currentTenantLogoUrl() && !isSuperAdmin() ? workspaceName() : 'ClinicFlow' }}</strong>
+        <small>{{ isSuperAdmin() ? 'إدارة المنصة' : workspaceName() }}</small>
       </div>
     </div>
 
@@ -39,7 +39,7 @@
         <a routerLink="/patients" class="quick-action" aria-label="إضافة مريض أو البحث في المرضى">إجراء سريع <span aria-hidden="true">＋</span></a>
         <span class="notification" aria-label="الإشعارات">♢<i></i></span>
         <div class="user-pill">
-          <span class="avatar" aria-hidden="true">@if (avatarUrl()) { <img [src]="avatarUrl()" alt="" /> } @else { {{ auth.user()?.fullName?.charAt(0) || 'C' }} }</span>
+          <span class="avatar" aria-hidden="true">@if (media.currentAvatarUrl()) { <img [src]="media.currentAvatarUrl()" (error)="avatarFailed()" alt="" /> } @else { {{ auth.user()?.fullName?.charAt(0) || 'C' }} }</span>
           <div>
             <strong>{{ auth.user()?.fullName }}</strong>
             <small>{{ roleLabel() }} · {{ sessionState() }}</small>

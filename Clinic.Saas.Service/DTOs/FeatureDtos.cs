@@ -100,12 +100,32 @@ public class CreateClinicalTemplateDto
     public string? Diagnosis { get; set; }
 }
 
-public class UpdatePaymentDto : CreatePaymentDto
+public class UpdateInvoiceDto
 {
+    public Guid PatientId { get; set; }
+    public Guid? VisitId { get; set; }
+    public decimal PaidAmount { get; set; }
+    public PaymentMethod PaymentMethod { get; set; }
+    public string? InsuranceCompany { get; set; }
+    public string? InsuranceNumber { get; set; }
+    public string? Notes { get; set; }
     public string? RowVersion { get; set; }
+    public List<UpdateInvoiceItemDto> Items { get; set; } = new();
 }
 
-public class RefundPaymentDto
+public class UpdateInvoiceItemDto
+{
+    public Guid? ProcedureId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public ServiceType? ServiceType { get; set; }
+    public int Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TaxAmount { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class RefundInvoiceDto
 {
     public string? Reason { get; set; }
     public string? RowVersion { get; set; }

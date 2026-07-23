@@ -5,7 +5,7 @@
       <p>إنشاء فواتير المرضى، مراجعة التفاصيل، وتسجيل الدفعات.</p>
     </div>
     <div class="actions">
-      <a class="button-link secondary-link" routerLink="/billing">لوحة الفوترة</a>
+      <a class="button-link secondary-link" routerLink="/invoices">الفواتير</a>
       @if (invoiceForm.patientId) {
         <a class="button-link secondary-link" [routerLink]="['/patients', invoiceForm.patientId, 'chart']" [queryParams]="{ tab: 'invoices' }">ملف المريض</a>
       }

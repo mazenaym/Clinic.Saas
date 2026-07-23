@@ -2,9 +2,9 @@ using Clinic.Saas.Domain.Enums;
 using Clinic.Saas.Domain.Interfaces;
 using Clinic.Saas.Service.DTOs;
 
-namespace Clinic.Saas.Service.UseCases.Payments.Queries;
+namespace Clinic.Saas.Service.UseCases.Invoices.Queries;
 
-public class GetDailyRevenueReportQuery
+public class GetInvoiceDailyRevenueReportQuery
 {
     public class Query
     {
@@ -14,34 +14,36 @@ public class GetDailyRevenueReportQuery
 
     public class Handler
     {
-        private readonly IPaymentRepository _paymentRepository;
+        private readonly IInvoiceRepository _invoiceRepository;
         private readonly IAppointmentRepository _appointmentRepository;
         private readonly IVisitRepository _visitRepository;
 
-        public Handler(IPaymentRepository paymentRepository, IAppointmentRepository appointmentRepository, IVisitRepository visitRepository)
+        public Handler(IInvoiceRepository invoiceRepository, IAppointmentRepository appointmentRepository, IVisitRepository visitRepository)
         {
-            _paymentRepository = paymentRepository;
+            _invoiceRepository = invoiceRepository;
             _appointmentRepository = appointmentRepository;
             _visitRepository = visitRepository;
         }
 
         public async Task<BaseResponse<DailyRevenueReportDto>> Handle(Query query)
         {
-            var payments = (await _paymentRepository.GetByDateAsync(query.TenantId, query.Date)).ToList();
+            var invoices = (await _invoiceRepository.GetByDateAsync(query.TenantId, query.Date)).ToList();
             var appointments = (await _appointmentRepository.GetByDateAsync(query.TenantId, query.Date)).ToList();
             var completedVisits = await _visitRepository.CountByDateAsync(query.TenantId, query.Date);
+            var paymentMethodTotals = (await _invoiceRepository.GetDailyPaymentMethodTotalsAsync(query.TenantId, query.Date))
+                .ToDictionary(x => (PaymentMethod)x.PaymentMethod, x => x.TotalAmount);
 
             var report = new DailyRevenueReportDto
             {
                 Date = query.Date.Date,
                 TotalAppointments = appointments.Count,
                 CompletedVisits = completedVisits,
-                GrossRevenue = payments.Sum(x => x.TotalAmount + x.TaxAmount),
-                TotalDiscounts = payments.Sum(x => x.DiscountAmount),
-                NetRevenue = payments.Sum(x => x.PaidAmount),
-                CashPayments = payments.Where(x => x.PaymentMethod == PaymentMethod.Cash).Sum(x => x.PaidAmount),
-                CardPayments = payments.Where(x => x.PaymentMethod == PaymentMethod.Card).Sum(x => x.PaidAmount),
-                InsurancePayments = payments.Where(x => x.PaymentMethod == PaymentMethod.Insurance).Sum(x => x.PaidAmount)
+                GrossRevenue = invoices.Sum(x => x.GrandTotal),
+                TotalDiscounts = invoices.Sum(x => x.DiscountAmount),
+                NetRevenue = invoices.Sum(x => x.PaidAmount),
+                CashPayments = paymentMethodTotals.GetValueOrDefault(PaymentMethod.Cash),
+                CardPayments = paymentMethodTotals.GetValueOrDefault(PaymentMethod.Card),
+                InsurancePayments = paymentMethodTotals.GetValueOrDefault(PaymentMethod.Insurance)
             };
 
             return new BaseResponse<DailyRevenueReportDto>

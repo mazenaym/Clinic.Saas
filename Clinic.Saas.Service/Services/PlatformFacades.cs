@@ -48,7 +48,7 @@ public sealed class PlatformClinicsFacade(
 
     public Task<BaseResponse<AdminClinicDto>> UpdateAsync(Guid id, UpdateClinicDto dto) => update.Handle(new UpdateClinicCommand.Command { ClinicId = id, Clinic = dto });
     public Task<BaseResponse<AdminClinicDto>> SetLegacyStatusAsync(Guid id, bool isActive) => status.Handle(new SetClinicStatusCommand.Command { ClinicId = id, IsActive = isActive });
-    public Task<BaseResponse<Subscription>> CreateLegacySubscriptionAsync(Guid clinicId, CreateSubscriptionDto dto) => legacySubscription.Handle(new CreateClinicSubscriptionCommand.Command { ClinicId = clinicId, Subscription = dto });
+    public Task<BaseResponse<AdminClinicDto>> CreateLegacySubscriptionAsync(Guid clinicId, CreateSubscriptionDto dto) => legacySubscription.Handle(new CreateClinicSubscriptionCommand.Command { ClinicId = clinicId, Subscription = dto });
     public Task<BaseResponse<AdminClinicDto>> BootstrapAsync(BootstrapSuperAdminDto dto) => bootstrap.Handle(new BootstrapSuperAdminCommand.Command { Request = dto });
 }
 

@@ -2,11 +2,30 @@ using Clinic.Saas.Service.Interfaces;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using Microsoft.Extensions.Configuration;
+using QuestPDF.Drawing;
 
 namespace Clinic.Saas.Service.Services;
 
 public sealed class PdfDocumentService : IPdfDocumentService
 {
+    private readonly string _fontFamily;
+
+    public PdfDocumentService() : this((string?)null) { }
+
+    public PdfDocumentService(IConfiguration configuration) : this(configuration["Pdf:FontPath"]) { }
+
+    private PdfDocumentService(string? fontPath)
+    {
+        if (!string.IsNullOrWhiteSpace(fontPath))
+        {
+            using var stream = File.OpenRead(fontPath);
+            FontManager.RegisterFontWithCustomName("ClinicArabic", stream);
+            _fontFamily = "ClinicArabic";
+        }
+        else _fontFamily = "Arial";
+    }
+
     public byte[] Generate(string title, IEnumerable<(string Label, string Value)> fields, IEnumerable<string>? lines = null)
     {
         var fieldList = fields.ToList();
@@ -15,7 +34,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
         {
             page.Size(PageSizes.A4);
             page.Margin(35);
-            page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Arial"));
+            page.DefaultTextStyle(x => x.FontSize(11).FontFamily(_fontFamily));
             page.Header().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingBottom(12)
                 .Text(title).FontSize(22).Bold().FontColor(Colors.Blue.Darken2).AlignRight();
             page.Content().ContentFromRightToLeft().PaddingVertical(18).Column(column =>

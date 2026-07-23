@@ -1,6 +1,6 @@
 namespace Clinic.Saas.Service.DTOs;
 
-public class PaymentDebtDto
+public class InvoiceDebtDto
 {
     public Guid PatientId { get; set; }
     public string FullName { get; set; } = string.Empty;

@@ -11,6 +11,6 @@ namespace Clinic.Saas.Service.DTOs
         public string? FollowUpNotes { get; set; }
         public List<PrescriptionDto> Prescriptions { get; set; } = new();
         public List<LabRequestDto> LabRequests { get; set; } = new();
-        public PaymentDto? Payment { get; set; }
+        public InvoiceDto? Invoice { get; set; }
     }
 }

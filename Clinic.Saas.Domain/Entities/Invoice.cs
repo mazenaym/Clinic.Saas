@@ -16,6 +16,9 @@ public class Invoice
     public decimal PaidAmount { get; set; }
     public decimal RemainingAmount { get; set; }
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
+    public string? InsuranceCompany { get; set; }
+    public string? InsuranceNumber { get; set; }
+    public string? ReceiptUrl { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

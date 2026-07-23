@@ -11,8 +11,8 @@ using Clinic.Saas.Service.UseCases.PatientDocuments.Commands;
 using Clinic.Saas.Service.UseCases.PatientDocuments.Queries;
 using Clinic.Saas.Service.UseCases.Patients.Commands;
 using Clinic.Saas.Service.UseCases.Patients.Queries;
-using Clinic.Saas.Service.UseCases.Payments.Commands;
-using Clinic.Saas.Service.UseCases.Payments.Queries;
+using Clinic.Saas.Service.UseCases.Invoices.Commands;
+using Clinic.Saas.Service.UseCases.Invoices.Queries;
 using Clinic.Saas.Service.UseCases.Prescriptions.Commands;
 using Clinic.Saas.Service.UseCases.Prescriptions.Queries;
 using Clinic.Saas.Service.UseCases.Visits.Commands;
@@ -189,39 +189,40 @@ public class TenantIsolationUseCaseTests
     [Fact]
     public async Task Payments_read_and_refund_are_tenant_scoped()
     {
-        var paymentId = Guid.NewGuid();
-        var repository = new FakePaymentRepository();
-        repository.Seed(new Payment
+        var invoiceId = Guid.NewGuid();
+        var repository = new FakeInvoiceRepository();
+        repository.Seed(new Invoice
         {
-            Id = paymentId,
+            Id = invoiceId,
             TenantId = TenantB,
             VisitId = Guid.NewGuid(),
             PatientId = Guid.NewGuid(),
             InvoiceNumber = "INV-B-001",
-            TotalAmount = 200,
+            Subtotal = 200,
+            GrandTotal = 200,
             PaidAmount = 200,
-            PaymentMethod = PaymentMethod.Cash,
-            Status = PaymentStatus.Paid
+            RemainingAmount = 0,
+            Status = InvoiceStatus.Paid
         });
 
-        var read = await new GetPaymentByIdQuery.Handler(repository, CreateMapper()).Handle(new GetPaymentByIdQuery.Query
+        var read = await new GetInvoiceByIdQuery.Handler(repository).Handle(new GetInvoiceByIdQuery.Query
         {
             TenantId = TenantA,
-            PaymentId = paymentId
+            InvoiceId = invoiceId
         });
 
-        var refund = await new RefundPaymentCommand.Handler(repository).Handle(new RefundPaymentCommand.Command
+        var refund = await new RefundInvoiceCommand.Handler(repository).Handle(new RefundInvoiceCommand.Command
         {
             TenantId = TenantA,
-            PaymentId = paymentId,
-            Refund = new RefundPaymentDto { Reason = "Wrong tenant attempt" }
+            InvoiceId = invoiceId,
+            Refund = new RefundInvoiceDto { Reason = "Wrong tenant attempt" }
         });
 
         Assert.Equal(404, read.StatusCode);
         Assert.False(read.Success);
         Assert.Equal(404, refund.StatusCode);
         Assert.False(refund.Success);
-        Assert.Equal(PaymentStatus.Paid, repository.Find(TenantB, paymentId)!.Status);
+        Assert.Equal(InvoiceStatus.Paid, repository.Find(TenantB, invoiceId)!.Status);
     }
 
     [Fact]
@@ -545,21 +546,21 @@ public class TenantIsolationUseCaseTests
         public Task DeleteAsync(Guid id) => Task.CompletedTask;
     }
 
-    private sealed class FakePaymentRepository : IPaymentRepository
+    private sealed class FakeInvoiceRepository : IInvoiceRepository
     {
-        private readonly List<Payment> _payments = [];
+        private readonly List<Invoice> _invoices = [];
 
-        public void Seed(Payment payment) => _payments.Add(payment);
-        public Payment? Find(Guid tenantId, Guid id) => _payments.SingleOrDefault(x => x.TenantId == tenantId && x.Id == id);
+        public void Seed(Invoice invoice) => _invoices.Add(invoice);
+        public Invoice? Find(Guid tenantId, Guid id) => _invoices.SingleOrDefault(x => x.TenantId == tenantId && x.Id == id);
 
-        public Task<Payment?> GetByIdAsync(Guid tenantId, Guid id) =>
-            Task.FromResult(_payments.SingleOrDefault(x => x.TenantId == tenantId && x.Id == id));
+        public Task<Invoice?> GetByIdAsync(Guid tenantId, Guid id) =>
+            Task.FromResult(_invoices.SingleOrDefault(x => x.TenantId == tenantId && x.Id == id));
 
-        public Task<IEnumerable<Payment>> GetByPatientAsync(Guid tenantId, Guid patientId) =>
-            Task.FromResult(_payments.Where(x => x.TenantId == tenantId && x.PatientId == patientId).AsEnumerable());
+        public Task<IEnumerable<Invoice>> GetByPatientAsync(Guid tenantId, Guid patientId) =>
+            Task.FromResult(_invoices.Where(x => x.TenantId == tenantId && x.PatientId == patientId).AsEnumerable());
 
-        public Task UpdateAsync(Guid tenantId, Payment entity) => Task.CompletedTask;
-        public Task<bool> UpdateWithItemsAsync(Guid tenantId, Payment entity) => Task.FromResult(Find(tenantId, entity.Id) is not null);
+        public Task UpdateAsync(Guid tenantId, Invoice entity) => Task.CompletedTask;
+        public Task<bool> UpdateWithItemsAsync(Guid tenantId, Invoice entity) => Task.FromResult(Find(tenantId, entity.Id) is not null);
 
         public Task<bool> RefundAsync(Guid tenantId, Guid id, string? reason, byte[] rowVersion)
         {
@@ -569,32 +570,34 @@ public class TenantIsolationUseCaseTests
                 return Task.FromResult(false);
             }
 
-            existing.Status = PaymentStatus.Refunded;
+            existing.Status = InvoiceStatus.Refunded;
             existing.Notes = reason;
             return Task.FromResult(true);
         }
 
         public Task DeleteAsync(Guid tenantId, Guid id, byte[] rowVersion) => Task.CompletedTask;
         public Task<string> GenerateInvoiceNumberAsync(Guid tenantId, DateTime createdAt) => Task.FromResult("INV-TEST");
-        public Task<IEnumerable<Payment>> GetByDateAsync(Guid tenantId, DateTime date) =>
-            Task.FromResult(_payments.Where(x => x.TenantId == tenantId && x.CreatedAt.Date == date.Date).AsEnumerable());
+        public Task<IEnumerable<Invoice>> GetByDateAsync(Guid tenantId, DateTime date) =>
+            Task.FromResult(_invoices.Where(x => x.TenantId == tenantId && x.CreatedAt.Date == date.Date).AsEnumerable());
 
-        public Task<IEnumerable<PaymentDebtRow>> GetDebtTrackingAsync(Guid tenantId) =>
-            Task.FromResult(Enumerable.Empty<PaymentDebtRow>());
+        public Task<IEnumerable<InvoiceDebtRow>> GetDebtTrackingAsync(Guid tenantId) =>
+            Task.FromResult(Enumerable.Empty<InvoiceDebtRow>());
 
         public Task<IEnumerable<MonthlyRevenueRow>> GetMonthlyRevenueAsync(Guid tenantId, DateTime start, DateTime end) =>
             Task.FromResult(Enumerable.Empty<MonthlyRevenueRow>());
 
-        public Task<Payment> AddAsync(Payment entity)
+        public Task<IEnumerable<DailyPaymentMethodTotal>> GetDailyPaymentMethodTotalsAsync(Guid tenantId, DateTime date) =>
+            Task.FromResult(Enumerable.Empty<DailyPaymentMethodTotal>());
+
+        public Task<Invoice> AddAsync(Invoice entity)
         {
-            _payments.Add(entity);
+            _invoices.Add(entity);
             return Task.FromResult(entity);
         }
 
-        public Task<Payment?> GetByIdAsync(Guid id) => Task.FromResult(_payments.SingleOrDefault(x => x.Id == id));
-        public Task<IEnumerable<Payment>> GetAllAsync() => Task.FromResult(_payments.AsEnumerable());
-        public Task UpdateAsync(Payment entity) => Task.CompletedTask;
-        public Task DeleteAsync(Guid id) => Task.CompletedTask;
+        public Task<Invoice?> AddPaymentAsync(Guid tenantId, Guid invoiceId, InvoicePayment payment) => Task.FromResult<Invoice?>(null);
+        public Task<PatientFinancialLedgerData> GetPatientLedgerAsync(Guid tenantId, Guid patientId) => Task.FromResult(new PatientFinancialLedgerData());
+        public Task<FinancialDuesReportData> GetFinancialDuesAsync(Guid tenantId, DateTime? from, DateTime? toExclusive, Guid? doctorId) => Task.FromResult(new FinancialDuesReportData());
     }
 
     private sealed class FakePatientDocumentRepository : IPatientDocumentRepository

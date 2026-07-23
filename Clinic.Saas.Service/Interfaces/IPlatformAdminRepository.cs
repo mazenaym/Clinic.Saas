@@ -11,8 +11,8 @@ public interface IPlatformAdminRepository
     Task<bool> SubdomainExistsAsync(string subdomain, Guid? excludeTenantId = null);
     Task<bool> SuperAdminExistsAsync();
     Task<AdminClinicDto?> BootstrapSuperAdminAsync(Tenant platformTenant, User superAdmin);
-    Task<AdminClinicDto> CreateClinicAsync(Tenant tenant, User owner, Subscription subscription, ClinicSettingsDto settings);
+    Task<AdminClinicDto> CreateClinicAsync(Tenant tenant, User owner, CreateSubscriptionRequest subscription, ClinicSettingsDto settings);
     Task UpdateClinicAsync(Tenant tenant);
     Task SetClinicStatusAsync(Guid clinicId, bool isActive);
-    Task<Subscription> AddSubscriptionAsync(Subscription subscription);
+    Task AddSubscriptionAsync(CreateSubscriptionRequest subscription);
 }
